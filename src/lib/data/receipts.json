@@ -1,0 +1,38 @@
+[
+  {
+    "receipt_id": "8db2a919-8742-4c25-b956-9e6419941f53",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-03T00:00:00.000Z",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 30,
+        "unit_price": 10,
+        "line_total": 300,
+        "product_name": "Chocoflan Dessert"
+      }
+    ],
+    "subtotal_excl_GST": 300,
+    "GST_amount": 0,
+    "total_inc_GST": 300,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, QLD 4152",
+      "ABN_or_ACN": "00 000 000 000",
+      "contact_email": "hello@yourbakery.com",
+      "phone": "",
+      "logo_url": ""
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  }
+]

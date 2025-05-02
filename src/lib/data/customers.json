@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "customer_type": "business",
+    "first_name": "John",
+    "last_name": "Toro",
+    "business_name": "Australian Pentecostal Church Inc",
+    "abn": "",
+    "email": "apc@aupentecostal.org.au",
+    "phone": "0478516064",
+    "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+    "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+  }
+]
