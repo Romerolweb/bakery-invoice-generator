@@ -4,6 +4,7 @@ import type { Receipt, LineItem, Customer, Product, SellerProfile } from '@/lib/
 import { promises as fs } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import PDFDocument from 'pdfkit';
 import { getCustomerById } from './customers';
 import { getProductById } from './products';
 import { getSellerProfile } from './seller';
@@ -176,11 +177,11 @@ export async function createReceipt(
             customer_snapshot: customerSnapshot      // Snapshot customer details (without ID)
         };
 
-        // 6. Generate PDF (Placeholder - implement actual PDF generation here)
-        const pdfPath = path.join(PDF_DIR, `${newReceipt.receipt_id}.pdf`);
-        const pdfGenerationResult = await generatePdfStub(newReceipt, pdfPath); // Replace with actual PDF generation
+        // 6. Generate PDF
+        const pdfGenerationResult = await generateReceiptPdf(newReceipt); // Call PDF generation
 
         if (!pdfGenerationResult.success) {
+             // Use the more specific error message from PDF generation
              return { success: false, message: pdfGenerationResult.message || "Failed to generate PDF." };
         }
 
@@ -189,7 +190,7 @@ export async function createReceipt(
         const allReceipts = await readReceipts();
         allReceipts.unshift(newReceipt); // Add to the beginning (most recent first)
         await writeReceipts(allReceipts);
-
+        const pdfPath = pdfGenerationResult.filePath; // Get the path from the result
 
         return { success: true, receipt: newReceipt, pdfPath: pdfPath };
 
@@ -211,43 +212,118 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
     return receipt || null;
 }
 
-// --- PDF Generation (Stub - Replace with actual implementation) ---
-async function generatePdfStub(receipt: Receipt, filePath: string): Promise<{ success: boolean; message?: string }> {
-     console.log(`--- Generating PDF Stub for Receipt ID: ${receipt.receipt_id} ---`);
-     console.log("Seller:", receipt.seller_profile_snapshot.name, `(ABN: ${receipt.seller_profile_snapshot.ABN_or_ACN})`);
-     console.log("Seller Address:", receipt.seller_profile_snapshot.business_address);
-     console.log("Seller Email:", receipt.seller_profile_snapshot.contact_email);
-     console.log("Seller Phone:", receipt.seller_profile_snapshot.phone || '-'); // Display phone
-     console.log("Customer Type:", receipt.customer_snapshot.customer_type);
-     if (receipt.customer_snapshot.customer_type === 'business') {
-        console.log("Business:", receipt.customer_snapshot.business_name);
-        if(receipt.customer_snapshot.abn) console.log("ABN:", receipt.customer_snapshot.abn);
-        if(receipt.customer_snapshot.first_name || receipt.customer_snapshot.last_name) console.log("Contact:", receipt.customer_snapshot.first_name, receipt.customer_snapshot.last_name);
-     } else {
-         console.log("Customer:", receipt.customer_snapshot.first_name, receipt.customer_snapshot.last_name);
-     }
-     console.log("Customer Email:", receipt.customer_snapshot.email || '-');
-     console.log("Customer Phone:", receipt.customer_snapshot.phone || '-');
-     console.log("Customer Address:", receipt.customer_snapshot.address || '-');
+// --- PDF Generation ---
+async function generateReceiptPdf(receipt: Receipt): Promise<{ success: boolean; message?: string; filePath?: string }> {
+     const filename = `${receipt.receipt_id}.pdf`;
+     const filePath = path.join(PDF_DIR, filename);
+     const stream = fs.createWriteStream(filePath);
+     const doc = new PDFDocument({ margin: 50 });
 
-     console.log("Date:", format(new Date(receipt.date_of_purchase), 'dd/MM/yyyy'));
-     console.log("Items:");
-     receipt.line_items.forEach(item => {
-         console.log(`  ${item.quantity}x ${item.product_name} @ $${item.unit_price?.toFixed(2)} = $${item.line_total?.toFixed(2)}`);
-     });
-     console.log("Subtotal (ex GST):", `$${receipt.subtotal_excl_GST.toFixed(2)}`);
-     console.log("GST Amount:", `$${receipt.GST_amount.toFixed(2)}`);
-     console.log("Total (inc GST):", `$${receipt.total_inc_GST.toFixed(2)}`);
-     console.log("Type:", receipt.is_tax_invoice ? "Tax Invoice" : "Receipt");
-     console.log(`--- PDF would be saved to: ${filePath} ---`);
+     doc.pipe(stream);
 
-    // Simulate saving a dummy file
      try {
-        await fs.writeFile(filePath, `Dummy PDF content for receipt ${receipt.receipt_id}`);
-        return { success: true };
+        // Explicitly set the font to potentially avoid path issues
+        doc.font('Helvetica');
+
+        // Header
+        doc.fontSize(20).text(receipt.is_tax_invoice ? 'TAX INVOICE' : 'RECEIPT', { align: 'center' });
+        doc.moveDown();
+
+        // Seller Information
+        doc.fontSize(12).text('From:', { underline: true });
+        doc.fontSize(10).text(receipt.seller_profile_snapshot.name);
+        doc.text(receipt.seller_profile_snapshot.business_address);
+        doc.text(`ABN/ACN: ${receipt.seller_profile_snapshot.ABN_or_ACN}`);
+        doc.text(`Email: ${receipt.seller_profile_snapshot.contact_email}`);
+        if (receipt.seller_profile_snapshot.phone) {
+            doc.text(`Phone: ${receipt.seller_profile_snapshot.phone}`);
+        }
+        doc.moveDown();
+
+        // Customer Information
+        doc.fontSize(12).text('To:', { underline: true });
+        doc.fontSize(10);
+        if (receipt.customer_snapshot.customer_type === 'business') {
+            doc.text(receipt.customer_snapshot.business_name || 'N/A');
+            if (receipt.customer_snapshot.abn) {
+                doc.text(`ABN: ${receipt.customer_snapshot.abn}`);
+            }
+            if (receipt.customer_snapshot.first_name || receipt.customer_snapshot.last_name) {
+                doc.text(`Contact: ${receipt.customer_snapshot.first_name || ''} ${receipt.customer_snapshot.last_name || ''}`.trim());
+            }
+        } else {
+            doc.text(`${receipt.customer_snapshot.first_name || ''} ${receipt.customer_snapshot.last_name || ''}`.trim());
+        }
+        doc.text(`Email: ${receipt.customer_snapshot.email || 'N/A'}`);
+        doc.text(`Phone: ${receipt.customer_snapshot.phone || 'N/A'}`);
+        doc.text(`Address: ${receipt.customer_snapshot.address || 'N/A'}`);
+        doc.moveDown();
+
+        // Receipt Details
+        doc.fontSize(10).text(`Receipt ID: ${receipt.receipt_id}`);
+        doc.text(`Date: ${format(new Date(receipt.date_of_purchase), 'dd/MM/yyyy')}`);
+        doc.moveDown();
+
+        // Line Items Table Header
+        const tableTop = doc.y;
+        const itemCol = 50;
+        const qtyCol = 250;
+        const priceCol = 350;
+        const totalCol = 450;
+        doc.fontSize(10);
+        doc.text('Item', itemCol, tableTop, { bold: true, underline: true });
+        doc.text('Qty', qtyCol, tableTop, { bold: true, underline: true, align: 'right' });
+        doc.text('Unit Price', priceCol, tableTop, { bold: true, underline: true, align: 'right' });
+        doc.text('Line Total', totalCol, tableTop, { bold: true, underline: true, align: 'right' });
+        doc.moveDown(0.5); // Space after header
+
+        // Line Items
+        receipt.line_items.forEach(item => {
+            const y = doc.y;
+            doc.text(item.product_name || 'N/A', itemCol, y, { width: qtyCol - itemCol - 10 });
+            doc.text(item.quantity.toString(), qtyCol, y, { align: 'right', width: priceCol - qtyCol - 10 });
+            doc.text(`$${item.unit_price?.toFixed(2)}`, priceCol, y, { align: 'right', width: totalCol - priceCol - 10 });
+            doc.text(`$${item.line_total?.toFixed(2)}`, totalCol, y, { align: 'right' });
+            doc.moveDown(0.5);
+        });
+        doc.moveDown();
+
+        // Draw a line before totals
+        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+        doc.moveDown(0.5);
+
+        // Totals
+        const totalsX = 400; // Align totals to the right
+        doc.fontSize(10).text(`Subtotal (ex GST):`, 50, doc.y, { continued: true, align: 'left' });
+        doc.text(`$${receipt.subtotal_excl_GST.toFixed(2)}`, totalsX, doc.y, { align: 'right' });
+        doc.text(`GST Amount:`, 50, doc.y, { continued: true, align: 'left' });
+        doc.text(`$${receipt.GST_amount.toFixed(2)}`, totalsX, doc.y, { align: 'right' });
+
+        // Draw another line
+        doc.moveTo(totalsX - 50, doc.y + 15).lineTo(550, doc.y + 15).stroke(); // Shorter line above total
+        doc.moveDown();
+
+
+        doc.fontSize(12).text(`Total (inc GST):`, 50, doc.y, { continued: true, align: 'left', bold: true });
+        doc.text(`$${receipt.total_inc_GST.toFixed(2)}`, totalsX, doc.y, { align: 'right', bold: true });
+        doc.moveDown();
+
+
+        doc.end();
+
+        // Wait for the stream to finish writing
+        await new Promise((resolve, reject) => {
+            stream.on('finish', resolve);
+            stream.on('error', reject);
+        });
+
+        return { success: true, filePath: filePath };
      } catch (error: any) {
-        console.error("Error writing dummy PDF stub:", error);
-        return { success: false, message: `Failed to write dummy PDF: ${error.message}` };
+        console.error("Error generating PDF:", error);
+        // Attempt to close stream on error if possible
+        if (doc && !doc.writableEnded) doc.end();
+        if (stream && !stream.writableEnded) stream.end();
+        return { success: false, message: `Failed to generate PDF: ${error.message}` };
      }
 }
 
