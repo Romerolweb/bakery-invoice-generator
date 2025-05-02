@@ -205,14 +205,17 @@ export default function CustomersPage() {
          // Display validation errors from the server action if available
          if (result.errors) {
              Object.entries(result.errors).forEach(([field, messages]) => {
+                // Check if messages is an array and has items before accessing [0]
                 if (Array.isArray(messages) && messages.length > 0) {
                  form.setError(field as keyof CustomerFormData, { type: 'server', message: messages[0] });
+                } else if (typeof messages === 'string') { // Handle cases where errors might be a single string
+                 form.setError(field as keyof CustomerFormData, { type: 'server', message: messages });
                 }
              });
          }
          toast({
           title: "Error",
-          description: result.message || `Failed to ${editingCustomer ? 'update' : 'add'} customer.`,
+          description: result.message || `Failed to ${editingCustomer ? 'update' : 'add'} customer. Check the highlighted fields.`,
           variant: "destructive",
         });
       }
@@ -311,7 +314,7 @@ export default function CustomersPage() {
                         </FormItem>
                         )}
                      />
-                     <p className="text-sm text-muted-foreground mt-2">Contact Person (Optional)</p>
+                     <p className="text-sm text-muted-foreground mt-2 -mb-2">Contact Person (Optional)</p>
                   </>
               )}
 
@@ -322,7 +325,7 @@ export default function CustomersPage() {
                     name="first_name"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>{customerType === 'individual' ? 'First Name *' : 'First Name'}</FormLabel>
+                        <FormLabel>{customerType === 'individual' ? 'First Name *' : 'Contact First Name'}</FormLabel>
                         <FormControl>
                          <Input placeholder={customerType === 'individual' ? 'John' : 'Contact First Name'} {...field} value={field.value ?? ''}/>
                         </FormControl>
@@ -335,7 +338,7 @@ export default function CustomersPage() {
                     name="last_name"
                     render={({ field }) => (
                     <FormItem>
-                         <FormLabel>Last Name {customerType === 'business' ? '' : '(Optional)'}</FormLabel>
+                         <FormLabel>{customerType === 'individual' ? 'Last Name (Optional)' : 'Contact Last Name (Optional)'}</FormLabel>
                         <FormControl>
                          <Input placeholder={customerType === 'individual' ? 'Doe' : 'Contact Last Name'} {...field} value={field.value ?? ''}/>
                         </FormControl>
@@ -486,3 +489,5 @@ export default function CustomersPage() {
     </div>
   );
 }
+
+    
