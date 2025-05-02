@@ -5,6 +5,7 @@ export interface SellerProfile {
   business_address: string;
   ABN_or_ACN: string;
   contact_email: string;
+  phone?: string; // Optional phone number
   logo_url?: string; // Optional logo URL
 }
 

@@ -152,6 +152,16 @@ export async function createReceipt(
              address: customer.address,
         };
 
+        // Create the seller snapshot, ensuring all fields are included
+        const sellerProfileSnapshot: SellerProfile = {
+            name: sellerProfile.name,
+            business_address: sellerProfile.business_address,
+            ABN_or_ACN: sellerProfile.ABN_or_ACN,
+            contact_email: sellerProfile.contact_email,
+            phone: sellerProfile.phone || '', // Ensure phone is string, even if empty
+            logo_url: sellerProfile.logo_url || '', // Ensure logo_url is string, even if empty
+        };
+
 
         const newReceipt: Receipt = {
             receipt_id: uuidv4(),
@@ -162,7 +172,7 @@ export async function createReceipt(
             GST_amount: parseFloat(total_gst_amount.toFixed(2)),
             total_inc_GST: parseFloat(total_inc_GST.toFixed(2)),
             is_tax_invoice: isTaxInvoiceRequired,
-            seller_profile_snapshot: sellerProfile, // Snapshot seller details
+            seller_profile_snapshot: sellerProfileSnapshot, // Use the full snapshot
             customer_snapshot: customerSnapshot      // Snapshot customer details (without ID)
         };
 
@@ -205,6 +215,9 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
 async function generatePdfStub(receipt: Receipt, filePath: string): Promise<{ success: boolean; message?: string }> {
      console.log(`--- Generating PDF Stub for Receipt ID: ${receipt.receipt_id} ---`);
      console.log("Seller:", receipt.seller_profile_snapshot.name, `(ABN: ${receipt.seller_profile_snapshot.ABN_or_ACN})`);
+     console.log("Seller Address:", receipt.seller_profile_snapshot.business_address);
+     console.log("Seller Email:", receipt.seller_profile_snapshot.contact_email);
+     console.log("Seller Phone:", receipt.seller_profile_snapshot.phone || '-'); // Display phone
      console.log("Customer Type:", receipt.customer_snapshot.customer_type);
      if (receipt.customer_snapshot.customer_type === 'business') {
         console.log("Business:", receipt.customer_snapshot.business_name);
@@ -213,8 +226,9 @@ async function generatePdfStub(receipt: Receipt, filePath: string): Promise<{ su
      } else {
          console.log("Customer:", receipt.customer_snapshot.first_name, receipt.customer_snapshot.last_name);
      }
-     console.log("Email:", receipt.customer_snapshot.email || '-');
-     console.log("Address:", receipt.customer_snapshot.address || '-');
+     console.log("Customer Email:", receipt.customer_snapshot.email || '-');
+     console.log("Customer Phone:", receipt.customer_snapshot.phone || '-');
+     console.log("Customer Address:", receipt.customer_snapshot.address || '-');
 
      console.log("Date:", format(new Date(receipt.date_of_purchase), 'dd/MM/yyyy'));
      console.log("Items:");

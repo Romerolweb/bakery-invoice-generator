@@ -1,3 +1,4 @@
+// src/app/settings/page.tsx
 'use client'; // This component needs client-side interaction for the form
 
 import type { SellerProfile } from '@/lib/types';
@@ -28,6 +29,7 @@ const sellerProfileSchema = z.object({
      'Invalid ABN or ACN format (e.g., 11 111 111 111 or 111 111 111)'
   ),
   contact_email: z.string().email('Invalid email address'),
+  phone: z.string().optional(), // Optional phone number
   logo_url: z.string().url('Invalid URL format').optional().or(z.literal('')), // Optional URL
 });
 
@@ -43,6 +45,7 @@ export default function SettingsPage() {
       business_address: '',
       ABN_or_ACN: '',
       contact_email: '',
+      phone: '',
       logo_url: '',
     },
   });
@@ -52,7 +55,15 @@ export default function SettingsPage() {
       setIsLoading(true);
       try {
         const profile = await getSellerProfile();
-        form.reset(profile); // Set form values after fetching
+        // Ensure all fields are reset, including optional ones
+        form.reset({
+            name: profile.name || '',
+            business_address: profile.business_address || '',
+            ABN_or_ACN: profile.ABN_or_ACN || '',
+            contact_email: profile.contact_email || '',
+            phone: profile.phone || '',
+            logo_url: profile.logo_url || '',
+        });
       } catch (error) {
         console.error('Failed to fetch seller profile:', error);
         toast({
@@ -135,7 +146,7 @@ export default function SettingsPage() {
                 <FormItem>
                   <FormLabel>Business Address</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="123 Pastry Lane, Bakeville, VIC 3000" {...field} />
+                    <Textarea placeholder="123 Pastry Lane, Bakeville, VIC 3000" {...field} value={field.value ?? ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -148,25 +159,40 @@ export default function SettingsPage() {
                 <FormItem>
                   <FormLabel>ABN / ACN</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., 11 111 111 111" {...field} />
+                    <Input placeholder="e.g., 11 111 111 111" {...field} value={field.value ?? ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="contact_email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contact Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="hello@yourbakery.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="contact_email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="hello@yourbakery.com" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="tel" placeholder="07 1234 5678" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
              <FormField
               control={form.control}
               name="logo_url"
@@ -174,7 +200,7 @@ export default function SettingsPage() {
                 <FormItem>
                   <FormLabel>Logo URL (Optional)</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://yourbakery.com/logo.png" {...field} />
+                    <Input type="url" placeholder="https://yourbakery.com/logo.png" {...field} value={field.value ?? ''} />
                   </FormControl>
                    <FormMessage />
                 </FormItem>
