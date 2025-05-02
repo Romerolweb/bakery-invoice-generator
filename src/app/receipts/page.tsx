@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns'; // Keep parseISO
 
 import type { Receipt } from '@/lib/types';
 import { getReceipts, getReceiptPdfPath } from '@/lib/actions/receipts'; // Assume getReceiptPdfPath exists
@@ -11,17 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge'; // To show Tax Invoice status
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, FileText, Download } from 'lucide-react';
+import { Loader2, Download, PlusCircle } from 'lucide-react'; // Keep PlusCircle if needed elsewhere, or import inline
 import Link from 'next/link'; // For linking back to create new
 
-
-// // --- Placeholder for API route ---
-// // You would need an API route like '/api/receipts/download/[receiptId]'
-// // This function simulates initiating a download via that route.
-// const triggerDownload = (receiptId: string) => {
-//    window.location.href = `/api/receipts/download/${receiptId}`;
-// };
-// // --- End Placeholder ---
 
 export default function ReceiptsHistoryPage() {
   const { toast } = useToast();
@@ -47,7 +39,7 @@ export default function ReceiptsHistoryPage() {
 
   useEffect(() => {
     fetchReceipts();
-  }, [toast]); // Refetch isn't needed on every toast
+  }, []); // Fetch only once
 
    const handleDownloadPdf = async (receiptId: string) => {
     toast({ title: "Download Initiated", description: "Checking for PDF..." });
@@ -59,9 +51,9 @@ export default function ReceiptsHistoryPage() {
             // Simulate download - In a real app, you'd redirect to an API endpoint
             // e.g., window.location.href = `/api/download-receipt?id=${receiptId}`;
              alert(`PDF stub is available at server path: ${pdfPath}\n\nA real app would initiate a download here.`);
-             toast({ title: "PDF Ready (Stub)", description: `PDF stub for ${receiptId} exists.`, variant: "default"});
+             toast({ title: "PDF Ready (Stub)", description: `PDF stub for ${receiptId.substring(0, 8)}... exists.`, variant: "default"});
         } else {
-            toast({ title: "PDF Not Found", description: `Could not find the PDF for receipt ${receiptId}. It might need to be regenerated.`, variant: "destructive" });
+            toast({ title: "PDF Not Found", description: `Could not find the PDF for receipt ${receiptId.substring(0, 8)}... It might need to be regenerated.`, variant: "destructive" });
         }
     } catch (error) {
         console.error("Error getting PDF path:", error);
@@ -113,7 +105,12 @@ export default function ReceiptsHistoryPage() {
                     <TableRow key={receipt.receipt_id}>
                     <TableCell className="font-mono text-xs">{receipt.receipt_id.substring(0, 8)}...</TableCell>
                     <TableCell>{format(parseISO(receipt.date_of_purchase), 'dd/MM/yyyy')}</TableCell>
-                     <TableCell>{receipt.customer_snapshot.first_name} {receipt.customer_snapshot.last_name}</TableCell>
+                     <TableCell>
+                         {receipt.customer_snapshot.customer_type === 'business'
+                            ? receipt.customer_snapshot.business_name
+                            : `${receipt.customer_snapshot.first_name} ${receipt.customer_snapshot.last_name || ''}`
+                         }
+                     </TableCell>
                     <TableCell>${receipt.total_inc_GST.toFixed(2)}</TableCell>
                      <TableCell>
                          {receipt.is_tax_invoice ? (
@@ -144,13 +141,4 @@ export default function ReceiptsHistoryPage() {
   );
 }
 
-// Temporary component, replace if available globally
-function PlusCircle({ className }: { className?: string }) {
-    return (
-     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="10"></circle>
-      <line x1="12" y1="8" x2="12" y2="16"></line>
-      <line x1="8" y1="12" x2="16" y2="12"></line>
-    </svg>
-    );
-}
+// Removed the inline SVG for PlusCircle as it's imported from lucide-react now.

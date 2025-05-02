@@ -4,10 +4,10 @@ import type { Receipt, LineItem, Customer, Product, SellerProfile } from '@/lib/
 import { promises as fs } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { getCustomerById } from './customers'; // Assuming customer actions exist
-import { getProductById } from './products'; // Assuming product actions exist
-import { getSellerProfile } from './seller'; // Assuming seller actions exist
-import { format } from 'date-fns'; // For date formatting
+import { getCustomerById } from './customers';
+import { getProductById } from './products';
+import { getSellerProfile } from './seller';
+import { format } from 'date-fns';
 
 const DATA_DIR = path.join(process.cwd(), 'src/lib/data');
 const RECEIPTS_FILE = path.join(DATA_DIR, 'receipts.json');
@@ -31,6 +31,7 @@ ensureDirectoriesExist();
 async function readReceipts(): Promise<Receipt[]> {
   try {
     const fileContent = await fs.readFile(RECEIPTS_FILE, 'utf-8');
+    // Ensure date strings are correctly parsed if needed later, though storing as ISO is fine
     return JSON.parse(fileContent);
   } catch (error: any) {
     if (error.code === 'ENOENT') {
@@ -56,7 +57,7 @@ async function writeReceipts(receipts: Receipt[]): Promise<void> {
 
 interface CreateReceiptInput {
   customer_id: string;
-  date_of_purchase?: string; // Optional, defaults to today
+  date_of_purchase: string; // Expecting 'yyyy-MM-dd' string from the form
   line_items: Array<{ product_id: string; quantity: number }>;
   include_gst: boolean; // Explicit flag from UI
   force_tax_invoice?: boolean; // Optional flag if user requests tax invoice explicitly
@@ -116,36 +117,12 @@ export async function createReceipt(
             });
 
             // Calculate GST only if global flag is true AND product is GST applicable
+            // Assume unit_price is *exclusive* of GST
             if (input.include_gst && product.GST_applicable) {
-                 // GST is calculated on the *price including GST*.
-                 // Price stated is typically GST-inclusive if applicable.
-                 // To get GST amount: Price / 11
-                 // To get Excl GST price: Price / 1.1
-                 // Let's assume unit_price is GST-INCLUSIVE if GST_applicable is true.
-                 // Recalculate logic assuming unit_price might be exclusive or inclusive.
-                 // *Correction*: Assuming unit_price in the product data is ALWAYS exclusive of GST.
                  const lineGst = lineTotal * 0.1;
                  total_gst_amount += lineGst;
             }
         });
-
-        // Adjust subtotal if prices were meant to be GST inclusive
-        // *If unit_price WAS inclusive:*
-        // let corrected_subtotal_excl_GST = 0;
-        // calculatedLineItems.forEach(item => {
-        //     const product = validProducts.find(p => p.id === item.product_id)!;
-        //     if(product.GST_applicable && input.include_gst) {
-        //         corrected_subtotal_excl_GST += item.line_total! / 1.1;
-        //     } else {
-        //         corrected_subtotal_excl_GST += item.line_total!;
-        //     }
-        // });
-        // subtotal_excl_GST = corrected_subtotal_excl_GST;
-        // if(input.include_gst) { // Recalc GST based on corrected exclusive subtotal
-        //    total_gst_amount = subtotal_excl_GST * 0.1;
-        // } else {
-        //     total_gst_amount = 0;
-        // }
 
         // If input.include_gst is false, GST amount must be 0
         if (!input.include_gst) {
@@ -156,10 +133,26 @@ export async function createReceipt(
 
         // 4. Determine Tax Invoice Status
         // Threshold is $82.50 *inclusive* of GST
-        const isTaxInvoiceRequired = (input.include_gst && total_inc_GST >= 82.50) || input.force_tax_invoice;
+        const isTaxInvoiceRequired = (input.include_gst && total_inc_GST >= 82.50) || !!input.force_tax_invoice;
 
         // 5. Create Receipt Object
-        const purchaseDate = input.date_of_purchase ? new Date(input.date_of_purchase) : new Date();
+        // Date string is already 'yyyy-MM-dd', store as ISO string for consistency (or keep as string if preferred)
+        const purchaseDate = new Date(`${input.date_of_purchase}T00:00:00Z`); // Treat as start of day UTC
+
+
+        // Create the customer snapshot, omitting the 'id' field
+        const customerSnapshot: Omit<Customer, 'id'> = {
+             customer_type: customer.customer_type,
+             first_name: customer.first_name,
+             last_name: customer.last_name,
+             business_name: customer.business_name,
+             abn: customer.abn,
+             email: customer.email,
+             phone: customer.phone,
+             address: customer.address,
+        };
+
+
         const newReceipt: Receipt = {
             receipt_id: uuidv4(),
             customer_id: input.customer_id,
@@ -170,13 +163,7 @@ export async function createReceipt(
             total_inc_GST: parseFloat(total_inc_GST.toFixed(2)),
             is_tax_invoice: isTaxInvoiceRequired,
             seller_profile_snapshot: sellerProfile, // Snapshot seller details
-            customer_snapshot: { // Snapshot customer details
-                first_name: customer.first_name,
-                last_name: customer.last_name,
-                email: customer.email,
-                phone: customer.phone,
-                address: customer.address,
-            }
+            customer_snapshot: customerSnapshot      // Snapshot customer details (without ID)
         };
 
         // 6. Generate PDF (Placeholder - implement actual PDF generation here)
@@ -217,8 +204,18 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
 // --- PDF Generation (Stub - Replace with actual implementation) ---
 async function generatePdfStub(receipt: Receipt, filePath: string): Promise<{ success: boolean; message?: string }> {
      console.log(`--- Generating PDF Stub for Receipt ID: ${receipt.receipt_id} ---`);
-     console.log("Seller:", receipt.seller_profile_snapshot.name);
-     console.log("Customer:", receipt.customer_snapshot.first_name, receipt.customer_snapshot.last_name);
+     console.log("Seller:", receipt.seller_profile_snapshot.name, `(ABN: ${receipt.seller_profile_snapshot.ABN_or_ACN})`);
+     console.log("Customer Type:", receipt.customer_snapshot.customer_type);
+     if (receipt.customer_snapshot.customer_type === 'business') {
+        console.log("Business:", receipt.customer_snapshot.business_name);
+        if(receipt.customer_snapshot.abn) console.log("ABN:", receipt.customer_snapshot.abn);
+        if(receipt.customer_snapshot.first_name || receipt.customer_snapshot.last_name) console.log("Contact:", receipt.customer_snapshot.first_name, receipt.customer_snapshot.last_name);
+     } else {
+         console.log("Customer:", receipt.customer_snapshot.first_name, receipt.customer_snapshot.last_name);
+     }
+     console.log("Email:", receipt.customer_snapshot.email || '-');
+     console.log("Address:", receipt.customer_snapshot.address || '-');
+
      console.log("Date:", format(new Date(receipt.date_of_purchase), 'dd/MM/yyyy'));
      console.log("Items:");
      receipt.line_items.forEach(item => {
@@ -227,7 +224,7 @@ async function generatePdfStub(receipt: Receipt, filePath: string): Promise<{ su
      console.log("Subtotal (ex GST):", `$${receipt.subtotal_excl_GST.toFixed(2)}`);
      console.log("GST Amount:", `$${receipt.GST_amount.toFixed(2)}`);
      console.log("Total (inc GST):", `$${receipt.total_inc_GST.toFixed(2)}`);
-     console.log("Is Tax Invoice:", receipt.is_tax_invoice);
+     console.log("Type:", receipt.is_tax_invoice ? "Tax Invoice" : "Receipt");
      console.log(`--- PDF would be saved to: ${filePath} ---`);
 
     // Simulate saving a dummy file

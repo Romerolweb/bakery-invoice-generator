@@ -18,8 +18,11 @@ export interface Product {
 
 export interface Customer {
   id: string; // UUID
-  first_name: string;
-  last_name: string;
+  customer_type: 'individual' | 'business';
+  first_name: string; // Required for individual, optional for business (contact person)
+  last_name?: string; // Optional
+  business_name?: string; // Required for business type
+  abn?: string; // Optional, typically for business type
   email?: string; // Optional
   phone?: string; // Optional
   address?: string; // Optional

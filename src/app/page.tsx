@@ -16,15 +16,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Added FormDescription
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox'; // If needed for force tax invoice
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator'; // Use ShadCN Separator
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle, Trash2, CalendarIcon } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns'; // Keep parseISO if reading ISO strings
 
 const lineItemSchema = z.object({
   product_id: z.string().min(1, 'Product selection is required'),
@@ -60,7 +61,7 @@ export default function NewReceiptPage() {
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'line_items',
   });
@@ -92,7 +93,7 @@ export default function NewReceiptPage() {
 
   // --- Calculation Logic ---
   useEffect(() => {
-    const subscription = form.watch((value, { name, type }) => {
+    const subscription = form.watch((value, { name }) => {
       if (name?.startsWith('line_items') || name === 'include_gst') {
         calculateTotals(value as ReceiptFormData);
       }
@@ -113,6 +114,7 @@ export default function NewReceiptPage() {
              const lineTotalExclGST = product.unit_price * item.quantity;
              subtotal += lineTotalExclGST;
              if (formData.include_gst && product.GST_applicable) {
+                 // Assume unit_price is exclusive GST
                  gstAmount += lineTotalExclGST * 0.1;
              }
          }
@@ -133,11 +135,11 @@ export default function NewReceiptPage() {
 
   const onSubmit = async (data: ReceiptFormData) => {
     setIsSubmitting(true);
-    // console.log("Submitting data:", data); // Debugging
 
+    // Format date just before sending to the server action
     const submissionData = {
         ...data,
-        date_of_purchase: format(data.date_of_purchase, 'yyyy-MM-dd'), // Format date for server action
+        date_of_purchase: format(data.date_of_purchase, 'yyyy-MM-dd'),
     };
 
     try {
@@ -145,17 +147,20 @@ export default function NewReceiptPage() {
       if (result.success && result.receipt) {
         toast({
           title: "Receipt Created",
-          description: `Receipt ${result.receipt.receipt_id} generated successfully.`,
+          description: `Receipt ${result.receipt.receipt_id.substring(0, 8)}... generated successfully.`,
           action: result.pdfPath ? (
-            // In a real app, this would trigger a download, not just link.
-            // Requires more setup (API route for download).
-            // For now, just shows the path for confirmation.
             <Button variant="outline" size="sm" onClick={() => alert(`PDF stub generated at: ${result.pdfPath}`)}>
                 View PDF (Stub)
             </Button>
           ) : undefined,
         });
-        form.reset(); // Reset form after successful submission
+        form.reset({ // Reset form with default structure but keep date
+             customer_id: '',
+             date_of_purchase: new Date(), // Reset date to today, or keep data.date_of_purchase if desired
+             line_items: [{ product_id: '', quantity: 1 }],
+             include_gst: false,
+             force_tax_invoice: false,
+        });
          setCalculatedTotals({ subtotal: 0, gst: 0, total: 0 }); // Reset totals
       } else {
         toast({
@@ -208,7 +213,11 @@ export default function NewReceiptPage() {
                             {customers.length === 0 && <SelectItem value="no-customers" disabled>No customers found</SelectItem>}
                             {customers.map((customer) => (
                               <SelectItem key={customer.id} value={customer.id}>
-                                {customer.first_name} {customer.last_name} {customer.email ? `(${customer.email})` : ''}
+                                {customer.customer_type === 'business'
+                                  ? customer.business_name // Show business name
+                                  : `${customer.first_name} ${customer.last_name || ''}` // Show individual name
+                                }
+                                {customer.email ? ` (${customer.email})` : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -232,10 +241,10 @@ export default function NewReceiptPage() {
                         <FormControl>
                           <Button
                             variant={"outline"}
-                            className={`w-full pl-3 text-left font-normal ${!field.value && "text-muted-foreground"}`}
+                            className={`w-full justify-start text-left font-normal ${!field.value && "text-muted-foreground"}`}
                           >
+                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -442,10 +451,3 @@ export default function NewReceiptPage() {
     </Card>
   );
 }
-
-// Basic Separator component if not already available
-function Separator({ className }: { className?: string }) {
-    return <div className={`h-[1px] w-full shrink-0 bg-border ${className}`} />;
-}
-
-
