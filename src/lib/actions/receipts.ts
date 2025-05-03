@@ -2,7 +2,7 @@
 'use server';
 
 import type { Receipt, LineItem, Customer, Product, SellerProfile } from '@/lib/types';
-import { promises as fsPromises, createWriteStream } from 'fs'; // Import createWriteStream from 'fs'
+import { promises as fsPromises, createWriteStream, accessSync, unlinkSync } from 'fs'; // Import fs functions
 import type { WriteStream } from 'fs'; // Import WriteStream type
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,6 +11,9 @@ import { getCustomerById } from './customers';
 import { getProductById } from './products';
 import { getSellerProfile } from './seller';
 import { format, parseISO } from 'date-fns';
+import { logger } from '@/lib/services/logging'; // Import the logger
+
+const LOG_PREFIX = 'ReceiptsAction';
 
 const DATA_DIR = path.join(process.cwd(), 'src/lib/data');
 const RECEIPTS_FILE = path.join(DATA_DIR, 'receipts.json');
@@ -20,62 +23,459 @@ const PDF_DIR = path.join(DATA_DIR, 'receipt-pdfs'); // Directory to store gener
 
 // Ensure necessary directories exist
 async function ensureDirectoriesExist() {
+    const funcPrefix = `${LOG_PREFIX}:ensureDirectoriesExist`;
     try {
-        console.log(`Ensuring data directory exists: ${DATA_DIR}`);
+        logger.debug(funcPrefix, `Ensuring data directory exists: ${DATA_DIR}`);
         await fsPromises.mkdir(DATA_DIR, { recursive: true });
-        console.log(`Ensuring PDF directory exists: ${PDF_DIR}`);
+        logger.debug(funcPrefix, `Ensuring PDF directory exists: ${PDF_DIR}`);
         await fsPromises.mkdir(PDF_DIR, { recursive: true });
-        console.log('Data directories ensured successfully.');
+        logger.debug(funcPrefix, 'Data directories ensured successfully.');
     } catch (error) {
-        console.error('FATAL: Error creating data/PDF directories:', error);
+        logger.error(funcPrefix, 'FATAL: Error creating data/PDF directories', error);
         throw new Error(`Failed to ensure data directories exist: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
 // Helper function to read receipts data
 export async function readReceipts(): Promise<Receipt[]> {
+  const funcPrefix = `${LOG_PREFIX}:readReceipts`;
   let fileContent;
   try {
-    console.log(`Attempting to ensure directories before reading receipts...`);
+    logger.debug(funcPrefix, `Attempting to ensure directories before reading receipts...`);
     await ensureDirectoriesExist(); // Ensure directory exists before reading
-    console.log(`Attempting to read receipts file: ${RECEIPTS_FILE}`);
+    logger.debug(funcPrefix, `Attempting to read receipts file: ${RECEIPTS_FILE}`);
     fileContent = await fsPromises.readFile(RECEIPTS_FILE, 'utf-8');
     const receipts = JSON.parse(fileContent);
-    console.log(`Successfully read and parsed ${receipts.length} receipts.`);
+    logger.info(funcPrefix, `Successfully read and parsed ${receipts.length} receipts.`);
     return receipts;
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      console.log(`Receipts file (${RECEIPTS_FILE}) not found, returning empty array.`);
+      logger.warn(funcPrefix, `Receipts file (${RECEIPTS_FILE}) not found, returning empty array.`);
       return [];
     } else if (error instanceof SyntaxError) {
-        console.error(`Error parsing JSON from ${RECEIPTS_FILE}. Content: "${fileContent ? fileContent.substring(0,100)+'...' : 'empty'}"`, error);
+        logger.error(funcPrefix, `Error parsing JSON from ${RECEIPTS_FILE}. Content: "${fileContent ? fileContent.substring(0,100)+'...' : 'empty'}"`, error);
         throw new Error(`Could not parse receipts data: Invalid JSON format.`);
     }
-    console.error(`Error reading receipts file (${RECEIPTS_FILE}):`, error);
+    logger.error(funcPrefix, `Error reading receipts file (${RECEIPTS_FILE})`, error);
     throw new Error(`Could not load receipts: ${error.message}`);
   }
 }
 
 // Helper function to write receipts data
 export async function writeReceipts(receipts: Receipt[]): Promise<void> {
+  const funcPrefix = `${LOG_PREFIX}:writeReceipts`;
   try {
-    console.log(`Attempting to ensure directories before writing receipts...`);
+    logger.debug(funcPrefix, `Attempting to ensure directories before writing receipts...`);
     await ensureDirectoriesExist(); // Ensure directory exists before writing
     const dataToWrite = JSON.stringify(receipts, null, 2);
-    console.log(`Attempting to write ${receipts.length} receipts to file: ${RECEIPTS_FILE}`);
+    logger.debug(funcPrefix, `Attempting to write ${receipts.length} receipts to file: ${RECEIPTS_FILE}`);
     await fsPromises.writeFile(RECEIPTS_FILE, dataToWrite, 'utf-8');
-    console.log(`Successfully wrote receipts data.`);
+    logger.info(funcPrefix, `Successfully wrote receipts data.`);
   } catch (error: any) {
-    console.error(`Error writing receipts file (${RECEIPTS_FILE}):`, error);
+    logger.error(funcPrefix, `Error writing receipts file (${RECEIPTS_FILE})`, error);
     throw new Error(`Failed to save receipts: ${error.message}`);
   }
 }
 
-// Run directory check once on module load (can still be called explicitly if needed)
-ensureDirectoriesExist().catch(err => {
-    console.error("Initial directory check failed on module load:", err);
-    // Depending on severity, you might want to prevent the app from starting fully
-});
+// --- PDF Generation Service (Internal Module) ---
+// This encapsulates all PDF-specific logic
+
+const PdfGenerator = {
+    _doc: null as PDFKit.PDFDocument | null,
+    _stream: null as WriteStream | null,
+    _filePath: '' as string,
+    _logPrefix: '' as string,
+    _success: false as boolean,
+
+    _initialize(receiptId: string, operationId: string): void {
+        this._logPrefix = `[${operationId} PDF ${receiptId}]`;
+        this._filePath = path.join(PDF_DIR, `${receiptId}.pdf`);
+        this._doc = new PDFDocument({
+             margin: 50,
+             bufferPages: true, // Important for handling page breaks correctly
+             // Attempt to load standard font
+             font: 'Helvetica'
+        });
+        this._success = false; // Reset success flag
+        logger.info(this._logPrefix, `Initialized PDF generation for path: ${this._filePath}`);
+    },
+
+    async _setupStream(): Promise<void> {
+        const funcPrefix = `${this._logPrefix}:_setupStream`;
+        return new Promise(async (resolve, reject) => {
+            try {
+                // Ensure directory exists right before creating the stream
+                await ensureDirectoriesExist();
+                logger.debug(funcPrefix, `Creating write stream for ${this._filePath}`);
+                this._stream = createWriteStream(this._filePath);
+
+                this._stream.on('finish', () => {
+                    logger.info(funcPrefix, 'PDF stream finished.');
+                    this._success = true; // Mark success on finish
+                    resolve();
+                });
+
+                this._stream.on('error', (err) => {
+                    logger.error(funcPrefix, 'PDF stream error', err);
+                    this._success = false;
+                    reject(new Error(`PDF stream error: ${err.message}`));
+                });
+
+                 this._doc!.on('error', (err) => {
+                    logger.error(funcPrefix, 'PDF document error', err);
+                    this._success = false;
+                    reject(new Error(`PDF document error: ${err.message}`));
+                });
+
+                logger.debug(funcPrefix, 'Piping PDF document to stream...');
+                this._doc!.pipe(this._stream);
+
+            } catch (setupError) {
+                 logger.error(funcPrefix, 'Error setting up PDF stream or piping', setupError);
+                 reject(setupError); // Reject the promise on setup error
+            }
+        });
+    },
+
+
+    _addHeader(isTaxInvoice: boolean): void {
+        this._doc!.fontSize(20).font('Helvetica-Bold').text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' });
+        this._doc!.font('Helvetica'); // Revert to regular
+        this._doc!.moveDown();
+    },
+
+    _addSellerInfo(seller: SellerProfile): void {
+         const funcPrefix = `${this._logPrefix}:_addSellerInfo`;
+         logger.debug(funcPrefix, 'Adding seller info');
+         this._doc!.fontSize(12).text('From:', { underline: true });
+         this._doc!.fontSize(10);
+         this._doc!.text(seller.name || 'Seller Name Missing');
+         this._doc!.text(seller.business_address || 'Seller Address Missing');
+         this._doc!.text(`ABN/ACN: ${seller.ABN_or_ACN || 'Seller ABN/ACN Missing'}`);
+         this._doc!.text(`Email: ${seller.contact_email || 'Seller Email Missing'}`);
+         if (seller.phone) {
+             this._doc!.text(`Phone: ${seller.phone}`);
+         }
+         this._doc!.moveDown();
+    },
+
+     _addCustomerInfo(customer: Omit<Customer, 'id'>): void {
+         const funcPrefix = `${this._logPrefix}:_addCustomerInfo`;
+         logger.debug(funcPrefix, 'Adding customer info');
+         this._doc!.fontSize(12).text('To:', { underline: true });
+         this._doc!.fontSize(10);
+         if (customer.customer_type === 'business') {
+             this._doc!.text(customer.business_name || 'Business Name Missing');
+             if (customer.abn) {
+                 this._doc!.text(`ABN: ${customer.abn}`);
+             }
+             const contactName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+             if (contactName) {
+                 this._doc!.text(`Contact: ${contactName}`);
+             }
+         } else {
+             const individualName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+             this._doc!.text(individualName || 'Customer Name Missing');
+         }
+         this._doc!.text(`Email: ${customer.email || 'N/A'}`);
+         this._doc!.text(`Phone: ${customer.phone || 'N/A'}`);
+         this._doc!.text(`Address: ${customer.address || 'N/A'}`);
+         this._doc!.moveDown();
+     },
+
+     _addReceiptDetails(receiptId: string, dateIsoString: string): void {
+        const funcPrefix = `${this._logPrefix}:_addReceiptDetails`;
+        logger.debug(funcPrefix, `Adding receipt details ID: ${receiptId}, Date: ${dateIsoString}`);
+        this._doc!.fontSize(10);
+        this._doc!.text(`Invoice ID: ${receiptId}`);
+        try {
+            const dateObject = parseISO(dateIsoString);
+            if (isNaN(dateObject.getTime())) {
+                throw new Error('Invalid date object after parsing');
+            }
+            const formattedDate = format(dateObject, 'dd/MM/yyyy');
+            this._doc!.text(`Date: ${formattedDate}`);
+        } catch (e) {
+            logger.warn(funcPrefix, `Could not parse or format date for PDF: ${dateIsoString}`, e);
+            this._doc!.text(`Date: ${dateIsoString}`); // Fallback to ISO string
+        }
+        this._doc!.moveDown();
+    },
+
+    _drawTableHeader(includeGstColumn: boolean, y: number, startX: number, endX: number): void {
+         const funcPrefix = `${this._logPrefix}:_drawTableHeader`;
+         logger.debug(funcPrefix, `Drawing table header at Y=${y}`);
+         const itemCol = startX;
+         const gstCol = 250;
+         const qtyCol = 320;
+         const priceCol = 400;
+         const totalCol = 480;
+
+         const itemWidth = gstCol - itemCol - 10;
+         const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
+         const qtyWidth = priceCol - (includeGstColumn ? qtyCol : gstCol) - 10;
+         const priceWidth = totalCol - priceCol - 10;
+         const totalWidth = endX - totalCol;
+
+         this._doc!.fontSize(10).font('Helvetica-Bold');
+         this._doc!.text('Item', itemCol, y, { width: itemWidth, underline: true });
+         if (includeGstColumn) this._doc!.text('GST?', gstCol, y, { width: gstWidth, underline: true, align: 'center' });
+         this._doc!.text('Qty', includeGstColumn ? qtyCol : gstCol, y, { width: qtyWidth, underline: true, align: 'right' });
+         this._doc!.text('Unit Price', priceCol, y, { width: priceWidth, underline: true, align: 'right' });
+         this._doc!.text('Line Total', totalCol, y, { width: totalWidth, underline: true, align: 'right' });
+         this._doc!.moveDown(0.5);
+         this._doc!.font('Helvetica'); // Revert font
+     },
+
+     _addLineItemsTable(lineItems: LineItem[], includeGstColumn: boolean): void {
+         const funcPrefix = `${this._logPrefix}:_addLineItemsTable`;
+         logger.debug(funcPrefix, `Adding ${lineItems.length} line items to table.`);
+         const tableTopInitial = this._doc!.y;
+         const startX = 50;
+         const endX = 550;
+         const itemCol = startX;
+         const gstCol = 250;
+         const qtyCol = 320;
+         const priceCol = 400;
+         const totalCol = 480;
+
+         const itemWidth = gstCol - itemCol - 10;
+         const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
+         const qtyWidth = priceCol - (includeGstColumn ? qtyCol : gstCol) - 10;
+         const priceWidth = totalCol - priceCol - 10;
+         const totalWidth = endX - totalCol;
+
+         const tableBottomMargin = 70;
+         const pageBottom = this._doc!.page.height - this._doc!.page.margins.bottom - tableBottomMargin;
+
+         this._drawTableHeader(includeGstColumn, tableTopInitial, startX, endX);
+         let currentY = this._doc!.y;
+
+         lineItems.forEach((item, index) => {
+             const itemHeightEstimate = 15; // Estimate row height
+              // Check if adding this item would exceed the page boundary
+             if (currentY + itemHeightEstimate > pageBottom) {
+                 logger.debug(funcPrefix, `Adding new page before item ${index + 1} at Y=${currentY}. Page bottom limit: ${pageBottom}`);
+                 this._doc!.addPage();
+                 currentY = this._doc!.page.margins.top; // Reset Y to top margin
+                 this._drawTableHeader(includeGstColumn, currentY, startX, endX);
+                 currentY = this._doc!.y; // Get Y position after header
+             }
+
+             const unitPriceExGST = item.unit_price ?? 0;
+             const lineTotalExGST = item.line_total ?? 0;
+
+             // Use currentY for positioning each text element in the row
+             this._doc!.text(item.product_name || 'N/A', itemCol, currentY, { width: itemWidth });
+             if (includeGstColumn) this._doc!.text(item.GST_applicable ? 'Yes' : 'No', gstCol, currentY, { width: gstWidth, align: 'center' });
+             this._doc!.text(item.quantity?.toString() ?? '0', includeGstColumn ? qtyCol : gstCol, currentY, { width: qtyWidth, align: 'right' });
+             this._doc!.text(`$${unitPriceExGST.toFixed(2)}`, priceCol, currentY, { width: priceWidth, align: 'right' });
+             this._doc!.text(`$${lineTotalExGST.toFixed(2)}`, totalCol, currentY, { width: totalWidth, align: 'right' });
+
+             // After writing the row, explicitly move to the next line position
+             // We use moveDown(1) which is roughly font size + leading
+             this._doc!.moveDown(0.75); // Add fixed space after each row
+             currentY = this._doc!.y; // Update currentY for the next iteration's check
+         });
+
+         this._doc!.y = currentY; // Ensure doc.y is at the end of the items
+         this._doc!.moveDown(0.5); // Add a bit more space before the separator line
+
+         // Draw a line before totals
+         logger.debug(funcPrefix, `Drawing separator line before totals at Y=${this._doc!.y}`);
+         this._doc!.moveTo(startX, this._doc!.y).lineTo(endX, this._doc!.y).strokeColor('#cccccc').stroke();
+         this._doc!.moveDown(0.5);
+     },
+
+     _addTotals(subtotal: number, gstAmount: number, total: number): void {
+         const funcPrefix = `${this._logPrefix}:_addTotals`;
+         logger.debug(funcPrefix, `Adding totals: Sub=${subtotal}, GST=${gstAmount}, Total=${total}`);
+         const totalsX = 400;
+         const labelX = 50;
+         const endX = 550;
+         let totalsY = this._doc!.y; // Start position for totals
+
+         const pageBottom = this._doc!.page.height - this._doc!.page.margins.bottom - 20;
+         const totalsHeightEstimate = 60; // Estimate height needed for totals
+
+         // Check if totals fit on the current page
+         if (totalsY + totalsHeightEstimate > pageBottom) {
+             logger.debug(funcPrefix, `Adding new page before totals section at Y=${totalsY}. Page bottom limit: ${pageBottom}`);
+             this._doc!.addPage();
+             totalsY = this._doc!.page.margins.top; // Reset Y position for the new page
+             this._doc!.y = totalsY; // Set doc's current Y
+         }
+
+         // Use consistent font and size for labels and amounts initially
+         this._doc!.fontSize(10).font('Helvetica');
+
+         // Subtotal
+         this._doc!.text(`Subtotal (ex GST):`, labelX, totalsY, { continued: false, align: 'left' }); // Use continued: false to place individually
+         this._doc!.text(`$${subtotal.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: endX - totalsX });
+         totalsY = this._doc!.y + 2; // Add small gap after line
+
+         // GST Amount
+         this._doc!.text(`GST Amount:`, labelX, totalsY, { continued: false, align: 'left' });
+         this._doc!.text(`$${gstAmount.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: endX - totalsX });
+         totalsY = this._doc!.y + 2; // Add small gap after line
+
+         // Draw separator line
+         const lineY = totalsY + 5;
+         logger.debug(funcPrefix, `Drawing separator line for totals at Y=${lineY}`);
+         this._doc!.moveTo(totalsX - 50, lineY).lineTo(endX, lineY).strokeColor('#aaaaaa').stroke();
+         totalsY = lineY + 5; // Move current position below the line
+         this._doc!.y = totalsY;
+
+         // Total - Make it bold and slightly larger
+         this._doc!.font('Helvetica-Bold').fontSize(12);
+         this._doc!.text(`Total (inc GST):`, labelX, totalsY, { continued: false, align: 'left'});
+         this._doc!.text(`$${total.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: endX - totalsX });
+         totalsY = this._doc!.y; // Update Y after text
+
+         // Revert font settings
+         this._doc!.font('Helvetica').fontSize(10);
+         this._doc!.y = totalsY; // Ensure doc.y is at the end of the totals block
+         this._doc!.moveDown();
+     },
+
+    async _finalize(): Promise<void> {
+        const funcPrefix = `${this._logPrefix}:_finalize`;
+        return new Promise((resolve, reject) => {
+            if (!this._doc) {
+                 logger.error(funcPrefix, "Finalize called without an initialized document.");
+                 return reject(new Error("Document not initialized."));
+            }
+            if (!this._stream) {
+                 logger.error(funcPrefix, "Finalize called without an initialized stream.");
+                 return reject(new Error("Stream not initialized."));
+            }
+
+            // Ensure stream finish/error listeners resolve/reject this promise
+             const streamFinishPromise = new Promise<void>((res, rej) => {
+                 this._stream!.once('finish', res);
+                 this._stream!.once('error', rej);
+                 this._doc!.once('error', rej); // Also listen for doc errors during finalization
+             });
+
+
+            logger.info(funcPrefix, 'Finalizing PDF document (calling end())...');
+            this._doc.end(); // Trigger finish/error events
+
+             streamFinishPromise
+                 .then(() => {
+                     logger.info(funcPrefix, 'Stream finished successfully during finalize.');
+                     this._success = true; // Confirm success
+                     resolve();
+                 })
+                 .catch((err) => {
+                     logger.error(funcPrefix, 'Stream or document error during finalize', err);
+                      this._success = false;
+                     reject(err);
+                 });
+        });
+    },
+
+
+    async cleanupFailedPdf(): Promise<void> {
+        const funcPrefix = `${this._logPrefix}:cleanupFailedPdf`;
+        logger.warn(funcPrefix, `Attempting cleanup for: ${this._filePath}`);
+        try {
+            // Close stream if it exists and is still open/writable
+            if (this._stream && !this._stream.closed && this._stream.writable) {
+                logger.debug(funcPrefix, 'Closing potentially open write stream...');
+                await new Promise<void>((resolve) => {
+                     this._stream!.once('close', () => {
+                         logger.debug(funcPrefix, 'Stream closed event received during cleanup.');
+                         resolve();
+                     });
+                     this._stream!.once('error', (err) => {
+                         logger.error(funcPrefix, 'Error closing stream during cleanup', err);
+                         resolve(); // Resolve anyway to continue cleanup
+                     });
+                     this._stream!.end(() => {
+                         logger.debug(funcPrefix, 'stream.end callback executed during cleanup.');
+                     }); // End the stream gracefully
+                 });
+                 logger.debug(funcPrefix, 'Finished waiting for stream close/error.');
+            } else {
+                logger.debug(funcPrefix, 'No active/writable stream to close or already closed.');
+            }
+
+            // Try to delete the potentially corrupted/incomplete file
+             logger.debug(funcPrefix, `Checking existence of potentially incomplete PDF: ${this._filePath}`);
+             try {
+                 accessSync(this._filePath); // Use sync for simplicity in cleanup
+                 logger.warn(funcPrefix, `Attempting to delete incomplete/corrupted PDF: ${this._filePath}`);
+                 unlinkSync(this._filePath); // Use sync
+                 logger.info(funcPrefix, `Deleted incomplete/corrupted PDF: ${this._filePath}`);
+             } catch (accessOrUnlinkError: any) {
+                 if (accessOrUnlinkError.code === 'ENOENT') {
+                     logger.info(funcPrefix, `Incomplete PDF ${this._filePath} did not exist, no need to delete.`);
+                 } else {
+                     logger.error(funcPrefix, 'Error accessing or deleting potentially corrupted PDF during cleanup', accessOrUnlinkError);
+                 }
+             }
+        } catch (cleanupError) {
+            logger.error(funcPrefix, 'Error during PDF cleanup process itself', cleanupError);
+        } finally {
+            // Nullify references
+            this._doc = null;
+            this._stream = null;
+            this._filePath = '';
+            this._logPrefix = '';
+        }
+    },
+
+
+    async generate(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
+        this._initialize(receipt.receipt_id, operationId);
+
+        try {
+            await this._setupStream();
+
+            // --- Add Content ---
+            logger.debug(this._logPrefix, 'Adding content to PDF...');
+            this._addHeader(receipt.is_tax_invoice);
+            this._addSellerInfo(receipt.seller_profile_snapshot);
+            this._addCustomerInfo(receipt.customer_snapshot);
+            this._addReceiptDetails(receipt.receipt_id, receipt.date_of_purchase);
+            this._addLineItemsTable(receipt.line_items, receipt.GST_amount > 0);
+            this._addTotals(receipt.subtotal_excl_GST, receipt.GST_amount, receipt.total_inc_GST);
+
+            // --- Finalize Document ---
+            await this._finalize();
+
+            logger.info(this._logPrefix, `PDF generation process completed. Success flag: ${this._success}`);
+            if (!this._success) {
+                throw new Error("Stream finished or errored, but success flag was not set correctly.");
+            }
+            logger.info(this._logPrefix, 'PDF generation successful.');
+            const finalFilePath = this._filePath; // Store before potential cleanup resets it
+             // Reset internal state for potential reuse (though typically one instance per generation)
+             this._doc = null;
+             this._stream = null;
+             this._filePath = '';
+             this._logPrefix = '';
+            return { success: true, filePath: finalFilePath };
+
+        } catch (error: any) {
+            logger.error(this._logPrefix, 'ERROR during PDF generation orchestration', error);
+            await this.cleanupFailedPdf(); // Ensure cleanup happens
+
+            // Format error message
+            let message = `Failed to generate PDF: ${error.message || 'Unknown error'}`;
+            if (error instanceof TypeError && (error.message.includes('is not a constructor') || error.message.includes('is not a function'))) {
+                 message = `Failed to generate PDF: PDF library initialization error. (${error.message})`;
+                 logger.error(this._logPrefix, 'PDFKit library instantiation failed. Check imports and dependencies.');
+            } else if (error.message.includes('ENOENT') && error.message.includes('.afm')) {
+                 message = `Failed to generate PDF: Font file error. Ensure fonts are correctly installed/accessible. (${error.message})`;
+                 logger.error(this._logPrefix, 'PDFKit font file error. Missing or inaccessible font file.', error);
+            }
+
+             return { success: false, message };
+        }
+    }
+};
 
 
 // --- Core Invoice Creation Logic ---
@@ -92,31 +492,32 @@ export async function createReceipt(
     input: CreateReceiptInput
 ): Promise<{ success: boolean; message?: string; receipt?: Receipt; pdfPath?: string }> {
     const operationId = uuidv4().substring(0, 8); // Short ID for logging this specific operation
-    console.log(`[${operationId}] Starting receipt creation for customer ${input.customer_id}`);
+    const funcPrefix = `${LOG_PREFIX}:createReceipt:${operationId}`;
+    logger.info(funcPrefix, `Starting receipt creation for customer ${input.customer_id}`, input);
 
     // 0. Ensure directories exist (critical before any file ops)
     try {
         await ensureDirectoriesExist();
     } catch (dirError: any) {
-        console.error(`[${operationId}] Directory creation/verification failed:`, dirError);
+        logger.error(funcPrefix, 'Directory creation/verification failed', dirError);
         return { success: false, message: `Failed to prepare storage: ${dirError.message}` };
     }
 
     // 1. Validation
-    console.log(`[${operationId}] Validating input:`, JSON.stringify(input));
+    logger.debug(funcPrefix, 'Validating input...');
     if (!input.customer_id || !input.line_items || input.line_items.length === 0) {
-        console.error(`[${operationId}] Validation failed: Missing customer or line items.`);
+        logger.error(funcPrefix, 'Validation failed: Missing customer or line items.');
         return { success: false, message: 'Customer and at least one line item are required.' };
     }
     if (input.line_items.some(item => !item.product_id || item.quantity == null || item.quantity <= 0)) {
-       console.error(`[${operationId}] Validation failed: Invalid line item data.`, input.line_items);
+       logger.error(funcPrefix, 'Validation failed: Invalid line item data.', input.line_items);
        return { success: false, message: 'Each line item must have a valid product ID and a quantity greater than 0.' };
     }
-    console.log(`[${operationId}] Input validation passed.`);
+    logger.debug(funcPrefix, 'Input validation passed.');
 
     try {
         // 2. Fetch Required Data
-        console.log(`[${operationId}] Fetching customer, products, and seller profile...`);
+        logger.info(funcPrefix, 'Fetching customer, products, and seller profile...');
         const [customerResult, sellerProfileResult, productsResult] = await Promise.allSettled([
             getCustomerById(input.customer_id),
             getSellerProfile(),
@@ -125,29 +526,29 @@ export async function createReceipt(
 
         // Check Seller Profile
         if (sellerProfileResult.status === 'rejected') {
-            console.error(`[${operationId}] Failed to fetch seller profile:`, sellerProfileResult.reason);
+            logger.error(funcPrefix, 'Failed to fetch seller profile', sellerProfileResult.reason);
             return { success: false, message: `Failed to load seller profile: ${sellerProfileResult.reason?.message || 'Unknown error'}` };
         }
         const sellerProfile = sellerProfileResult.value;
          if (!sellerProfile?.name || !sellerProfile?.ABN_or_ACN || !sellerProfile?.business_address) {
-             console.error(`[${operationId}] Seller profile is incomplete:`, sellerProfile);
+             logger.error(funcPrefix, 'Seller profile is incomplete', sellerProfile);
              return { success: false, message: 'Seller profile is incomplete. Please configure it in Settings.' };
          }
 
         // Check Customer
          if (customerResult.status === 'rejected') {
-             console.error(`[${operationId}] Failed to fetch customer ${input.customer_id}:`, customerResult.reason);
+             logger.error(funcPrefix, `Failed to fetch customer ${input.customer_id}`, customerResult.reason);
              return { success: false, message: `Failed to load customer: ${customerResult.reason?.message || 'Unknown error'}` };
          }
          const customer = customerResult.value;
         if (!customer) {
-            console.error(`[${operationId}] Customer not found: ${input.customer_id}`);
+            logger.error(funcPrefix, `Customer not found: ${input.customer_id}`);
             return { success: false, message: `Customer with ID ${input.customer_id} not found.` };
         }
 
         // Process Products Results
         if (productsResult.status === 'rejected') {
-             console.error(`[${operationId}] Unexpected error fetching products array:`, productsResult.reason);
+             logger.error(funcPrefix, 'Unexpected error fetching products array', productsResult.reason);
              return { success: false, message: `Error processing product list: ${productsResult.reason?.message || 'Unknown error'}` };
         }
 
@@ -161,30 +562,34 @@ export async function createReceipt(
                 validProductsMap.set(productId, result.value);
             } else {
                 missingProductIds.push(productId);
-                console.error(`[${operationId}] Product fetch failed or product not found: ${productId}`, result.status === 'rejected' ? result.reason : 'Not found');
+                logger.error(funcPrefix, `Product fetch failed or product not found: ${productId}`, result.status === 'rejected' ? result.reason : 'Not found');
             }
         });
 
         if (missingProductIds.length > 0) {
-            console.error(`[${operationId}] Failed to fetch products: ${missingProductIds.join(', ')}`);
+            logger.error(funcPrefix, `Failed to fetch products: ${missingProductIds.join(', ')}`);
             return { success: false, message: `Product(s) not found or failed to load: ${missingProductIds.join(', ')}.` };
         }
-        console.log(`[${operationId}] Fetched all required data successfully.`);
+        logger.info(funcPrefix, 'Fetched all required data successfully.');
 
 
         // 3. Perform Calculations
-        console.log(`[${operationId}] Calculating totals...`);
-        const calculationResult = calculateInvoiceTotals(input.line_items, validProductsMap, input.include_gst);
-        console.log(`[${operationId}] Calculations complete:`, calculationResult);
+        logger.debug(funcPrefix, 'Calculating totals...');
+        const calculationResult = calculateInvoiceTotals(input.line_items, validProductsMap, input.include_gst, funcPrefix);
+        logger.debug(funcPrefix, 'Calculations complete', calculationResult);
 
         // 4. Determine Invoice Type (Tax Invoice / Invoice)
-        console.log(`[${operationId}] Determining invoice type...`);
+        logger.debug(funcPrefix, 'Determining invoice type...');
         const totalAmount = calculationResult.total_inc_GST;
-        const isTaxInvoiceRequired = (input.include_gst && totalAmount >= 82.50) || !!input.force_tax_invoice;
-        console.log(`[${operationId}] Is Tax Invoice: ${isTaxInvoiceRequired} (Total: ${totalAmount}, IncludeGST: ${input.include_gst}, Force: ${!!input.force_tax_invoice})`);
+        // GST is included if the flag is set AND there was actually GST applied (GST amount > 0)
+        const gstWasApplied = input.include_gst && calculationResult.total_gst_amount > 0;
+        // Force flag overrides the amount check, but still requires GST to be included conceptually
+        const isTaxInvoiceRequired = (gstWasApplied && totalAmount >= 82.50) || (!!input.force_tax_invoice && input.include_gst);
+        logger.debug(funcPrefix, `Is Tax Invoice: ${isTaxInvoiceRequired} (Total: ${totalAmount}, IncludeGST: ${input.include_gst}, GstApplied: ${gstWasApplied}, Force: ${!!input.force_tax_invoice})`);
+
 
         // 5. Prepare Snapshots and Create Receipt Object
-        console.log(`[${operationId}] Creating receipt object with snapshots...`);
+        logger.debug(funcPrefix, 'Creating receipt object with snapshots...');
         const customerSnapshot = createCustomerSnapshot(customer);
         const sellerProfileSnapshot = createSellerSnapshot(sellerProfile);
         let purchaseDate: Date;
@@ -195,7 +600,7 @@ export async function createReceipt(
                  throw new Error('Invalid date format parsed');
              }
          } catch (dateError) {
-             console.error(`[${operationId}] Invalid date format provided: ${input.date_of_purchase}`, dateError);
+             logger.error(funcPrefix, `Invalid date format provided: ${input.date_of_purchase}`, dateError);
              return { success: false, message: `Invalid date of purchase format: ${input.date_of_purchase}. Expected YYYY-MM-DD.` };
          }
 
@@ -212,31 +617,31 @@ export async function createReceipt(
             seller_profile_snapshot: sellerProfileSnapshot,
             customer_snapshot: customerSnapshot,
         };
-        console.log(`[${operationId}] Receipt object created with ID: ${newReceipt.receipt_id}`);
+        logger.info(funcPrefix, `Receipt object created with ID: ${newReceipt.receipt_id}`);
 
-        // 6. Generate PDF
-        console.log(`[${operationId}] Generating PDF for receipt ID: ${newReceipt.receipt_id}`);
-        const pdfGenerationResult = await generateReceiptPdf(newReceipt, operationId);
+        // 6. Generate PDF using the dedicated service
+        logger.info(funcPrefix, `Generating PDF for receipt ID: ${newReceipt.receipt_id}`);
+        const pdfGenerationResult = await PdfGenerator.generate(newReceipt, operationId);
 
         if (!pdfGenerationResult.success || !pdfGenerationResult.filePath) {
-             console.error(`[${operationId}] PDF generation failed for ${newReceipt.receipt_id}: ${pdfGenerationResult.message}`);
-             // No need to cleanup here, generateReceiptPdf handles its own cleanup on failure
+             logger.error(funcPrefix, `PDF generation failed for ${newReceipt.receipt_id}: ${pdfGenerationResult.message}`);
+             // Cleanup is handled within PdfGenerator.generate on failure
              return { success: false, message: pdfGenerationResult.message || "Failed to generate PDF." };
         }
-        console.log(`[${operationId}] PDF generated successfully at: ${pdfGenerationResult.filePath}`);
+        logger.info(funcPrefix, `PDF generated successfully at: ${pdfGenerationResult.filePath}`);
 
 
         // 7. Save Receipt Data (only after successful PDF generation)
-        console.log(`[${operationId}] Saving receipt data...`);
+        logger.info(funcPrefix, 'Saving receipt data...');
         const allReceipts = await readReceipts();
         allReceipts.unshift(newReceipt); // Add to the beginning (most recent first)
         await writeReceipts(allReceipts);
-        console.log(`[${operationId}] Receipt data saved successfully.`);
+        logger.info(funcPrefix, 'Receipt data saved successfully.');
 
         return { success: true, receipt: newReceipt, pdfPath: pdfGenerationResult.filePath };
 
     } catch (error: any) {
-        console.error(`[${operationId}] Unhandled error during receipt creation for customer ${input.customer_id}:`, error);
+        logger.error(funcPrefix, `Unhandled error during receipt creation for customer ${input.customer_id}`, error);
          return { success: false, message: `An unexpected error occurred during invoice creation: ${error.message || 'Unknown error. Check server logs.'}` };
     }
 }
@@ -246,13 +651,15 @@ export async function createReceipt(
 function calculateInvoiceTotals(
     inputItems: Array<{ product_id: string; quantity: number }>,
     productsMap: Map<string, Product>,
-    includeGstGlobally: boolean
+    includeGstGlobally: boolean,
+    parentLogPrefix: string = LOG_PREFIX // Optional parent prefix for context
 ): {
     calculatedLineItems: LineItem[];
     subtotal_excl_GST: number;
     total_gst_amount: number;
     total_inc_GST: number;
 } {
+    const funcPrefix = `${parentLogPrefix}:calculateTotals`;
     let subtotal_excl_GST = 0;
     let total_gst_amount = 0;
     const calculatedLineItems: LineItem[] = [];
@@ -260,7 +667,7 @@ function calculateInvoiceTotals(
     inputItems.forEach((item) => {
         const product = productsMap.get(item.product_id);
         if (!product) {
-            console.error(`Calculation Error: Product missing ${item.product_id}. This should not happen if pre-fetch validation passed.`);
+            logger.error(funcPrefix, `Calculation Error: Product missing ${item.product_id}. This should not happen if pre-fetch validation passed.`);
             // Skip this item or throw error depending on strictness needed
             return;
         }
@@ -272,6 +679,9 @@ function calculateInvoiceTotals(
         if (includeGstGlobally && product.GST_applicable) {
              lineGstAmount = lineTotalExclGST * 0.1;
              total_gst_amount += lineGstAmount;
+             logger.debug(funcPrefix, `Applied GST ${lineGstAmount.toFixed(2)} to product ${product.name} (ID: ${product.id})`);
+        } else {
+             logger.debug(funcPrefix, `Skipped GST for product ${product.name} (ID: ${product.id}). Global: ${includeGstGlobally}, Applicable: ${product.GST_applicable}`);
         }
 
         calculatedLineItems.push({
@@ -285,10 +695,17 @@ function calculateInvoiceTotals(
     });
 
     if (!includeGstGlobally) {
+        // If GST wasn't included globally, ensure the total GST is zero,
+        // even if individual items might have been applicable.
+        if (total_gst_amount > 0) {
+            logger.warn(funcPrefix, `Resetting total_gst_amount to 0 because includeGstGlobally is false, although individual items summed to ${total_gst_amount.toFixed(2)}.`);
+        }
         total_gst_amount = 0;
     }
 
     const total_inc_GST = subtotal_excl_GST + total_gst_amount;
+
+    logger.debug(funcPrefix, `Totals calculated: Subtotal=${subtotal_excl_GST.toFixed(2)}, GST=${total_gst_amount.toFixed(2)}, Total=${total_inc_GST.toFixed(2)}`);
 
     return {
         calculatedLineItems,
@@ -301,6 +718,7 @@ function calculateInvoiceTotals(
 // --- Snapshot Creation (Extracted) ---
 
 function createCustomerSnapshot(customer: Customer): Omit<Customer, 'id'> {
+     logger.debug(LOG_PREFIX, `Creating customer snapshot for ID ${customer.id}`);
      return {
         customer_type: customer.customer_type,
         first_name: customer.first_name || undefined,
@@ -314,6 +732,7 @@ function createCustomerSnapshot(customer: Customer): Omit<Customer, 'id'> {
 }
 
 function createSellerSnapshot(sellerProfile: SellerProfile): SellerProfile {
+     logger.debug(LOG_PREFIX, `Creating seller snapshot for ${sellerProfile.name}`);
     return {
         name: sellerProfile.name || 'N/A',
         business_address: sellerProfile.business_address || 'N/A',
@@ -325,377 +744,25 @@ function createSellerSnapshot(sellerProfile: SellerProfile): SellerProfile {
 }
 
 
-// --- PDF Generation (Modular Functions) ---
-
-// Type alias for PDFDocument instance using the static import
-type PDFDocumentInstance = InstanceType<typeof PDFDocument>;
-
-
-function addHeader(doc: PDFDocumentInstance, isTaxInvoice: boolean) {
-    doc.fontSize(20).font('Helvetica-Bold').text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' });
-    doc.font('Helvetica'); // Revert to regular
-    doc.moveDown();
-}
-
-function addSellerInfo(doc: PDFDocumentInstance, seller: SellerProfile) {
-    doc.fontSize(12).text('From:', { underline: true });
-    doc.fontSize(10);
-    doc.text(seller.name || 'Seller Name Missing');
-    doc.text(seller.business_address || 'Seller Address Missing');
-    doc.text(`ABN/ACN: ${seller.ABN_or_ACN || 'Seller ABN/ACN Missing'}`);
-    doc.text(`Email: ${seller.contact_email || 'Seller Email Missing'}`);
-    if (seller.phone) {
-        doc.text(`Phone: ${seller.phone}`);
-    }
-    doc.moveDown();
-}
-
-function addCustomerInfo(doc: PDFDocumentInstance, customer: Omit<Customer, 'id'>) {
-    doc.fontSize(12).text('To:', { underline: true });
-    doc.fontSize(10);
-    if (customer.customer_type === 'business') {
-        doc.text(customer.business_name || 'Business Name Missing');
-        if (customer.abn) {
-            doc.text(`ABN: ${customer.abn}`);
-        }
-        const contactName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
-        if (contactName) {
-            doc.text(`Contact: ${contactName}`);
-        }
-    } else {
-        const individualName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
-        doc.text(individualName || 'Customer Name Missing');
-    }
-    doc.text(`Email: ${customer.email || 'N/A'}`);
-    doc.text(`Phone: ${customer.phone || 'N/A'}`);
-    doc.text(`Address: ${customer.address || 'N/A'}`);
-    doc.moveDown();
-}
-
-
-function addReceiptDetails(doc: PDFDocumentInstance, receiptId: string, dateIsoString: string) {
-    doc.fontSize(10);
-    doc.text(`Invoice ID: ${receiptId}`);
-    try {
-        const dateObject = parseISO(dateIsoString);
-        if (isNaN(dateObject.getTime())) {
-            throw new Error('Invalid date object after parsing');
-        }
-        const formattedDate = format(dateObject, 'dd/MM/yyyy');
-        doc.text(`Date: ${formattedDate}`);
-    } catch (e) {
-        console.warn(`Could not parse or format date for PDF: ${dateIsoString}`, e);
-        doc.text(`Date: ${dateIsoString}`);
-    }
-    doc.moveDown();
-}
-
-function drawTableHeader(doc: PDFDocumentInstance, includeGstColumn: boolean, y: number, startX: number, endX: number) {
-    const itemCol = startX;
-    const gstCol = 250;
-    const qtyCol = 320;
-    const priceCol = 400;
-    const totalCol = 480;
-
-    const itemWidth = gstCol - itemCol - 10;
-    const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
-    const qtyWidth = priceCol - (includeGstColumn ? qtyCol : gstCol) - 10;
-    const priceWidth = totalCol - priceCol - 10;
-    const totalWidth = endX - totalCol;
-
-    doc.fontSize(10).font('Helvetica-Bold');
-    doc.text('Item', itemCol, y, { width: itemWidth, underline: true });
-    if (includeGstColumn) doc.text('GST?', gstCol, y, { width: gstWidth, underline: true, align: 'center' });
-    doc.text('Qty', includeGstColumn ? qtyCol : gstCol, y, { width: qtyWidth, underline: true, align: 'right' });
-    doc.text('Unit Price', priceCol, y, { width: priceWidth, underline: true, align: 'right' });
-    doc.text('Line Total', totalCol, y, { width: totalWidth, underline: true, align: 'right' });
-    doc.moveDown(0.5);
-    doc.font('Helvetica');
-}
-
-
-function addLineItemsTable(doc: PDFDocumentInstance, lineItems: LineItem[], includeGstColumn: boolean, logPrefix: string = '') {
-    const tableTopInitial = doc.y;
-    const startX = 50;
-    const endX = 550;
-    const itemCol = startX;
-    const gstCol = 250;
-    const qtyCol = 320;
-    const priceCol = 400;
-    const totalCol = 480;
-
-    const itemWidth = gstCol - itemCol - 10;
-    const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
-    const qtyWidth = priceCol - (includeGstColumn ? qtyCol : gstCol) - 10;
-    const priceWidth = totalCol - priceCol - 10;
-    const totalWidth = endX - totalCol;
-
-    const tableBottomMargin = 70;
-    const pageBottom = doc.page.height - doc.page.margins.bottom - tableBottomMargin;
-
-    drawTableHeader(doc, includeGstColumn, tableTopInitial, startX, endX);
-    let currentY = doc.y;
-
-    lineItems.forEach((item, index) => {
-        const itemHeightEstimate = 15; // Height per line item row
-        if (currentY + itemHeightEstimate > pageBottom) {
-             console.log(`${logPrefix} Adding new page before item ${index + 1} at Y=${currentY}`);
-             doc.addPage();
-             currentY = doc.page.margins.top;
-             drawTableHeader(doc, includeGstColumn, currentY, startX, endX);
-             currentY = doc.y;
-        }
-
-        const unitPriceExGST = item.unit_price ?? 0;
-        const lineTotalExGST = item.line_total ?? 0;
-
-        // Ensure text calls have defined values
-        doc.text(item.product_name || 'N/A', itemCol, currentY, { width: itemWidth });
-        if (includeGstColumn) doc.text(item.GST_applicable ? 'Yes' : 'No', gstCol, currentY, { width: gstWidth, align: 'center' });
-        doc.text(item.quantity?.toString() ?? '0', includeGstColumn ? qtyCol : gstCol, currentY, { width: qtyWidth, align: 'right' });
-        doc.text(`$${unitPriceExGST.toFixed(2)}`, priceCol, currentY, { width: priceWidth, align: 'right' });
-        doc.text(`$${lineTotalExGST.toFixed(2)}`, totalCol, currentY, { width: totalWidth, align: 'right' });
-
-        // Update currentY based on the actual position after writing the text
-        currentY = doc.y; // doc.y updates after text is placed
-        // Add a small fixed space after each row instead of relying on moveDown's variable effect
-        currentY += 5;
-        doc.y = currentY; // Manually set the new start position for the next item or totals
-
-    });
-
-    // Ensure final Y position is set correctly
-    doc.y = currentY;
-    doc.moveDown(0.5); // Add a bit more space before the separator line
-
-    // Draw a line before totals
-    doc.moveTo(startX, doc.y).lineTo(endX, doc.y).strokeColor('#cccccc').stroke();
-    doc.moveDown(0.5);
-}
-
-
-function addTotals(doc: PDFDocumentInstance, subtotal: number, gstAmount: number, total: number, logPrefix: string = '') {
-    const totalsX = 400;
-    const labelX = 50;
-    const endX = 550;
-    let totalsY = doc.y; // Start position for totals
-
-    const pageBottom = doc.page.height - doc.page.margins.bottom - 20;
-    const totalsHeightEstimate = 60;
-
-     if (totalsY + totalsHeightEstimate > pageBottom) {
-         console.log(`${logPrefix} Adding new page before totals section at Y=${totalsY}`);
-         doc.addPage();
-         totalsY = doc.page.margins.top; // Reset Y position for the new page
-         doc.y = totalsY; // Set doc's current Y
-     }
-
-    // Use consistent font and size for labels and amounts initially
-    doc.fontSize(10).font('Helvetica');
-
-    // Subtotal
-    doc.text(`Subtotal (ex GST):`, labelX, totalsY, { continued: true, align: 'left' });
-    doc.text(`$${subtotal.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: endX - totalsX });
-    totalsY = doc.y; // Update Y after text
-
-    // GST Amount
-    doc.text(`GST Amount:`, labelX, totalsY, { continued: true, align: 'left' });
-    doc.text(`$${gstAmount.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: endX - totalsX });
-    totalsY = doc.y; // Update Y after text
-
-    // Draw separator line
-    const lineY = totalsY + 5; // Position line slightly below GST amount
-    doc.moveTo(totalsX - 50, lineY).lineTo(endX, lineY).strokeColor('#aaaaaa').stroke();
-    totalsY = lineY + 5; // Move current position below the line
-    doc.y = totalsY;
-
-    // Total - Make it bold and slightly larger
-    doc.font('Helvetica-Bold').fontSize(12);
-    doc.text(`Total (inc GST):`, labelX, totalsY, { continued: true, align: 'left'});
-    doc.text(`$${total.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: endX - totalsX });
-    totalsY = doc.y; // Update Y after text
-
-    // Revert font settings if needed later
-    doc.font('Helvetica').fontSize(10);
-    doc.y = totalsY; // Ensure doc.y is at the end of the totals block
-    doc.moveDown();
-}
-
-
-// Main PDF Generation Orchestrator
-export async function generateReceiptPdf(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
-    const filename = `${receipt.receipt_id}.pdf`;
-    const filePath = path.join(PDF_DIR, filename);
-    const logPrefix = `[${operationId} PDF ${receipt.receipt_id}]`;
-    let writeStream: WriteStream | null = null;
-    let doc: PDFDocumentInstance | null = null;
-    let success = false; // Flag to track if stream finished successfully
-
-    console.log(`${logPrefix} Attempting to generate PDF at: ${filePath}`);
-
-    try {
-        // Ensure PDF directory exists right before writing
-        await ensureDirectoriesExist();
-
-        // Use createWriteStream directly from 'fs'
-        writeStream = createWriteStream(filePath);
-        doc = new PDFDocument({ margin: 50, bufferPages: true });
-
-        // IMPORTANT: Set default font *immediately* after instantiation
-        // This might help resolve font path issues in serverless environments
-        doc.font('Helvetica');
-
-        const streamFinishPromise = new Promise<void>((resolve, reject) => {
-            // Setup listeners *before* piping
-            writeStream!.on('finish', () => {
-                console.log(`${logPrefix} PDF stream finished successfully.`);
-                if (!success) {
-                    // This might happen if an error occurred after piping but before 'finish' was expected
-                    console.warn(`${logPrefix} Stream finished, but success flag was false. Potential race condition or prior error.`);
-                    // Resolve anyway, but rely on the success flag check later
-                }
-                success = true; // Explicitly set success on finish
-                resolve();
-            });
-            writeStream!.on('error', (err) => {
-                console.error(`${logPrefix} PDF stream error:`, err);
-                success = false; // Ensure success is false on error
-                reject(new Error(`PDF stream error: ${err.message}`));
-            });
-             doc!.on('error', (err) => {
-                 console.error(`${logPrefix} PDF document error:`, err);
-                 success = false; // Ensure success is false on error
-                 reject(new Error(`PDF document error: ${err.message}`));
-             });
-        });
-
-        // Pipe the document to the stream
-        console.log(`${logPrefix} Piping PDF document to stream...`);
-        doc.pipe(writeStream);
-
-        // --- Add Content ---
-        console.log(`${logPrefix} Adding content to PDF...`);
-        // Font already set above
-
-        addHeader(doc, receipt.is_tax_invoice);
-        addSellerInfo(doc, receipt.seller_profile_snapshot);
-        addCustomerInfo(doc, receipt.customer_snapshot);
-        addReceiptDetails(doc, receipt.receipt_id, receipt.date_of_purchase);
-        addLineItemsTable(doc, receipt.line_items, receipt.GST_amount > 0, logPrefix);
-        addTotals(doc, receipt.subtotal_excl_GST, receipt.GST_amount, receipt.total_inc_GST, logPrefix);
-
-        // --- Finalize Document ---
-        console.log(`${logPrefix} Finalizing PDF document (calling end())...`);
-        doc.end(); // This triggers the 'finish' event on the stream eventually
-
-        // --- Wait for Completion ---
-        console.log(`${logPrefix} Waiting for stream finish promise...`);
-        await streamFinishPromise;
-
-        console.log(`${logPrefix} PDF generation process completed. Success flag: ${success}`);
-        if (!success) {
-             throw new Error("Stream finished or errored, but success flag was not set correctly.");
-        }
-        console.log(`${logPrefix} PDF generation successful.`);
-        return { success: true, filePath: filePath };
-
-    } catch (error: any) {
-        console.error(`${logPrefix} ERROR during PDF generation:`, error);
-        await cleanupFailedPdf(doc, writeStream, filePath, logPrefix); // Pass logPrefix
-
-        if (error.message.includes('PDF stream error') || error.message.includes('PDF document error')) {
-            // Errors already logged by listeners, just return
-             return { success: false, message: `Failed to generate PDF: ${error.message}` };
-        } else if (error instanceof TypeError && (error.message.includes('is not a constructor') || error.message.includes('is not a function'))) {
-             console.error(`${logPrefix} PDFKit library instantiation failed. Check imports and dependencies.`);
-             return { success: false, message: `Failed to generate PDF: PDF library initialization error. (${error.message})` };
-        } else {
-            // Generic failure message
-            return { success: false, message: `Failed to generate PDF: ${error.message || 'Unknown error'}` };
-        }
-    }
-}
-
-// Helper for cleaning up failed PDF generation
-async function cleanupFailedPdf(
-    doc: PDFDocumentInstance | null,
-    stream: WriteStream | null,
-    filePath: string,
-    logPrefix: string = '[Cleanup]' // Add log prefix parameter
-) {
-    console.warn(`${logPrefix} Attempting cleanup for failed PDF generation: ${filePath}`);
-    try {
-        // Close stream if it exists and is still open/writable
-        if (stream && !stream.closed && stream.writable) {
-             console.log(`${logPrefix} Closing potentially open write stream...`);
-             await new Promise<void>((resolve, reject) => {
-                 // Use 'close' event as 'finish' might not fire on error
-                 stream.once('close', () => {
-                     console.log(`${logPrefix} Stream closed event received.`);
-                     resolve();
-                 });
-                  stream.once('error', (err) => {
-                     console.error(`${logPrefix} Error closing stream during cleanup:`, err);
-                     resolve(); // Resolve anyway to continue cleanup
-                 });
-                 // End the stream, which should trigger 'close' or 'error'
-                 stream.end((err?: Error | null) => {
-                     if (err) {
-                        console.error(`${logPrefix} Error passed to stream.end callback:`, err);
-                        // Event listener should handle rejection/resolution
-                     } else {
-                        console.log(`${logPrefix} stream.end callback executed successfully.`);
-                     }
-                 });
-             });
-             console.log(`${logPrefix} Finished waiting for stream close/error.`);
-        } else if (stream?.closed) {
-              console.log(`${logPrefix} Stream was already closed.`);
-         } else if (!stream?.writable) {
-            console.log(`${logPrefix} Stream was not writable.`);
-        } else {
-              console.log(`${logPrefix} No active/writable stream to close.`);
-         }
-
-        // Try to delete the potentially corrupted/incomplete file
-         console.log(`${logPrefix} Checking existence of potentially incomplete PDF: ${filePath}`);
-        try {
-            await fsPromises.access(filePath);
-            console.log(`${logPrefix} Attempting to delete incomplete/corrupted PDF: ${filePath}`);
-            await fsPromises.unlink(filePath);
-            console.log(`${logPrefix} Deleted incomplete/corrupted PDF: ${filePath}`);
-        } catch (accessOrUnlinkError: any) {
-             if (accessOrUnlinkError.code === 'ENOENT') {
-                 console.log(`${logPrefix} Incomplete PDF ${filePath} did not exist, no need to delete.`);
-             } else {
-                 console.error(`${logPrefix} Error accessing or deleting potentially corrupted PDF during cleanup:`, accessOrUnlinkError);
-             }
-        }
-    } catch (cleanupError) {
-        console.error(`${logPrefix} Error during PDF cleanup process itself:`, cleanupError);
-    }
-}
-
-
 // --- PDF Retrieval Actions ---
 export async function getReceiptPdfPath(receiptId: string): Promise<string | null> {
-    const logPrefix = `[GetPath ${receiptId}]`;
+    const funcPrefix = `${LOG_PREFIX}:getReceiptPdfPath:${receiptId}`;
     if (!receiptId) {
-        console.warn(`${logPrefix} Called with empty receiptId.`);
+        logger.warn(funcPrefix, 'Called with empty receiptId.');
         return null;
     }
     const pdfPath = path.join(PDF_DIR, `${receiptId}.pdf`);
-    console.log(`${logPrefix} Checking for PDF at path: ${pdfPath}`);
+    logger.debug(funcPrefix, `Checking for PDF at path: ${pdfPath}`);
     try {
         await ensureDirectoriesExist();
         await fsPromises.access(pdfPath);
-        console.log(`${logPrefix} PDF path found.`);
+        logger.info(funcPrefix, 'PDF path found.');
         return pdfPath;
     } catch (error: any) {
         if (error.code === 'ENOENT') {
-            console.warn(`${logPrefix} PDF file not found.`);
+            logger.warn(funcPrefix, 'PDF file not found.');
         } else {
-            console.error(`${logPrefix} Error accessing PDF file:`, error);
+            logger.error(funcPrefix, 'Error accessing PDF file', error);
         }
         return null;
     }
@@ -703,36 +770,48 @@ export async function getReceiptPdfPath(receiptId: string): Promise<string | nul
 
 // Helper function to get receipt by ID
 async function getReceiptById(id: string): Promise<Receipt | null> {
+    const funcPrefix = `${LOG_PREFIX}:getReceiptById:${id}`;
     if (!id) return null;
-    // This function relies on readReceipts which now includes logging.
-    const receipts = await readReceipts();
+    logger.debug(funcPrefix, `Attempting to find receipt by ID.`);
+    const receipts = await readReceipts(); // Uses its own logging
     const receipt = receipts.find(r => r.receipt_id === id);
+     if (receipt) {
+         logger.debug(funcPrefix, `Receipt found.`);
+     } else {
+         logger.warn(funcPrefix, `Receipt not found.`);
+     }
     return receipt || null;
 }
 
 
 export async function getReceiptPdfContent(receiptId: string): Promise<Buffer | null> {
-     const logPrefix = `[GetContent ${receiptId}]`;
+     const funcPrefix = `${LOG_PREFIX}:getReceiptPdfContent:${receiptId}`;
      if (!receiptId) {
-         console.warn(`${logPrefix} Called with empty receiptId.`);
+         logger.warn(funcPrefix, 'Called with empty receiptId.');
          return null;
      }
      const pdfPath = await getReceiptPdfPath(receiptId); // Uses its own logging
      if (!pdfPath) {
-         console.log(`${logPrefix} PDF path not found, cannot get content.`);
+         logger.warn(funcPrefix, 'PDF path not found, cannot get content.');
          return null;
      }
 
      try {
-         console.log(`${logPrefix} Reading PDF content from path: ${pdfPath}`);
+         logger.debug(funcPrefix, `Reading PDF content from path: ${pdfPath}`);
          const pdfContent = await fsPromises.readFile(pdfPath);
-         console.log(`${logPrefix} Successfully read PDF content (${pdfContent.length} bytes).`);
+         logger.info(funcPrefix, `Successfully read PDF content (${pdfContent.length} bytes).`);
          return pdfContent;
      } catch (error: any) {
-         console.error(`${logPrefix} Error reading PDF content from path ${pdfPath}:`, error);
+         logger.error(funcPrefix, `Error reading PDF content from path ${pdfPath}`, error);
          if (error.code === 'ENOENT') {
-             console.error(`${logPrefix} PDF file disappeared between check and read.`);
+             logger.error(funcPrefix, 'PDF file disappeared between check and read.');
          }
          return null;
      }
 }
+
+// Run initial directory check on module load
+ensureDirectoriesExist().catch(err => {
+    logger.error(LOG_PREFIX, "Initial directory check failed on module load", err);
+    // Depending on severity, you might want to prevent the app from starting fully
+});

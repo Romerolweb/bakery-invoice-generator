@@ -3,6 +3,9 @@
 import type { SellerProfile } from '@/lib/types';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { logger } from '@/lib/services/logging'; // Import logger
+
+const LOG_PREFIX = 'SellerAction';
 
 const DATA_DIR = path.join(process.cwd(), 'src/lib/data');
 const DATA_FILE = path.join(DATA_DIR, 'seller-profile.json');
@@ -18,51 +21,55 @@ const defaultSellerProfile: SellerProfile = {
 
 // Ensure data directory exists
 async function ensureDataDirectoryExists() {
+    const funcPrefix = `${LOG_PREFIX}:ensureDataDir`;
     try {
         // No console log here, called frequently
         await fs.mkdir(DATA_DIR, { recursive: true });
+         logger.debug(funcPrefix, `Seller profile data directory ensured: ${DATA_DIR}`);
     } catch (error) {
-        console.error('FATAL: Error creating seller profile data directory:', error);
+        logger.error(funcPrefix, 'FATAL: Error creating seller profile data directory', error);
         throw new Error(`Failed to ensure seller profile data directory exists: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
 // Helper function to read data
 async function readSellerProfile(): Promise<SellerProfile> {
+  const funcPrefix = `${LOG_PREFIX}:readSellerProfile`;
   let fileContent = '';
   try {
      await ensureDataDirectoryExists();
-     console.log(`Attempting to read seller profile: ${DATA_FILE}`);
+     logger.debug(funcPrefix, `Attempting to read seller profile: ${DATA_FILE}`);
      fileContent = await fs.readFile(DATA_FILE, 'utf-8');
      const jsonData = JSON.parse(fileContent);
      const mergedProfile = { ...defaultSellerProfile, ...jsonData };
-     console.log(`Successfully read and merged seller profile from ${DATA_FILE}.`);
+     logger.info(funcPrefix, `Successfully read and merged seller profile from ${DATA_FILE}.`);
      return mergedProfile;
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-        console.log(`Seller profile file (${DATA_FILE}) not found, attempting to write default.`);
+        logger.warn(funcPrefix, `Seller profile file (${DATA_FILE}) not found, attempting to write default.`);
         try {
             await writeSellerProfile(defaultSellerProfile); // writeSellerProfile includes its own logging
-            console.log(`Default seller profile successfully written.`);
+            logger.info(funcPrefix, `Default seller profile successfully written.`);
             return defaultSellerProfile;
         } catch (writeError: any) {
-            console.error(`Failed to write default seller profile during read attempt:`, writeError);
+            logger.error(funcPrefix, `Failed to write default seller profile during read attempt`, writeError);
             // Return default anyway, but log the error
             return defaultSellerProfile;
         }
     } else if (error instanceof SyntaxError) {
-        console.error(`Error parsing JSON from seller profile ${DATA_FILE}. Content: "${fileContent.substring(0,100)}..."`, error);
-        console.warn(`Returning default seller profile due to parsing error.`);
+        logger.error(funcPrefix, `Error parsing JSON from seller profile ${DATA_FILE}. Content: "${fileContent.substring(0,100)}..."`, error);
+        logger.warn(funcPrefix, `Returning default seller profile due to parsing error.`);
         return defaultSellerProfile;
     }
-    console.error(`Error reading seller profile file (${DATA_FILE}):`, error);
-    console.warn(`Returning default seller profile due to read error.`);
+    logger.error(funcPrefix, `Error reading seller profile file (${DATA_FILE})`, error);
+    logger.warn(funcPrefix, `Returning default seller profile due to read error.`);
     return defaultSellerProfile;
   }
 }
 
 // Helper function to write data
 async function writeSellerProfile(profile: SellerProfile): Promise<void> {
+  const funcPrefix = `${LOG_PREFIX}:writeSellerProfile`;
   try {
      await ensureDataDirectoryExists();
      const dataToWrite: SellerProfile = {
@@ -70,41 +77,44 @@ async function writeSellerProfile(profile: SellerProfile): Promise<void> {
          ...profile,
      };
      const profileString = JSON.stringify(dataToWrite, null, 2);
-     console.log(`Attempting to write seller profile to ${DATA_FILE}`);
+     logger.debug(funcPrefix, `Attempting to write seller profile to ${DATA_FILE}`);
      await fs.writeFile(DATA_FILE, profileString, 'utf-8');
-     console.log(`Successfully wrote seller profile to ${DATA_FILE}.`);
+     logger.info(funcPrefix, `Successfully wrote seller profile to ${DATA_FILE}.`);
   } catch (error: any) {
-    console.error(`Error writing seller profile file (${DATA_FILE}):`, error);
+    logger.error(funcPrefix, `Error writing seller profile file (${DATA_FILE})`, error);
     throw new Error(`Failed to save seller profile: ${error.message}`);
   }
 }
 
 // Run directory check once on module load
 ensureDataDirectoryExists().catch(err => {
-     console.error("Initial seller profile directory check failed on module load:", err);
+     logger.error(LOG_PREFIX, "Initial seller profile directory check failed on module load", err);
 });
 
 
 export async function getSellerProfile(): Promise<SellerProfile> {
-  console.log('getSellerProfile action called.');
+  const funcPrefix = `${LOG_PREFIX}:getSellerProfile`;
+  logger.info(funcPrefix, 'Fetching seller profile.');
   return await readSellerProfile();
 }
 
 export async function updateSellerProfile(
   profile: SellerProfile
 ): Promise<{ success: boolean; message?: string; profile?: SellerProfile }> {
-    console.log('updateSellerProfile action called with profile:', profile);
+    const funcPrefix = `${LOG_PREFIX}:updateSellerProfile`;
+    logger.info(funcPrefix, 'Attempting to update seller profile.', profile);
     // Basic validation
     if (!profile.name || !profile.business_address || !profile.ABN_or_ACN || !profile.contact_email) {
-      console.error('Validation failed: Missing required seller profile fields.');
+      logger.warn(funcPrefix, 'Validation failed: Missing required seller profile fields.');
       return { success: false, message: 'Business Name, Address, ABN/ACN, and Email are required fields.' };
     }
     const abnRegex = /^\d{2}\s?\d{3}\s?\d{3}\s?\d{3}$/;
     const acnRegex = /^\d{3}\s?\d{3}\s?\d{3}$/;
     if (!abnRegex.test(profile.ABN_or_ACN) && !acnRegex.test(profile.ABN_or_ACN)) {
-        console.error('Validation failed: Invalid ABN/ACN format.');
+        logger.warn(funcPrefix, 'Validation failed: Invalid ABN/ACN format.');
         return { success: false, message: 'Invalid ABN or ACN format provided.' };
     }
+    logger.debug(funcPrefix, 'Validation successful.');
 
     try {
         const profileToSave: SellerProfile = {
@@ -112,10 +122,10 @@ export async function updateSellerProfile(
             ...profile
         };
         await writeSellerProfile(profileToSave); // writeSellerProfile handles logging
-        console.log('Seller profile update successful.');
+        logger.info(funcPrefix, 'Seller profile update successful.');
         return { success: true, profile: profileToSave };
     } catch (error: any) {
-        console.error('Error during seller profile update:', error);
+        logger.error(funcPrefix, 'Error during seller profile update', error);
         return { success: false, message: `Failed to update profile: ${error.message || 'Unknown error'}` };
     }
 }
