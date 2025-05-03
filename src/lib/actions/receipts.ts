@@ -5,7 +5,7 @@ import type { Receipt, LineItem, Customer, Product, SellerProfile } from '@/lib/
 import { promises as fs } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import PDFDocument from 'pdfkit';
+// Removed static import: import PDFDocument from 'pdfkit';
 import { getCustomerById } from './customers';
 import { getProductById } from './products';
 import { getSellerProfile } from './seller';
@@ -174,6 +174,10 @@ export async function createReceipt(
 
     } catch (error: any) {
         console.error("Unhandled error during receipt creation:", error);
+        // Check if the error message indicates the PDFDocument issue specifically
+        if (error.message && error.message.includes('is not a function') && error.message.includes('PDFDocument')) {
+             return { success: false, message: `Failed to generate PDF: PDF library issue. Please check server logs. (${error.message})` };
+        }
         return { success: false, message: error.message || 'An unexpected error occurred during receipt creation.' };
     }
 }
@@ -267,12 +271,18 @@ function createSellerSnapshot(sellerProfile: SellerProfile): SellerProfile {
 
 // --- PDF Generation (Modular Functions) ---
 
-function addHeader(doc: PDFKit.PDFDocument, isTaxInvoice: boolean) {
+// Type alias for PDFDocument class constructor
+type PDFDocumentConstructor = typeof import('pdfkit');
+// Type alias for PDFDocument instance
+type PDFDocumentInstance = InstanceType<PDFDocumentConstructor>;
+
+
+function addHeader(doc: PDFDocumentInstance, isTaxInvoice: boolean) {
     doc.fontSize(20).text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' });
     doc.moveDown();
 }
 
-function addSellerInfo(doc: PDFKit.PDFDocument, seller: SellerProfile) {
+function addSellerInfo(doc: PDFDocumentInstance, seller: SellerProfile) {
     doc.fontSize(12).text('From:', { underline: true });
     doc.fontSize(10);
     doc.text(seller.name, { continued: false }); // Ensure each starts on new line
@@ -285,7 +295,7 @@ function addSellerInfo(doc: PDFKit.PDFDocument, seller: SellerProfile) {
     doc.moveDown();
 }
 
-function addCustomerInfo(doc: PDFKit.PDFDocument, customer: Omit<Customer, 'id'>) {
+function addCustomerInfo(doc: PDFDocumentInstance, customer: Omit<Customer, 'id'>) {
     doc.fontSize(12).text('To:', { underline: true });
     doc.fontSize(10);
     if (customer.customer_type === 'business') {
@@ -307,7 +317,7 @@ function addCustomerInfo(doc: PDFKit.PDFDocument, customer: Omit<Customer, 'id'>
 }
 
 
-function addReceiptDetails(doc: PDFKit.PDFDocument, receiptId: string, date: string) {
+function addReceiptDetails(doc: PDFDocumentInstance, receiptId: string, date: string) {
     doc.fontSize(10).text(`Invoice ID: ${receiptId}`); // Changed Receipt ID to Invoice ID
     try {
         const formattedDate = format(parseISO(date), 'dd/MM/yyyy');
@@ -319,7 +329,7 @@ function addReceiptDetails(doc: PDFKit.PDFDocument, receiptId: string, date: str
     doc.moveDown();
 }
 
-function addLineItemsTable(doc: PDFKit.PDFDocument, lineItems: LineItem[], includeGstColumn: boolean) {
+function addLineItemsTable(doc: PDFDocumentInstance, lineItems: LineItem[], includeGstColumn: boolean) {
     const tableTop = doc.y;
     const startX = 50;
     const endX = 550;
@@ -373,7 +383,7 @@ function addLineItemsTable(doc: PDFKit.PDFDocument, lineItems: LineItem[], inclu
 }
 
 
-function addTotals(doc: PDFKit.PDFDocument, subtotal: number, gstAmount: number, total: number) {
+function addTotals(doc: PDFDocumentInstance, subtotal: number, gstAmount: number, total: number) {
     const totalsX = 400; // Start position for amounts
     const labelX = 50; // Start position for labels
     const endX = 550; // Right edge for alignment/lines
@@ -403,10 +413,13 @@ export async function generateReceiptPdf(receipt: Receipt): Promise<{ success: b
     const filename = `${receipt.receipt_id}.pdf`;
     const filePath = path.join(PDF_DIR, filename);
     let writeStream: fs.WriteStream | null = null;
-    let doc: PDFKit.PDFDocument | null = null;
+    let doc: PDFDocumentInstance | null = null;
     let success = false;
 
     try {
+        // Dynamically import PDFDocument constructor
+        const PDFDocument = (await import('pdfkit')).default;
+
         writeStream = fs.createWriteStream(filePath);
         doc = new PDFDocument({ margin: 50, bufferPages: true }); // Enable buffering
 
@@ -454,6 +467,11 @@ export async function generateReceiptPdf(receipt: Receipt): Promise<{ success: b
 
     } catch (error: any) {
         console.error(`Unhandled error during PDF generation for ${filename}:`, error);
+        // Check if the error indicates the dynamic import failed or if PDFDocument is not a constructor
+         if (error instanceof TypeError && (error.message.includes('is not a constructor') || error.message.includes('is not a function'))) {
+             console.error("PDFKit dynamic import likely failed or did not resolve to a constructor.");
+             return { success: false, message: `Failed to generate PDF: PDF library initialization error. (${error.message})` };
+         }
         // Cleanup potentially created doc/stream and file
         await cleanupFailedPdf(doc, writeStream, filePath);
         return { success: false, message: `Failed to generate PDF: ${error.message}` };
@@ -468,7 +486,7 @@ export async function generateReceiptPdf(receipt: Receipt): Promise<{ success: b
 
 // Helper for cleaning up failed PDF generation
 async function cleanupFailedPdf(
-    doc: PDFKit.PDFDocument | null,
+    doc: PDFDocumentInstance | null,
     stream: fs.WriteStream | null,
     filePath: string
 ) {
@@ -539,3 +557,4 @@ export async function getReceiptPdfContent(receiptId: string): Promise<Buffer | 
          return null;
      }
 }
+

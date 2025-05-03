@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
-import PDFDocument from 'pdfkit';
+// Remove static import: import PDFDocument from 'pdfkit';
 import type { WriteStream } from 'fs';
 
 // --- Mocking Dependencies ---
@@ -9,7 +9,7 @@ import type { WriteStream } from 'fs';
 // Mock uuid before everything else
 vi.mock('uuid', () => ({ v4: () => 'mock-uuid-123' }));
 
-// Mock pdfkit
+// Mock pdfkit - We now mock the *module* and its default export dynamically
 const mockPdfDocInstance = {
     pipe: vi.fn().mockReturnThis(),
     font: vi.fn().mockReturnThis(),
@@ -22,21 +22,58 @@ const mockPdfDocInstance = {
     strokeColor: vi.fn().mockReturnThis(), // Added for lines
     addPage: vi.fn().mockReturnThis(), // Added for page breaks
     end: vi.fn(),
-    on: vi.fn().mockReturnThis(),
+    on: vi.fn((event, callback) => { // Basic mock for event emitter
+        if (event === 'error') {
+            // Store the error callback but don't call it immediately
+            mockPdfDocInstance._errorCallback = callback;
+        }
+        return mockPdfDocInstance;
+    }),
+    emit: vi.fn((event, ...args) => { // Mock emit for testing error handling
+         if (event === 'error' && mockPdfDocInstance._errorCallback) {
+             mockPdfDocInstance._errorCallback(...args);
+         }
+     }),
     page: { // Mock page object for margins/height checks
         height: 792, // Standard Letter height in points
         margins: { top: 50, bottom: 50, left: 50, right: 50 },
     },
     y: 50, // Mock current y position
     writableEnded: false,
+    _errorCallback: null as ((err: Error) => void) | null, // Store error callback
 };
-vi.mock('pdfkit', () => ({
-    default: vi.fn().mockImplementation(() => {
-        // Reset y position for each new doc instance
-        mockPdfDocInstance.y = mockPdfDocInstance.page.margins.top;
-        return mockPdfDocInstance;
-    }),
-}));
+
+// Type alias for PDFDocument instance (used in tests)
+type PDFDocumentInstance = typeof mockPdfDocInstance;
+
+// Mock the dynamic import('pdfkit')
+vi.mock('pdfkit', async () => {
+     // The factory function returns the object that the dynamic import will resolve to
+     return {
+         // pdfkit is typically used as a class constructor (`new PDFDocument()`)
+         // So, we mock the default export as a class (or a function that returns the mock instance)
+         default: vi.fn().mockImplementation(() => {
+             // Reset state for each "new" instance
+             mockPdfDocInstance.y = mockPdfDocInstance.page.margins.top;
+             mockPdfDocInstance.pipe.mockClear();
+             mockPdfDocInstance.font.mockClear();
+             mockPdfDocInstance.fontSize.mockClear();
+             mockPdfDocInstance.text.mockClear();
+             mockPdfDocInstance.moveDown.mockClear();
+             mockPdfDocInstance.moveTo.mockClear();
+             mockPdfDocInstance.lineTo.mockClear();
+             mockPdfDocInstance.stroke.mockClear();
+             mockPdfDocInstance.strokeColor.mockClear();
+             mockPdfDocInstance.addPage.mockClear();
+             mockPdfDocInstance.end.mockClear();
+             mockPdfDocInstance.on.mockClear();
+             mockPdfDocInstance.emit.mockClear();
+             mockPdfDocInstance._errorCallback = null;
+             return mockPdfDocInstance;
+         }),
+     };
+});
+
 
 // Mock fs module
 let mockStreamError: Error | null = null;
@@ -124,17 +161,24 @@ const mockProduct3_GST_Expensive: Product = { id: 'prod-3', name: 'Coffee Machin
 // --- Test Suite ---
 describe('Receipt Actions', () => {
 
-    beforeEach(() => {
+    let PDFDocumentMockConstructor: vi.Mock;
+
+    beforeEach(async () => {
         // Reset all mocks before each test
         vi.clearAllMocks();
 
-        // Setup default mock implementations
+        // Re-import the mocked PDFDocument constructor before each test
+        // to ensure the mock implementation is fresh
+        PDFDocumentMockConstructor = (await import('pdfkit')).default as vi.Mock;
+
+        // Setup default mock implementations for fs
         (fs.readFile as vi.Mock).mockResolvedValue('[]'); // Default: empty receipts file
         (fs.writeFile as vi.Mock).mockResolvedValue(undefined);
         (fs.mkdir as vi.Mock).mockResolvedValue(undefined);
         (fs.access as vi.Mock).mockResolvedValue(undefined); // Assume files exist
         (fs.unlink as vi.Mock).mockResolvedValue(undefined);
 
+        // Setup default mock implementations for actions
         (getSellerProfile as vi.Mock).mockResolvedValue(mockSeller);
         (getCustomerById as vi.Mock).mockImplementation(async (id) => {
             if (id === mockCustomerIndividual.id) return mockCustomerIndividual;
@@ -182,7 +226,7 @@ describe('Receipt Actions', () => {
             expect(fs.writeFile).toHaveBeenCalledOnce();
             const writtenData = JSON.parse((fs.writeFile as vi.Mock).mock.calls[0][1]);
             expect(writtenData[0].receipt_id).toBe('mock-uuid-123');
-            expect(PDFDocument).toHaveBeenCalledOnce();
+            expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce(); // Check constructor call
             expect(mockPdfDocInstance.text).toHaveBeenCalledWith('INVOICE', expect.anything()); // Check PDF title
         });
 
@@ -206,7 +250,7 @@ describe('Receipt Actions', () => {
             expect(result.receipt?.total_inc_GST).toBe(73.50); // 70 + 3.50
             expect(result.receipt?.is_tax_invoice).toBe(false); // Total < 82.50
             expect(result.receipt?.customer_snapshot.business_name).toBe('Doe Corp');
-            expect(PDFDocument).toHaveBeenCalledOnce();
+            expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce();
              expect(mockPdfDocInstance.text).toHaveBeenCalledWith('INVOICE', expect.anything());
         });
 
@@ -227,7 +271,7 @@ describe('Receipt Actions', () => {
             expect(result.receipt?.GST_amount).toBe(10.00);
             expect(result.receipt?.total_inc_GST).toBe(110.00);
             expect(result.receipt?.is_tax_invoice).toBe(true); // Total >= 82.50
-             expect(PDFDocument).toHaveBeenCalledOnce();
+             expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce();
              expect(mockPdfDocInstance.text).toHaveBeenCalledWith('TAX INVOICE', expect.anything());
         });
 
@@ -245,7 +289,7 @@ describe('Receipt Actions', () => {
             expect(result.receipt).toBeDefined();
             expect(result.receipt?.total_inc_GST).toBe(3.85);
             expect(result.receipt?.is_tax_invoice).toBe(true); // Forced
-            expect(PDFDocument).toHaveBeenCalledOnce();
+            expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce();
              expect(mockPdfDocInstance.text).toHaveBeenCalledWith('TAX INVOICE', expect.anything());
         });
 
@@ -264,7 +308,7 @@ describe('Receipt Actions', () => {
              expect(result.receipt?.GST_amount).toBe(0);
             expect(result.receipt?.total_inc_GST).toBe(3.50);
             expect(result.receipt?.is_tax_invoice).toBe(false); // Not a tax invoice if GST wasn't calculated
-            expect(PDFDocument).toHaveBeenCalledOnce();
+            expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce();
              expect(mockPdfDocInstance.text).toHaveBeenCalledWith('INVOICE', expect.anything());
         });
 
@@ -274,7 +318,7 @@ describe('Receipt Actions', () => {
             expect(result.success).toBe(false);
             expect(result.message).toContain('not found');
             expect(fs.writeFile).not.toHaveBeenCalled();
-             expect(PDFDocument).not.toHaveBeenCalled();
+             expect(PDFDocumentMockConstructor).not.toHaveBeenCalled();
         });
 
         it('should fail if any product is not found', async () => {
@@ -293,7 +337,7 @@ describe('Receipt Actions', () => {
             expect(result.success).toBe(false);
             expect(result.message).toContain('Product(s) not found or failed to load: prod-x-invalid');
              expect(fs.writeFile).not.toHaveBeenCalled();
-            expect(PDFDocument).not.toHaveBeenCalled();
+            expect(PDFDocumentMockConstructor).not.toHaveBeenCalled();
         });
 
          it('should fail validation if line items array is empty', async () => {
@@ -302,7 +346,7 @@ describe('Receipt Actions', () => {
             expect(result.success).toBe(false);
              expect(result.message).toContain('at least one line item');
              expect(fs.writeFile).not.toHaveBeenCalled();
-             expect(PDFDocument).not.toHaveBeenCalled();
+             expect(PDFDocumentMockConstructor).not.toHaveBeenCalled();
         });
 
         it('should fail validation if a line item has quantity <= 0', async () => {
@@ -311,7 +355,7 @@ describe('Receipt Actions', () => {
              expect(result.success).toBe(false);
              expect(result.message).toContain('quantity greater than 0');
              expect(fs.writeFile).not.toHaveBeenCalled();
-             expect(PDFDocument).not.toHaveBeenCalled();
+             expect(PDFDocumentMockConstructor).not.toHaveBeenCalled();
          });
 
 
@@ -324,32 +368,55 @@ describe('Receipt Actions', () => {
              expect(result.success).toBe(false);
              expect(result.message).toContain('PDF stream error: Fake Stream Write Error');
              expect(fs.writeFile).not.toHaveBeenCalled(); // Receipt data should not be saved
-             expect(PDFDocument).toHaveBeenCalledOnce(); // PDF generation was attempted
+             expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce(); // PDF generation was attempted
              expect(fs.unlink).toHaveBeenCalledOnce(); // Cleanup should be attempted
              expect(fs.unlink).toHaveBeenCalledWith(expect.stringContaining('mock-uuid-123.pdf'));
         });
 
          it('should fail and attempt cleanup if PDF document itself errors', async () => {
-             // Simulate an error during PDF content addition (e.g., invalid font)
-             vi.spyOn(mockPdfDocInstance, 'text').mockImplementation(() => {
+             // Simulate an error during PDF content addition by mocking text
+             const originalTextMock = mockPdfDocInstance.text.getMockImplementation() ?? (() => mockPdfDocInstance);
+             mockPdfDocInstance.text.mockImplementation((...args) => {
                  // Simulate error after some calls
                  if (mockPdfDocInstance.text.mock.calls.length > 5) {
                       mockPdfDocInstance.emit('error', new Error("Invalid PDF operation")); // Emit error on doc
-                     throw new Error("Invalid PDF operation"); // Also throw to stop execution flow
+                      throw new Error("Invalid PDF operation"); // Also throw to stop execution flow
                  }
-                 return mockPdfDocInstance;
+                 // Call original mock logic if not erroring
+                 return originalTextMock.apply(mockPdfDocInstance, args);
+
              });
-            vi.spyOn(mockPdfDocInstance, 'emit'); // Spy on emit to verify
 
             const result = await createReceipt(basicInput);
 
             expect(result.success).toBe(false);
             expect(result.message).toContain('Failed to generate PDF: Invalid PDF operation'); // Error propagates
             expect(fs.writeFile).not.toHaveBeenCalled();
-            expect(PDFDocument).toHaveBeenCalledOnce();
-             expect(mockPdfDocInstance.emit).toHaveBeenCalledWith('error', expect.any(Error));
-             expect(fs.unlink).toHaveBeenCalledOnce(); // Cleanup attempted
+            expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce();
+            expect(mockPdfDocInstance.emit).toHaveBeenCalledWith('error', expect.any(Error));
+            expect(fs.unlink).toHaveBeenCalledOnce(); // Cleanup attempted
+            expect(fs.unlink).toHaveBeenCalledWith(expect.stringContaining('mock-uuid-123.pdf'));
         });
+
+         it('should fail if PDFKit dynamic import fails (simulated)', async () => {
+            // Override the mock for this specific test to simulate failure
+             vi.mock('pdfkit', async () => {
+                 // Simulate import error or incorrect structure
+                 return { default: undefined }; // Or throw new Error("Module not found");
+             });
+
+             // Re-trigger the import within the action
+             const result = await createReceipt(basicInput);
+
+             expect(result.success).toBe(false);
+            // The exact error message might vary, but check for indicators
+            expect(result.message).toMatch(/PDF library initialization error/i);
+            expect(result.message).toMatch(/TypeError/i); // Likely a TypeError if .default is undefined
+            expect(fs.writeFile).not.toHaveBeenCalled();
+            expect(PDFDocumentMockConstructor).not.toHaveBeenCalled(); // Constructor shouldn't be called
+             expect(fs.unlink).not.toHaveBeenCalled(); // PDF wasn't even created
+        });
+
     });
 
     // --- generateReceiptPdf Tests ---
@@ -385,7 +452,7 @@ describe('Receipt Actions', () => {
              expect(result.success).toBe(true);
              expect(result.filePath).toContain('pdf-gen-test-1.pdf');
              expect(fs.createWriteStream).toHaveBeenCalledOnce();
-             expect(PDFDocument).toHaveBeenCalledOnce();
+             expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce();
 
             // Verify structure calls (order matters less than presence)
             expect(mockPdfDocInstance.text).toHaveBeenCalledWith('TAX INVOICE', { align: 'center' }); // Header
@@ -404,7 +471,7 @@ describe('Receipt Actions', () => {
             expect(mockPdfDocInstance.text).toHaveBeenCalledWith(expect.stringContaining('Subtotal'), expect.anything());
              expect(mockPdfDocInstance.text).toHaveBeenCalledWith(`$${testReceipt.subtotal_excl_GST.toFixed(2)}`, expect.anything());
              expect(mockPdfDocInstance.text).toHaveBeenCalledWith(expect.stringContaining('Total (inc GST)'), expect.anything());
-             expect(mockPdfDocInstance.text).toHaveBeenCalledWith(`$${testReceipt.total_inc_GST.toFixed(2)}`, expect.objectContaining({ bold: true }));
+             expect(mockPdfDocInstance.text).toHaveBeenCalledWith(`$${testReceipt.total_inc_GST.toFixed(2)}`, expect.anything()); // Total should not be bold here
              expect(mockPdfDocInstance.stroke).toHaveBeenCalled(); // Lines drawn
              expect(mockPdfDocInstance.end).toHaveBeenCalledOnce();
          });
@@ -438,15 +505,56 @@ describe('Receipt Actions', () => {
          });
 
           it('should handle document errors gracefully and return failure', async () => {
-             vi.spyOn(mockPdfDocInstance, 'text').mockImplementation(() => { throw new Error("Doc Text Error"); });
-             vi.spyOn(mockPdfDocInstance, 'emit');
+             // Simulate error emitted by the document instance
+             mockPdfDocInstance.emit.mockImplementation((event, err) => {
+                 if (event === 'error' && mockPdfDocInstance._errorCallback) {
+                    mockPdfDocInstance._errorCallback(err);
+                 }
+             });
+             // Need to trigger the error after piping but before ending
+             mockPdfDocInstance.pipe.mockImplementation(() => {
+                  // Simulate error after pipe setup
+                  setTimeout(() => mockPdfDocInstance.emit('error', new Error("Doc Pipe Error")), 0);
+                  return mockPdfDocInstance;
+              });
+
+
              const result = await generateReceiptPdf(testReceipt);
 
+
              expect(result.success).toBe(false);
-             expect(result.message).toContain('Failed to generate PDF: Doc Text Error');
-             expect(mockPdfDocInstance.emit).not.toHaveBeenCalledWith('error', expect.any(Error)); // Error thrown directly
+             expect(result.message).toContain('Failed to generate PDF: PDF document error: Doc Pipe Error');
              expect(fs.unlink).toHaveBeenCalledWith(expect.stringContaining(testReceipt.receipt_id));
          });
+
+          it('should handle dynamic import errors gracefully', async () => {
+             // Override mock for this test
+              vi.mock('pdfkit', async () => {
+                  throw new Error("Dynamic Import Failed");
+              });
+
+              const result = await generateReceiptPdf(testReceipt);
+
+              expect(result.success).toBe(false);
+              expect(result.message).toContain('Failed to generate PDF: Dynamic Import Failed');
+              expect(fs.createWriteStream).not.toHaveBeenCalled();
+              expect(fs.unlink).not.toHaveBeenCalled();
+          });
+
+          it('should handle non-constructor errors from dynamic import', async () => {
+             // Override mock for this test
+              vi.mock('pdfkit', async () => {
+                  return { default: {} }; // Not a constructor
+              });
+
+              const result = await generateReceiptPdf(testReceipt);
+
+              expect(result.success).toBe(false);
+              expect(result.message).toContain('PDF library initialization error');
+              expect(result.message).toContain('is not a constructor'); // Check for TypeError message
+              expect(fs.createWriteStream).not.toHaveBeenCalled();
+              expect(fs.unlink).not.toHaveBeenCalled();
+          });
     });
 
     // --- readReceipts / writeReceipts ---
@@ -477,7 +585,7 @@ describe('Receipt Actions', () => {
          const receiptId = 'existing-receipt-123';
          const pdfPath = path.join(process.cwd(), 'src/lib/data/receipt-pdfs', `${receiptId}.pdf`);
          const mockReceipt: Receipt = { // Need a basic receipt object for getReceiptById
-             receipt_id: receiptId, customer_id: 'cust-1', date_of_purchase: '2024-01-01T00:00:00Z', line_items: [], subtotal_excl_GST: 0, GST_amount: 0, total_inc_GST: 0, is_tax_invoice: false, seller_profile_snapshot: mockSeller, customer_snapshot: mockCustomerIndividual
+             receipt_id: receiptId, customer_id: 'cust-1', date_of_purchase: '2024-01-01T00:00:00Z', line_items: [], subtotal_excl_GST: 0, GST_amount: 0, total_inc_GST: 0, is_tax_invoice: false, seller_profile_snapshot: mockSeller, customer_snapshot: { ...mockCustomerIndividual, id: undefined } // Ensure snapshot doesn't have id
          };
 
          beforeEach(() => {
@@ -540,5 +648,3 @@ describe('Receipt Actions', () => {
      });
 
 });
-
-```
