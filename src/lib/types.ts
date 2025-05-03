@@ -20,9 +20,9 @@ export interface Product {
 export interface Customer {
   id: string; // UUID
   customer_type: 'individual' | 'business';
-  first_name: string; // Required for individual, optional for business (contact person)
+  first_name?: string; // Optional for business, required for individual (will be enforced by schema)
   last_name?: string; // Optional
-  business_name?: string; // Required for business type
+  business_name?: string; // Optional for individual, required for business (will be enforced by schema)
   abn?: string; // Optional, typically for business type
   email?: string; // Optional
   phone?: string; // Optional
@@ -32,10 +32,10 @@ export interface Customer {
 export interface LineItem {
   product_id: string;
   quantity: number;
-  // Calculated fields (optional, can be derived)
-  unit_price?: number;
-  line_total?: number;
-  product_name?: string; // For display on receipt
+  unit_price: number; // Price *before* GST
+  line_total: number; // Total *before* GST (quantity * unit_price)
+  product_name: string; // For display on receipt/invoice
+  GST_applicable: boolean; // Was GST applicable to this product?
 }
 
 export interface Receipt {

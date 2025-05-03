@@ -13,8 +13,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Baker's Receipt",
-  description: 'Generate receipts for your bakery business',
+  title: "Baker's Invoice", // Updated title
+  description: 'Generate invoices for your bakery business', // Updated description
 };
 
 export default function RootLayout({
@@ -31,7 +31,7 @@ export default function RootLayout({
               <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
                 {/* Replace with SVG logo if available */}
                 <ShoppingBag className="h-6 w-6 text-primary" />
-                <span>Baker's Receipt</span>
+                <span>Baker's Invoice</span>
               </Link>
             </SidebarHeader>
             <SidebarContent>
@@ -40,7 +40,7 @@ export default function RootLayout({
                   <SidebarMenuButton asChild>
                     <Link href="/">
                       <Home />
-                      <span>New Receipt</span>
+                      <span>New Invoice</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -48,7 +48,7 @@ export default function RootLayout({
                     <SidebarMenuButton asChild>
                         <Link href="/receipts">
                             <FileText />
-                            <span>Receipt History</span>
+                            <span>Invoice History</span>
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -80,7 +80,7 @@ export default function RootLayout({
             </SidebarContent>
             <SidebarFooter className="p-4 text-xs text-muted-foreground">
               {/* Footer content if needed */}
-              &copy; {new Date().getFullYear()} Baker's Receipt
+              &copy; {new Date().getFullYear()} Baker's Invoice
             </SidebarFooter>
           </Sidebar>
           <SidebarInset>

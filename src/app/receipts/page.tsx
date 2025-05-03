@@ -29,7 +29,7 @@ export default function ReceiptsHistoryPage() {
       console.error('Failed to fetch receipts:', error);
        toast({
             title: "Error",
-            description: "Could not load receipt history. Please try again later.",
+            description: "Could not load invoice history. Please try again later.", // Updated text
             variant: "destructive",
         });
     } finally {
@@ -50,10 +50,13 @@ export default function ReceiptsHistoryPage() {
         if (pdfPath) {
             // Simulate download - In a real app, you'd redirect to an API endpoint
             // e.g., window.location.href = `/api/download-receipt?id=${receiptId}`;
-             alert(`PDF stub is available at server path: ${pdfPath}\n\nA real app would initiate a download here.`);
-             toast({ title: "PDF Ready (Stub)", description: `PDF stub for ${receiptId.substring(0, 8)}... exists.`, variant: "default"});
+             // Use window.open for a better "download" simulation in the browser
+             // In a real app, this would point to an API route that serves the file
+             window.open(`/api/download-pdf?id=${receiptId}`, '_blank');
+             toast({ title: "PDF Download Started", description: `Attempting to download PDF for ${receiptId.substring(0, 8)}...`, variant: "default"});
+
         } else {
-            toast({ title: "PDF Not Found", description: `Could not find the PDF for receipt ${receiptId.substring(0, 8)}... It might need to be regenerated.`, variant: "destructive" });
+            toast({ title: "PDF Not Found", description: `Could not find the PDF for invoice ${receiptId.substring(0, 8)}... It might need to be regenerated.`, variant: "destructive" }); // Updated text
         }
     } catch (error) {
         console.error("Error getting PDF path:", error);
@@ -66,20 +69,20 @@ export default function ReceiptsHistoryPage() {
     <div className="space-y-6">
        <div className="flex justify-between items-center">
          <div>
-            <h1 className="text-2xl font-semibold">Receipt History</h1>
-            <p className="text-muted-foreground">View previously generated receipts.</p>
+            <h1 className="text-2xl font-semibold">Invoice History</h1>
+            <p className="text-muted-foreground">View previously generated invoices.</p>
         </div>
          <Button asChild>
             <Link href="/">
-                <PlusCircle className="mr-2 h-4 w-4" /> Create New Receipt
+                <PlusCircle className="mr-2 h-4 w-4" /> Create New Invoice
             </Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Generated Receipts</CardTitle>
-           <CardDescription>List of all receipts generated.</CardDescription>
+          <CardTitle>Generated Invoices</CardTitle>
+           <CardDescription>List of all invoices generated.</CardDescription>
         </CardHeader>
         <CardContent>
              {isLoading ? (
@@ -87,12 +90,12 @@ export default function ReceiptsHistoryPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : receipts.length === 0 ? (
-                 <p className="text-center text-muted-foreground py-4">No receipts found yet. Create one to see it here!</p>
+                 <p className="text-center text-muted-foreground py-4">No invoices found yet. Create one to see it here!</p> // Updated text
             ): (
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>Receipt ID</TableHead>
+                    <TableHead>Invoice ID</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Total Amount</TableHead>
@@ -108,7 +111,7 @@ export default function ReceiptsHistoryPage() {
                      <TableCell>
                          {receipt.customer_snapshot.customer_type === 'business'
                             ? receipt.customer_snapshot.business_name
-                            : `${receipt.customer_snapshot.first_name} ${receipt.customer_snapshot.last_name || ''}`
+                            : `${receipt.customer_snapshot.first_name || ''} ${receipt.customer_snapshot.last_name || ''}`
                          }
                      </TableCell>
                     <TableCell>${receipt.total_inc_GST.toFixed(2)}</TableCell>
@@ -116,7 +119,7 @@ export default function ReceiptsHistoryPage() {
                          {receipt.is_tax_invoice ? (
                              <Badge variant="default">Tax Invoice</Badge>
                          ) : (
-                             <Badge variant="secondary">Receipt</Badge>
+                             <Badge variant="secondary">Invoice</Badge> // Updated text
                          )}
                      </TableCell>
                     <TableCell className="text-right space-x-2">
@@ -127,7 +130,7 @@ export default function ReceiptsHistoryPage() {
                         </Button> */}
                        <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(receipt.receipt_id)}>
                             <Download className="mr-2 h-4 w-4" />
-                            PDF (Stub)
+                            Download PDF
                         </Button>
                     </TableCell>
                     </TableRow>
@@ -140,5 +143,3 @@ export default function ReceiptsHistoryPage() {
     </div>
   );
 }
-
-// Removed the inline SVG for PlusCircle as it's imported from lucide-react now.

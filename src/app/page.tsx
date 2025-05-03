@@ -24,7 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator'; // Use ShadCN Separator
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, PlusCircle, Trash2, CalendarIcon } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, CalendarIcon, Download } from 'lucide-react'; // Added Download icon
 import { format } from 'date-fns'; // Keep parseISO if reading ISO strings
 
 const lineItemSchema = z.object({
@@ -145,12 +145,14 @@ export default function NewReceiptPage() {
     try {
       const result = await createReceipt(submissionData);
       if (result.success && result.receipt) {
+         const receiptId = result.receipt.receipt_id;
         toast({
-          title: "Receipt Created",
-          description: `Receipt ${result.receipt.receipt_id.substring(0, 8)}... generated successfully.`,
+          title: "Invoice Created",
+          description: `Invoice ${receiptId.substring(0, 8)}... generated successfully. PDF is being prepared for download.`, // Updated text
           action: result.pdfPath ? (
-            <Button variant="outline" size="sm" onClick={() => alert(`PDF stub generated at: ${result.pdfPath}`)}>
-                View PDF (Stub)
+             // Trigger download via API route
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/download-pdf?id=${receiptId}`, '_blank')}>
+                 <Download className="mr-2 h-4 w-4" /> Download PDF
             </Button>
           ) : undefined,
         });
@@ -164,8 +166,8 @@ export default function NewReceiptPage() {
          setCalculatedTotals({ subtotal: 0, gst: 0, total: 0 }); // Reset totals
       } else {
         toast({
-          title: "Error Creating Receipt",
-          description: result.message || "Failed to create receipt. Please check the details.",
+          title: "Error Creating Invoice", // Updated text
+          description: result.message || "Failed to create invoice. Please check the details.", // Updated text
           variant: "destructive",
         });
       }
@@ -173,7 +175,7 @@ export default function NewReceiptPage() {
       console.error("Submission error:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred while creating the receipt.",
+        description: "An unexpected error occurred while creating the invoice.", // Updated text
         variant: "destructive",
       });
     } finally {
@@ -188,8 +190,8 @@ export default function NewReceiptPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create New Receipt</CardTitle>
-        <CardDescription>Fill in the details below to generate a new receipt.</CardDescription>
+        <CardTitle>Create New Invoice</CardTitle>
+        <CardDescription>Fill in the details below to generate a new invoice.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -215,7 +217,7 @@ export default function NewReceiptPage() {
                               <SelectItem key={customer.id} value={customer.id}>
                                 {customer.customer_type === 'business'
                                   ? customer.business_name // Show business name
-                                  : `${customer.first_name} ${customer.last_name || ''}` // Show individual name
+                                  : `${customer.first_name || ''} ${customer.last_name || ''}` // Show individual name
                                 }
                                 {customer.email ? ` (${customer.email})` : ''}
                               </SelectItem>
@@ -443,7 +445,7 @@ export default function NewReceiptPage() {
 
             <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate Receipt
+              Generate Invoice
             </Button>
           </form>
         </Form>

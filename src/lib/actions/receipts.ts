@@ -1,3 +1,4 @@
+// src/lib/actions/receipts.ts
 'use server';
 
 import type { Receipt, LineItem, Customer, Product, SellerProfile } from '@/lib/types';
@@ -8,7 +9,7 @@ import PDFDocument from 'pdfkit';
 import { getCustomerById } from './customers';
 import { getProductById } from './products';
 import { getSellerProfile } from './seller';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 const DATA_DIR = path.join(process.cwd(), 'src/lib/data');
 const RECEIPTS_FILE = path.join(DATA_DIR, 'receipts.json');
@@ -29,7 +30,7 @@ ensureDirectoriesExist();
 // --- Data Handling ---
 
 // Helper function to read receipts data
-async function readReceipts(): Promise<Receipt[]> {
+export async function readReceipts(): Promise<Receipt[]> { // Export for testing
   try {
     const fileContent = await fs.readFile(RECEIPTS_FILE, 'utf-8');
     // Ensure date strings are correctly parsed if needed later, though storing as ISO is fine
@@ -45,7 +46,7 @@ async function readReceipts(): Promise<Receipt[]> {
 }
 
 // Helper function to write receipts data
-async function writeReceipts(receipts: Receipt[]): Promise<void> {
+export async function writeReceipts(receipts: Receipt[]): Promise<void> { // Export for testing
   try {
     await fs.writeFile(RECEIPTS_FILE, JSON.stringify(receipts, null, 2), 'utf-8');
   } catch (error) {
@@ -115,6 +116,7 @@ export async function createReceipt(
                 unit_price: product.unit_price,
                 line_total: lineTotal,
                 product_name: product.name, // Add name for display
+                GST_applicable: product.GST_applicable, // Keep GST applicability for PDF generation
             });
 
             // Calculate GST only if global flag is true AND product is GST applicable
@@ -138,7 +140,7 @@ export async function createReceipt(
 
         // 5. Create Receipt Object
         // Date string is already 'yyyy-MM-dd', store as ISO string for consistency (or keep as string if preferred)
-        const purchaseDate = new Date(`${input.date_of_purchase}T00:00:00Z`); // Treat as start of day UTC
+        const purchaseDate = parseISO(`${input.date_of_purchase}T00:00:00Z`); // Treat as start of day UTC
 
 
         // Create the customer snapshot, omitting the 'id' field
@@ -177,8 +179,8 @@ export async function createReceipt(
             customer_snapshot: customerSnapshot      // Snapshot customer details (without ID)
         };
 
-        // 6. Generate PDF
-        const pdfGenerationResult = await generateReceiptPdf(newReceipt); // Call PDF generation
+        // 6. Generate PDF (using refactored function)
+        const pdfGenerationResult = await generateReceiptPdf(newReceipt);
 
         if (!pdfGenerationResult.success) {
              // Use the more specific error message from PDF generation
@@ -212,8 +214,104 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
     return receipt || null;
 }
 
-// --- PDF Generation ---
-async function generateReceiptPdf(receipt: Receipt): Promise<{ success: boolean; message?: string; filePath?: string }> {
+// --- PDF Generation (Refactored) ---
+
+function addHeader(doc: PDFKit.PDFDocument, isTaxInvoice: boolean) {
+    doc.fontSize(20).text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' });
+    doc.moveDown();
+}
+
+function addSellerInfo(doc: PDFKit.PDFDocument, seller: SellerProfile) {
+    doc.fontSize(12).text('From:', { underline: true });
+    doc.fontSize(10).text(seller.name);
+    doc.text(seller.business_address);
+    doc.text(`ABN/ACN: ${seller.ABN_or_ACN}`);
+    doc.text(`Email: ${seller.contact_email}`);
+    if (seller.phone) {
+        doc.text(`Phone: ${seller.phone}`);
+    }
+    doc.moveDown();
+}
+
+function addCustomerInfo(doc: PDFKit.PDFDocument, customer: Omit<Customer, 'id'>) {
+    doc.fontSize(12).text('To:', { underline: true });
+    doc.fontSize(10);
+    if (customer.customer_type === 'business') {
+        doc.text(customer.business_name || 'N/A');
+        if (customer.abn) {
+            doc.text(`ABN: ${customer.abn}`);
+        }
+        if (customer.first_name || customer.last_name) {
+            doc.text(`Contact: ${customer.first_name || ''} ${customer.last_name || ''}`.trim());
+        }
+    } else {
+        doc.text(`${customer.first_name || ''} ${customer.last_name || ''}`.trim());
+    }
+    doc.text(`Email: ${customer.email || 'N/A'}`);
+    doc.text(`Phone: ${customer.phone || 'N/A'}`);
+    doc.text(`Address: ${customer.address || 'N/A'}`);
+    doc.moveDown();
+}
+
+function addReceiptDetails(doc: PDFKit.PDFDocument, receiptId: string, date: string) {
+    doc.fontSize(10).text(`Invoice ID: ${receiptId}`); // Changed Receipt ID to Invoice ID
+    doc.text(`Date: ${format(parseISO(date), 'dd/MM/yyyy')}`);
+    doc.moveDown();
+}
+
+function addLineItemsTable(doc: PDFKit.PDFDocument, lineItems: LineItem[], includeGst: boolean) {
+    const tableTop = doc.y;
+    const itemCol = 50;
+    const gstIndicatorCol = 230;
+    const qtyCol = 280;
+    const priceCol = 350;
+    const totalCol = 450;
+
+    doc.fontSize(10);
+    doc.text('Item', itemCol, tableTop, { bold: true, underline: true });
+    if (includeGst) doc.text('GST?', gstIndicatorCol, tableTop, { bold: true, underline: true, align: 'center'});
+    doc.text('Qty', qtyCol, tableTop, { bold: true, underline: true, align: 'right' });
+    doc.text('Unit Price', priceCol, tableTop, { bold: true, underline: true, align: 'right' });
+    doc.text('Line Total', totalCol, tableTop, { bold: true, underline: true, align: 'right' });
+    doc.moveDown(0.5); // Space after header
+
+    lineItems.forEach(item => {
+        const y = doc.y;
+        const unitPriceExGST = item.unit_price || 0;
+        const lineTotalExGST = item.line_total || 0;
+
+        doc.text(item.product_name || 'N/A', itemCol, y, { width: gstIndicatorCol - itemCol - 10 });
+        if (includeGst) doc.text(item.GST_applicable ? 'Yes' : 'No', gstIndicatorCol, y, {align: 'center', width: qtyCol - gstIndicatorCol - 10});
+        doc.text(item.quantity.toString(), qtyCol, y, { align: 'right', width: priceCol - qtyCol - 10 });
+        doc.text(`$${unitPriceExGST.toFixed(2)}`, priceCol, y, { align: 'right', width: totalCol - priceCol - 10 });
+        doc.text(`$${lineTotalExGST.toFixed(2)}`, totalCol, y, { align: 'right' });
+        doc.moveDown(0.5);
+    });
+    doc.moveDown();
+
+    // Draw a line before totals
+    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+    doc.moveDown(0.5);
+}
+
+function addTotals(doc: PDFKit.PDFDocument, subtotal: number, gstAmount: number, total: number) {
+    const totalsX = 400; // Align totals to the right
+    doc.fontSize(10).text(`Subtotal (ex GST):`, 50, doc.y, { continued: true, align: 'left' });
+    doc.text(`$${subtotal.toFixed(2)}`, totalsX, doc.y, { align: 'right' });
+    doc.text(`GST Amount:`, 50, doc.y, { continued: true, align: 'left' });
+    doc.text(`$${gstAmount.toFixed(2)}`, totalsX, doc.y, { align: 'right' });
+
+    // Draw another line
+    doc.moveTo(totalsX - 50, doc.y + 15).lineTo(550, doc.y + 15).stroke(); // Shorter line above total
+    doc.moveDown();
+
+
+    doc.fontSize(12).text(`Total (inc GST):`, 50, doc.y, { continued: true, align: 'left', bold: true });
+    doc.text(`$${total.toFixed(2)}`, totalsX, doc.y, { align: 'right', bold: true });
+    doc.moveDown();
+}
+
+export async function generateReceiptPdf(receipt: Receipt): Promise<{ success: boolean; message?: string; filePath?: string }> { // Export for testing
      const filename = `${receipt.receipt_id}.pdf`;
      const filePath = path.join(PDF_DIR, filename);
      const stream = fs.createWriteStream(filePath);
@@ -225,104 +323,49 @@ async function generateReceiptPdf(receipt: Receipt): Promise<{ success: boolean;
         // Explicitly set the font to potentially avoid path issues
         doc.font('Helvetica');
 
-        // Header
-        doc.fontSize(20).text(receipt.is_tax_invoice ? 'TAX INVOICE' : 'RECEIPT', { align: 'center' });
-        doc.moveDown();
-
-        // Seller Information
-        doc.fontSize(12).text('From:', { underline: true });
-        doc.fontSize(10).text(receipt.seller_profile_snapshot.name);
-        doc.text(receipt.seller_profile_snapshot.business_address);
-        doc.text(`ABN/ACN: ${receipt.seller_profile_snapshot.ABN_or_ACN}`);
-        doc.text(`Email: ${receipt.seller_profile_snapshot.contact_email}`);
-        if (receipt.seller_profile_snapshot.phone) {
-            doc.text(`Phone: ${receipt.seller_profile_snapshot.phone}`);
-        }
-        doc.moveDown();
-
-        // Customer Information
-        doc.fontSize(12).text('To:', { underline: true });
-        doc.fontSize(10);
-        if (receipt.customer_snapshot.customer_type === 'business') {
-            doc.text(receipt.customer_snapshot.business_name || 'N/A');
-            if (receipt.customer_snapshot.abn) {
-                doc.text(`ABN: ${receipt.customer_snapshot.abn}`);
-            }
-            if (receipt.customer_snapshot.first_name || receipt.customer_snapshot.last_name) {
-                doc.text(`Contact: ${receipt.customer_snapshot.first_name || ''} ${receipt.customer_snapshot.last_name || ''}`.trim());
-            }
-        } else {
-            doc.text(`${receipt.customer_snapshot.first_name || ''} ${receipt.customer_snapshot.last_name || ''}`.trim());
-        }
-        doc.text(`Email: ${receipt.customer_snapshot.email || 'N/A'}`);
-        doc.text(`Phone: ${receipt.customer_snapshot.phone || 'N/A'}`);
-        doc.text(`Address: ${receipt.customer_snapshot.address || 'N/A'}`);
-        doc.moveDown();
-
-        // Receipt Details
-        doc.fontSize(10).text(`Receipt ID: ${receipt.receipt_id}`);
-        doc.text(`Date: ${format(new Date(receipt.date_of_purchase), 'dd/MM/yyyy')}`);
-        doc.moveDown();
-
-        // Line Items Table Header
-        const tableTop = doc.y;
-        const itemCol = 50;
-        const qtyCol = 250;
-        const priceCol = 350;
-        const totalCol = 450;
-        doc.fontSize(10);
-        doc.text('Item', itemCol, tableTop, { bold: true, underline: true });
-        doc.text('Qty', qtyCol, tableTop, { bold: true, underline: true, align: 'right' });
-        doc.text('Unit Price', priceCol, tableTop, { bold: true, underline: true, align: 'right' });
-        doc.text('Line Total', totalCol, tableTop, { bold: true, underline: true, align: 'right' });
-        doc.moveDown(0.5); // Space after header
-
-        // Line Items
-        receipt.line_items.forEach(item => {
-            const y = doc.y;
-            doc.text(item.product_name || 'N/A', itemCol, y, { width: qtyCol - itemCol - 10 });
-            doc.text(item.quantity.toString(), qtyCol, y, { align: 'right', width: priceCol - qtyCol - 10 });
-            doc.text(`$${item.unit_price?.toFixed(2)}`, priceCol, y, { align: 'right', width: totalCol - priceCol - 10 });
-            doc.text(`$${item.line_total?.toFixed(2)}`, totalCol, y, { align: 'right' });
-            doc.moveDown(0.5);
-        });
-        doc.moveDown();
-
-        // Draw a line before totals
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-        doc.moveDown(0.5);
-
-        // Totals
-        const totalsX = 400; // Align totals to the right
-        doc.fontSize(10).text(`Subtotal (ex GST):`, 50, doc.y, { continued: true, align: 'left' });
-        doc.text(`$${receipt.subtotal_excl_GST.toFixed(2)}`, totalsX, doc.y, { align: 'right' });
-        doc.text(`GST Amount:`, 50, doc.y, { continued: true, align: 'left' });
-        doc.text(`$${receipt.GST_amount.toFixed(2)}`, totalsX, doc.y, { align: 'right' });
-
-        // Draw another line
-        doc.moveTo(totalsX - 50, doc.y + 15).lineTo(550, doc.y + 15).stroke(); // Shorter line above total
-        doc.moveDown();
-
-
-        doc.fontSize(12).text(`Total (inc GST):`, 50, doc.y, { continued: true, align: 'left', bold: true });
-        doc.text(`$${receipt.total_inc_GST.toFixed(2)}`, totalsX, doc.y, { align: 'right', bold: true });
-        doc.moveDown();
-
+        addHeader(doc, receipt.is_tax_invoice);
+        addSellerInfo(doc, receipt.seller_profile_snapshot);
+        addCustomerInfo(doc, receipt.customer_snapshot);
+        addReceiptDetails(doc, receipt.receipt_id, receipt.date_of_purchase);
+        addLineItemsTable(doc, receipt.line_items, receipt.GST_amount > 0); // Only show GST column if GST was applied
+        addTotals(doc, receipt.subtotal_excl_GST, receipt.GST_amount, receipt.total_inc_GST);
 
         doc.end();
 
         // Wait for the stream to finish writing
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
             stream.on('finish', resolve);
-            stream.on('error', reject);
+            stream.on('error', (err) => {
+                console.error("PDF stream error:", err); // Log the specific stream error
+                reject(new Error(`PDF stream error: ${err.message}`));
+            });
+            doc.on('error', (err) => { // Also listen for errors on the document itself
+                console.error("PDF document error:", err);
+                reject(new Error(`PDF document error: ${err.message}`));
+             });
         });
 
+        console.log(`PDF successfully generated at: ${filePath}`);
         return { success: true, filePath: filePath };
      } catch (error: any) {
         console.error("Error generating PDF:", error);
         // Attempt to close stream on error if possible
-        if (doc && !doc.writableEnded) doc.end();
-        if (stream && !stream.writableEnded) stream.end();
+        if (doc && !doc.writableEnded) {
+            try { doc.end(); } catch (endErr) { console.error("Error ending PDF document:", endErr); }
+        }
+        if (stream && !stream.writableEnded) {
+            try { stream.end(); } catch (endErr) { console.error("Error ending PDF stream:", endErr); }
+        }
+        // Check if the file exists and try to delete the potentially corrupted/incomplete file
+        try {
+            await fs.access(filePath); // Check if file exists
+            await fs.unlink(filePath); // Delete the file
+            console.log(`Deleted incomplete/corrupted PDF: ${filePath}`);
+        } catch (accessOrUnlinkError: any) {
+             if (accessOrUnlinkError.code !== 'ENOENT') { // Ignore if the file doesn't exist
+                 console.error(`Error accessing or deleting potentially corrupted PDF ${filePath}:`, accessOrUnlinkError);
+             }
+        }
         return { success: false, message: `Failed to generate PDF: ${error.message}` };
      }
 }
