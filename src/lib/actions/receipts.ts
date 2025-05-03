@@ -541,6 +541,10 @@ export async function generateReceiptPdf(receipt: Receipt, operationId: string):
         writeStream = createWriteStream(filePath);
         doc = new PDFDocument({ margin: 50, bufferPages: true });
 
+        // IMPORTANT: Set default font *immediately* after instantiation
+        // This might help resolve font path issues in serverless environments
+        doc.font('Helvetica');
+
         const streamFinishPromise = new Promise<void>((resolve, reject) => {
             // Setup listeners *before* piping
             writeStream!.on('finish', () => {
@@ -571,7 +575,7 @@ export async function generateReceiptPdf(receipt: Receipt, operationId: string):
 
         // --- Add Content ---
         console.log(`${logPrefix} Adding content to PDF...`);
-        doc.font('Helvetica');
+        // Font already set above
 
         addHeader(doc, receipt.is_tax_invoice);
         addSellerInfo(doc, receipt.seller_profile_snapshot);
