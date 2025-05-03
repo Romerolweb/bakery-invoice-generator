@@ -5,7 +5,7 @@ import type { Receipt, LineItem, Customer, Product, SellerProfile } from '@/lib/
 import { promises as fs } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-// Removed static import: import PDFDocument from 'pdfkit';
+import PDFDocument from 'pdfkit'; // Reverted to static import
 import { getCustomerById } from './customers';
 import { getProductById } from './products';
 import { getSellerProfile } from './seller';
@@ -174,9 +174,10 @@ export async function createReceipt(
 
     } catch (error: any) {
         console.error("Unhandled error during receipt creation:", error);
-        // Check if the error message indicates the PDFDocument issue specifically
-        if (error.message && error.message.includes('is not a function') && error.message.includes('PDFDocument')) {
-             return { success: false, message: `Failed to generate PDF: PDF library issue. Please check server logs. (${error.message})` };
+        // Check if the error message indicates a PDF library instantiation issue
+        if (error instanceof TypeError && (error.message.includes('is not a constructor') || error.message.includes('is not a function'))) {
+            console.error("PDFKit library instantiation failed. Check imports and dependencies.");
+            return { success: false, message: `Failed to generate PDF: PDF library initialization error. Check server logs. (${error.message})` };
         }
         return { success: false, message: error.message || 'An unexpected error occurred during receipt creation.' };
     }
@@ -271,10 +272,8 @@ function createSellerSnapshot(sellerProfile: SellerProfile): SellerProfile {
 
 // --- PDF Generation (Modular Functions) ---
 
-// Type alias for PDFDocument class constructor
-type PDFDocumentConstructor = typeof import('pdfkit');
-// Type alias for PDFDocument instance
-type PDFDocumentInstance = InstanceType<PDFDocumentConstructor>;
+// Type alias for PDFDocument instance using the static import
+type PDFDocumentInstance = InstanceType<typeof PDFDocument>;
 
 
 function addHeader(doc: PDFDocumentInstance, isTaxInvoice: boolean) {
@@ -417,9 +416,7 @@ export async function generateReceiptPdf(receipt: Receipt): Promise<{ success: b
     let success = false;
 
     try {
-        // Dynamically import PDFDocument constructor
-        const PDFDocument = (await import('pdfkit')).default;
-
+        // Static import used now, so no dynamic import needed
         writeStream = fs.createWriteStream(filePath);
         doc = new PDFDocument({ margin: 50, bufferPages: true }); // Enable buffering
 
@@ -467,9 +464,10 @@ export async function generateReceiptPdf(receipt: Receipt): Promise<{ success: b
 
     } catch (error: any) {
         console.error(`Unhandled error during PDF generation for ${filename}:`, error);
-        // Check if the error indicates the dynamic import failed or if PDFDocument is not a constructor
-         if (error instanceof TypeError && (error.message.includes('is not a constructor') || error.message.includes('is not a function'))) {
-             console.error("PDFKit dynamic import likely failed or did not resolve to a constructor.");
+        // Check for TypeError related to PDFDocument instantiation
+        if (error instanceof TypeError && (error.message.includes('is not a constructor') || error.message.includes('is not a function'))) {
+             console.error("PDFKit library instantiation failed. Check imports and dependencies.");
+             await cleanupFailedPdf(doc, writeStream, filePath); // Attempt cleanup
              return { success: false, message: `Failed to generate PDF: PDF library initialization error. (${error.message})` };
          }
         // Cleanup potentially created doc/stream and file
@@ -557,4 +555,3 @@ export async function getReceiptPdfContent(receiptId: string): Promise<Buffer | 
          return null;
      }
 }
-

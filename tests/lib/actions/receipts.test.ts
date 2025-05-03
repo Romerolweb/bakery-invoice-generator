@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
-// Remove static import: import PDFDocument from 'pdfkit';
+import PDFDocument from 'pdfkit'; // Import the actual library for type checking, but it will be mocked
 import type { WriteStream } from 'fs';
 
 // --- Mocking Dependencies ---
@@ -9,7 +9,7 @@ import type { WriteStream } from 'fs';
 // Mock uuid before everything else
 vi.mock('uuid', () => ({ v4: () => 'mock-uuid-123' }));
 
-// Mock pdfkit - We now mock the *module* and its default export dynamically
+// Mock pdfkit - Now using static import, so mock the module directly
 const mockPdfDocInstance = {
     pipe: vi.fn().mockReturnThis(),
     font: vi.fn().mockReturnThis(),
@@ -46,9 +46,9 @@ const mockPdfDocInstance = {
 // Type alias for PDFDocument instance (used in tests)
 type PDFDocumentInstance = typeof mockPdfDocInstance;
 
-// Mock the dynamic import('pdfkit')
-vi.mock('pdfkit', async () => {
-     // The factory function returns the object that the dynamic import will resolve to
+// Mock the actual PDFDocument constructor from the 'pdfkit' module
+vi.mock('pdfkit', () => {
+     // The factory function returns the object that the static import will resolve to
      return {
          // pdfkit is typically used as a class constructor (`new PDFDocument()`)
          // So, we mock the default export as a class (or a function that returns the mock instance)
@@ -167,9 +167,9 @@ describe('Receipt Actions', () => {
         // Reset all mocks before each test
         vi.clearAllMocks();
 
-        // Re-import the mocked PDFDocument constructor before each test
-        // to ensure the mock implementation is fresh
-        PDFDocumentMockConstructor = (await import('pdfkit')).default as vi.Mock;
+        // Get the mocked constructor instance from the vi.mock setup
+        PDFDocumentMockConstructor = (PDFDocument as unknown as vi.Mock);
+
 
         // Setup default mock implementations for fs
         (fs.readFile as vi.Mock).mockResolvedValue('[]'); // Default: empty receipts file
@@ -398,25 +398,21 @@ describe('Receipt Actions', () => {
             expect(fs.unlink).toHaveBeenCalledWith(expect.stringContaining('mock-uuid-123.pdf'));
         });
 
-         it('should fail if PDFKit dynamic import fails (simulated)', async () => {
-            // Override the mock for this specific test to simulate failure
-             vi.mock('pdfkit', async () => {
-                 // Simulate import error or incorrect structure
-                 return { default: undefined }; // Or throw new Error("Module not found");
+         it('should fail if PDFKit constructor throws an error', async () => {
+            // Override the mock for this specific test to throw on instantiation
+             PDFDocumentMockConstructor.mockImplementation(() => {
+                 throw new TypeError("PDFKit Instantiation Error");
              });
 
-             // Re-trigger the import within the action
              const result = await createReceipt(basicInput);
 
              expect(result.success).toBe(false);
-            // The exact error message might vary, but check for indicators
             expect(result.message).toMatch(/PDF library initialization error/i);
-            expect(result.message).toMatch(/TypeError/i); // Likely a TypeError if .default is undefined
+            expect(result.message).toMatch(/PDFKit Instantiation Error/);
             expect(fs.writeFile).not.toHaveBeenCalled();
-            expect(PDFDocumentMockConstructor).not.toHaveBeenCalled(); // Constructor shouldn't be called
-             expect(fs.unlink).not.toHaveBeenCalled(); // PDF wasn't even created
+            expect(PDFDocumentMockConstructor).toHaveBeenCalledOnce(); // Constructor was called, but threw
+             expect(fs.unlink).not.toHaveBeenCalled(); // PDF wasn't created
         });
-
     });
 
     // --- generateReceiptPdf Tests ---
@@ -471,7 +467,7 @@ describe('Receipt Actions', () => {
             expect(mockPdfDocInstance.text).toHaveBeenCalledWith(expect.stringContaining('Subtotal'), expect.anything());
              expect(mockPdfDocInstance.text).toHaveBeenCalledWith(`$${testReceipt.subtotal_excl_GST.toFixed(2)}`, expect.anything());
              expect(mockPdfDocInstance.text).toHaveBeenCalledWith(expect.stringContaining('Total (inc GST)'), expect.anything());
-             expect(mockPdfDocInstance.text).toHaveBeenCalledWith(`$${testReceipt.total_inc_GST.toFixed(2)}`, expect.anything()); // Total should not be bold here
+             expect(mockPdfDocInstance.text).toHaveBeenCalledWith(`$${testReceipt.total_inc_GST.toFixed(2)}`, expect.anything());
              expect(mockPdfDocInstance.stroke).toHaveBeenCalled(); // Lines drawn
              expect(mockPdfDocInstance.end).toHaveBeenCalledOnce();
          });
@@ -527,31 +523,17 @@ describe('Receipt Actions', () => {
              expect(fs.unlink).toHaveBeenCalledWith(expect.stringContaining(testReceipt.receipt_id));
          });
 
-          it('should handle dynamic import errors gracefully', async () => {
+          it('should handle errors thrown during PDFDocument instantiation', async () => {
              // Override mock for this test
-              vi.mock('pdfkit', async () => {
-                  throw new Error("Dynamic Import Failed");
-              });
-
-              const result = await generateReceiptPdf(testReceipt);
-
-              expect(result.success).toBe(false);
-              expect(result.message).toContain('Failed to generate PDF: Dynamic Import Failed');
-              expect(fs.createWriteStream).not.toHaveBeenCalled();
-              expect(fs.unlink).not.toHaveBeenCalled();
-          });
-
-          it('should handle non-constructor errors from dynamic import', async () => {
-             // Override mock for this test
-              vi.mock('pdfkit', async () => {
-                  return { default: {} }; // Not a constructor
+              PDFDocumentMockConstructor.mockImplementation(() => {
+                  throw new TypeError("PDFKit Static Instantiation Error");
               });
 
               const result = await generateReceiptPdf(testReceipt);
 
               expect(result.success).toBe(false);
               expect(result.message).toContain('PDF library initialization error');
-              expect(result.message).toContain('is not a constructor'); // Check for TypeError message
+              expect(result.message).toContain('PDFKit Static Instantiation Error');
               expect(fs.createWriteStream).not.toHaveBeenCalled();
               expect(fs.unlink).not.toHaveBeenCalled();
           });
