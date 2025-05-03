@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
@@ -405,9 +405,9 @@ export default function NewReceiptPage() {
                           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
                             <div className="space-y-0.5">
                               <FormLabel className="text-base">Include GST</FormLabel>
-                              <FormDescription>
+                              <p className="text-sm text-muted-foreground">
                                 Apply 10% GST to eligible products.
-                              </FormDescription>
+                              </p>
                             </div>
                             <FormControl>
                               <Switch
@@ -435,9 +435,9 @@ export default function NewReceiptPage() {
                               <Label htmlFor="force-tax-invoice-checkbox">
                                 Force "Tax Invoice" Label
                               </Label>
-                              <FormDescription>
+                              <p className="text-sm text-muted-foreground">
                                 Mark as Tax Invoice even if below $82.50 (requires GST to be included).
-                              </FormDescription>
+                              </p>
                             </div>
                           </FormItem>
                         )}
