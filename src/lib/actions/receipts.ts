@@ -90,14 +90,20 @@ const PdfGenerator = {
     _initialize(receiptId: string, operationId: string): void {
         this._logPrefix = `[${operationId} PDF ${receiptId}]`;
         this._filePath = path.join(PDF_DIR, `${receiptId}.pdf`);
-        this._doc = new PDFDocument({
-             margin: 50,
-             bufferPages: true, // Important for handling page breaks correctly
-             // Attempt to load standard font
-             font: 'Helvetica'
-        });
+        logger.info(this._logPrefix, `Initializing PDF generation for path: ${this._filePath}`);
+        try {
+            this._doc = new PDFDocument({
+                 margin: 50,
+                 bufferPages: true, // Important for handling page breaks correctly
+                 // font: 'Helvetica' // REMOVED: Rely on default Helvetica
+            });
+             logger.debug(this._logPrefix, `PDFDocument instantiated successfully.`);
+        } catch (instantiationError) {
+            logger.error(this._logPrefix, `FATAL: Error instantiating PDFDocument`, instantiationError);
+             // Re-throw a more specific error to be caught by the generate method
+             throw new Error(`PDF library initialization error: ${instantiationError instanceof Error ? instantiationError.message : String(instantiationError)}`);
+        }
         this._success = false; // Reset success flag
-        logger.info(this._logPrefix, `Initialized PDF generation for path: ${this._filePath}`);
     },
 
     async _setupStream(): Promise<void> {
@@ -428,7 +434,13 @@ const PdfGenerator = {
 
 
     async generate(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
-        this._initialize(receipt.receipt_id, operationId);
+        try {
+            this._initialize(receipt.receipt_id, operationId); // Can throw if PDFDocument fails
+        } catch(initError: any) {
+             logger.error(this._logPrefix, 'ERROR during PDF initialization', initError);
+             // No cleanup needed yet as stream/file haven't been created
+             return { success: false, message: initError.message || "PDF initialization failed." };
+        }
 
         try {
             await this._setupStream();
@@ -465,8 +477,8 @@ const PdfGenerator = {
             // Format error message
             let message = `Failed to generate PDF: ${error.message || 'Unknown error'}`;
             if (error instanceof TypeError && (error.message.includes('is not a constructor') || error.message.includes('is not a function'))) {
-                 message = `Failed to generate PDF: PDF library initialization error. (${error.message})`;
-                 logger.error(this._logPrefix, 'PDFKit library instantiation failed. Check imports and dependencies.');
+                 message = `Failed to generate PDF: PDF library issue. (${error.message})`; // Simplified message
+                 logger.error(this._logPrefix, 'PDFKit library instantiation or usage failed. Check imports, dependencies, and usage patterns.');
             } else if (error.message.includes('ENOENT') && error.message.includes('.afm')) {
                  message = `Failed to generate PDF: Font file error. Ensure fonts are correctly installed/accessible. (${error.message})`;
                  logger.error(this._logPrefix, 'PDFKit font file error. Missing or inaccessible font file.', error);
@@ -642,6 +654,11 @@ export async function createReceipt(
 
     } catch (error: any) {
         logger.error(funcPrefix, `Unhandled error during receipt creation for customer ${input.customer_id}`, error);
+         // Check if the error is the specific font loading error
+         if (error.message && error.message.includes('ENOENT') && error.message.includes('.afm')) {
+             logger.error(funcPrefix, 'Font loading error detected during receipt creation.', error);
+             return { success: false, message: `Failed to generate PDF due to a font issue. Ensure fonts are accessible. Error: ${error.message}` };
+         }
          return { success: false, message: `An unexpected error occurred during invoice creation: ${error.message || 'Unknown error. Check server logs.'}` };
     }
 }
