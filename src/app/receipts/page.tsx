@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns'; // Keep parseISO
 
 import type { Receipt } from '@/lib/types';
-import { getReceipts, getReceiptPdfPath } from '@/lib/actions/receipts'; // Assume getReceiptPdfPath exists
+import { readReceipts, getReceiptPdfPath } from '@/lib/actions/receipts'; // Renamed getReceipts to readReceipts
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +23,7 @@ export default function ReceiptsHistoryPage() {
   const fetchReceipts = async () => {
     setIsLoading(true);
     try {
-      const data = await getReceipts();
+      const data = await readReceipts(); // Use readReceipts here
       setReceipts(data);
     } catch (error) {
       console.error('Failed to fetch receipts:', error);
