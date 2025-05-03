@@ -7,7 +7,8 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod'; // Import Zod for validation
 
-const DATA_FILE = path.join(process.cwd(), 'src/lib/data/customers.json');
+const DATA_DIR = path.join(process.cwd(), 'src/lib/data'); // Define base data directory
+const DATA_FILE = path.join(DATA_DIR, 'customers.json');
 
 // --- Zod Schema for Customer Validation ---
 const customerSchema = z.discriminatedUnion('customer_type', [
@@ -37,36 +38,55 @@ const customerSchema = z.discriminatedUnion('customer_type', [
   }),
 ]);
 
+// Ensure data directory exists
+async function ensureDataDirectoryExists() {
+    try {
+        await fs.mkdir(DATA_DIR, { recursive: true });
+         console.log(`Customer data directory ensured: ${DATA_DIR}`);
+    } catch (error) {
+        console.error('FATAL: Error creating customer data directory:', error);
+        throw new Error(`Failed to ensure customer data directory exists: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+
 // Helper function to read data
 async function readCustomers(): Promise<Customer[]> {
   try {
+    await ensureDataDirectoryExists(); // Check before reading
     const fileContent = await fs.readFile(DATA_FILE, 'utf-8');
     return JSON.parse(fileContent);
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      console.log("Customers file not found, returning empty array.");
+      console.log(`Customers file (${DATA_FILE}) not found, returning empty array.`);
       return [];
     }
-    console.error('Error reading customers:', error);
-    throw new Error('Could not load customers.');
+    console.error(`Error reading customers file (${DATA_FILE}):`, error);
+    throw new Error(`Could not load customers: ${error.message}`);
   }
 }
 
 // Helper function to write data
 async function writeCustomers(customers: Customer[]): Promise<void> {
   try {
+    await ensureDataDirectoryExists(); // Check before writing
     await fs.writeFile(DATA_FILE, JSON.stringify(customers, null, 2), 'utf-8');
-  } catch (error) {
-    console.error('Error writing customers:', error);
-    throw new Error('Failed to save customers.');
+  } catch (error: any) {
+    console.error(`Error writing customers file (${DATA_FILE}):`, error);
+    throw new Error(`Failed to save customers: ${error.message}`);
   }
 }
+
+// Run directory check once on module load
+ensureDataDirectoryExists().catch(err => {
+     console.error("Initial customer directory check failed on module load:", err);
+});
 
 export async function getCustomers(): Promise<Customer[]> {
   return await readCustomers();
 }
 
 export async function getCustomerById(id: string): Promise<Customer | null> {
+    if (!id) return null;
     const customers = await readCustomers();
     const customer = customers.find(c => c.id === id);
     return customer || null;
@@ -100,7 +120,7 @@ export async function addCustomer(
     await writeCustomers(customers);
     return { success: true, customer: newCustomer };
   } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to add customer.' };
+    return { success: false, message: `Failed to add customer: ${error.message || 'Unknown error'}` };
   }
 }
 
@@ -148,7 +168,7 @@ export async function updateCustomer(
     await writeCustomers(customers);
     return { success: true, customer: updatedCustomer };
   } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to update customer.' };
+    return { success: false, message: `Failed to update customer: ${error.message || 'Unknown error'}` };
   }
 }
 
@@ -170,19 +190,6 @@ export async function deleteCustomer(
     await writeCustomers(updatedCustomers);
     return { success: true };
   } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to delete customer.' };
+    return { success: false, message: `Failed to delete customer: ${error.message || 'Unknown error'}` };
   }
 }
-
-
-// Ensure data directory exists
-async function ensureDataDirectoryExists() {
-    const dir = path.dirname(DATA_FILE);
-    try {
-        await fs.mkdir(dir, { recursive: true });
-    } catch (error) {
-        console.error('Error creating data directory:', error);
-    }
-}
-
-ensureDataDirectoryExists();
