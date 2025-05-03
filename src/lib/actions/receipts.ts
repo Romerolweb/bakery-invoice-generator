@@ -2,7 +2,7 @@
 'use server';
 
 import type { Receipt, LineItem, Customer, Product, SellerProfile } from '@/lib/types';
-import { promises as fs } from 'fs';
+import { promises as fsPromises, createWriteStream } from 'fs'; // Import createWriteStream from 'fs'
 import type { WriteStream } from 'fs'; // Import WriteStream type
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -22,9 +22,9 @@ const PDF_DIR = path.join(DATA_DIR, 'receipt-pdfs'); // Directory to store gener
 async function ensureDirectoriesExist() {
     try {
         console.log(`Ensuring data directory exists: ${DATA_DIR}`);
-        await fs.mkdir(DATA_DIR, { recursive: true });
+        await fsPromises.mkdir(DATA_DIR, { recursive: true });
         console.log(`Ensuring PDF directory exists: ${PDF_DIR}`);
-        await fs.mkdir(PDF_DIR, { recursive: true });
+        await fsPromises.mkdir(PDF_DIR, { recursive: true });
         console.log('Data directories ensured successfully.');
     } catch (error) {
         console.error('FATAL: Error creating data/PDF directories:', error);
@@ -39,7 +39,7 @@ export async function readReceipts(): Promise<Receipt[]> {
     console.log(`Attempting to ensure directories before reading receipts...`);
     await ensureDirectoriesExist(); // Ensure directory exists before reading
     console.log(`Attempting to read receipts file: ${RECEIPTS_FILE}`);
-    fileContent = await fs.readFile(RECEIPTS_FILE, 'utf-8');
+    fileContent = await fsPromises.readFile(RECEIPTS_FILE, 'utf-8');
     const receipts = JSON.parse(fileContent);
     console.log(`Successfully read and parsed ${receipts.length} receipts.`);
     return receipts;
@@ -63,7 +63,7 @@ export async function writeReceipts(receipts: Receipt[]): Promise<void> {
     await ensureDirectoriesExist(); // Ensure directory exists before writing
     const dataToWrite = JSON.stringify(receipts, null, 2);
     console.log(`Attempting to write ${receipts.length} receipts to file: ${RECEIPTS_FILE}`);
-    await fs.writeFile(RECEIPTS_FILE, dataToWrite, 'utf-8');
+    await fsPromises.writeFile(RECEIPTS_FILE, dataToWrite, 'utf-8');
     console.log(`Successfully wrote receipts data.`);
   } catch (error: any) {
     console.error(`Error writing receipts file (${RECEIPTS_FILE}):`, error);
@@ -189,6 +189,7 @@ export async function createReceipt(
         const sellerProfileSnapshot = createSellerSnapshot(sellerProfile);
         let purchaseDate: Date;
         try {
+            // Assume input.date_of_purchase is 'yyyy-MM-dd' and treat it as UTC start of day
             purchaseDate = parseISO(`${input.date_of_purchase}T00:00:00.000Z`);
              if (isNaN(purchaseDate.getTime())) {
                  throw new Error('Invalid date format parsed');
@@ -536,7 +537,8 @@ export async function generateReceiptPdf(receipt: Receipt, operationId: string):
         // Ensure PDF directory exists right before writing
         await ensureDirectoriesExist();
 
-        writeStream = fs.createWriteStream(filePath);
+        // Use createWriteStream directly from 'fs'
+        writeStream = createWriteStream(filePath);
         doc = new PDFDocument({ margin: 50, bufferPages: true });
 
         const streamFinishPromise = new Promise<void>((resolve, reject) => {
@@ -654,9 +656,9 @@ async function cleanupFailedPdf(
         // Try to delete the potentially corrupted/incomplete file
          console.log(`${logPrefix} Checking existence of potentially incomplete PDF: ${filePath}`);
         try {
-            await fs.access(filePath);
+            await fsPromises.access(filePath);
             console.log(`${logPrefix} Attempting to delete incomplete/corrupted PDF: ${filePath}`);
-            await fs.unlink(filePath);
+            await fsPromises.unlink(filePath);
             console.log(`${logPrefix} Deleted incomplete/corrupted PDF: ${filePath}`);
         } catch (accessOrUnlinkError: any) {
              if (accessOrUnlinkError.code === 'ENOENT') {
@@ -682,7 +684,7 @@ export async function getReceiptPdfPath(receiptId: string): Promise<string | nul
     console.log(`${logPrefix} Checking for PDF at path: ${pdfPath}`);
     try {
         await ensureDirectoriesExist();
-        await fs.access(pdfPath);
+        await fsPromises.access(pdfPath);
         console.log(`${logPrefix} PDF path found.`);
         return pdfPath;
     } catch (error: any) {
@@ -719,7 +721,7 @@ export async function getReceiptPdfContent(receiptId: string): Promise<Buffer | 
 
      try {
          console.log(`${logPrefix} Reading PDF content from path: ${pdfPath}`);
-         const pdfContent = await fs.readFile(pdfPath);
+         const pdfContent = await fsPromises.readFile(pdfPath);
          console.log(`${logPrefix} Successfully read PDF content (${pdfContent.length} bytes).`);
          return pdfContent;
      } catch (error: any) {
