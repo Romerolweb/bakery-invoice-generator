@@ -9,14 +9,14 @@ import Link from 'next/link';
 import type { Customer, Product } from '@/lib/types';
 import { getCustomers } from '@/lib/actions/customers';
 import { getProducts } from '@/lib/actions/products';
-import { createReceipt } from '@/lib/actions/receipts'; // Reverted rename createReceipt to createInvoice
+import { createReceipt } from '@/lib/actions/receipts'; // Correct import name
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useFormField } from '@/components/ui/form'; // Import useFormField
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Added FormDescription
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle, Trash2, CalendarIcon, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/services/logging'; // Import logger for client-side logging if needed
 
 const lineItemSchema = z.object({
   product_id: z.string().min(1, 'Product selection is required'),
@@ -43,7 +44,9 @@ const receiptFormSchema = z.object({
 
 type ReceiptFormData = z.infer<typeof receiptFormSchema>;
 
-export default function NewInvoicePage() { // Renamed component
+const CLIENT_LOG_PREFIX = 'NewInvoicePage';
+
+export default function NewInvoicePage() {
   const { toast } = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -70,7 +73,7 @@ export default function NewInvoicePage() { // Renamed component
   // Fetch initial data
   useEffect(() => {
     async function loadData() {
-      console.log('Loading initial customer and product data...');
+      logger.info(CLIENT_LOG_PREFIX, 'Loading initial customer and product data...');
       setIsLoadingData(true);
       try {
         const [customersData, productsData] = await Promise.all([
@@ -79,9 +82,9 @@ export default function NewInvoicePage() { // Renamed component
         ]);
         setCustomers(customersData);
         setProducts(productsData);
-        console.log(`Loaded ${customersData.length} customers and ${productsData.length} products.`);
+        logger.info(CLIENT_LOG_PREFIX, `Loaded ${customersData.length} customers and ${productsData.length} products.`);
       } catch (error) {
-        console.error('Failed to load initial data:', error);
+        logger.error(CLIENT_LOG_PREFIX, 'Failed to load initial data', error);
         toast({
           title: "Error Loading Data",
           description: "Could not load customers or products. Please try again later.",
@@ -89,30 +92,31 @@ export default function NewInvoicePage() { // Renamed component
         });
       } finally {
         setIsLoadingData(false);
-        console.log('Finished loading initial data.');
+        logger.info(CLIENT_LOG_PREFIX, 'Finished loading initial data.');
       }
     }
     loadData();
-  }, [toast]);
+  }, [toast]); // Removed redundant dependency
 
   // Recalculate totals when line items or GST setting change
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name?.startsWith('line_items') || name === 'include_gst') {
-        console.log(`Form field changed (${name}), recalculating totals...`);
+        logger.debug(CLIENT_LOG_PREFIX, `Form field changed (${name}), recalculating totals...`);
         calculateTotals(value as ReceiptFormData);
       }
     });
     // Initial calculation on load/data ready
-    if (products.length > 0) {
-        console.log('Performing initial total calculation...');
+    if (products.length > 0 && !isLoadingData) { // Ensure data is loaded before first calc
+        logger.debug(CLIENT_LOG_PREFIX, 'Performing initial total calculation...');
         calculateTotals(form.getValues());
     }
     return () => {
-        console.log('Unsubscribing from form watch.');
+        logger.debug(CLIENT_LOG_PREFIX, 'Unsubscribing from form watch.');
         subscription.unsubscribe();
     };
-  }, [form, products]);
+    // Depend on products and isLoadingData to trigger initial calculation correctly
+  }, [form, products, isLoadingData]);
 
   const calculateTotals = (formData: ReceiptFormData) => {
      let subtotal = 0;
@@ -123,12 +127,14 @@ export default function NewInvoicePage() { // Renamed component
          if (product && item.quantity > 0) {
              const lineTotalExclGST = product.unit_price * item.quantity;
              subtotal += lineTotalExclGST;
+             // Only add GST if global flag is true AND product is applicable
              if (formData.include_gst && product.GST_applicable) {
                  gstAmount += lineTotalExclGST * 0.1;
              }
          }
      });
 
+     // If GST is not included globally, ensure final GST is zero
      if (!formData.include_gst) {
          gstAmount = 0;
      }
@@ -139,41 +145,60 @@ export default function NewInvoicePage() { // Renamed component
          gst: parseFloat(gstAmount.toFixed(2)),
          total: parseFloat(total.toFixed(2)),
      };
-     console.log('Calculated Totals:', newTotals);
+     logger.debug(CLIENT_LOG_PREFIX, 'Calculated Totals:', newTotals);
      setCalculatedTotals(newTotals);
   };
 
 
   const onSubmit = async (data: ReceiptFormData) => {
-    console.log('onSubmit triggered. Starting invoice submission...');
+    logger.info(CLIENT_LOG_PREFIX, 'onSubmit triggered. Starting invoice submission...');
     setIsSubmitting(true);
 
-    // Format date just before sending
     const submissionData = {
         ...data,
-        date_of_purchase: format(data.date_of_purchase, 'yyyy-MM-dd'), // Format to YYYY-MM-DD string
+        date_of_purchase: format(data.date_of_purchase, 'yyyy-MM-dd'),
     };
-    console.log('Formatted submission data:', submissionData);
+    logger.info(CLIENT_LOG_PREFIX, 'Formatted submission data:', { customer_id: submissionData.customer_id, date: submissionData.date_of_purchase, items: submissionData.line_items.length }); // Avoid logging potentially sensitive data
 
     try {
-      console.log('Calling createReceipt server action...'); // Use correct action name
-      const result = await createReceipt(submissionData); // Use createReceipt
-      console.log('createReceipt action result:', result);
+      logger.info(CLIENT_LOG_PREFIX, 'Calling createReceipt server action...');
+      const result = await createReceipt(submissionData);
+      logger.info(CLIENT_LOG_PREFIX, 'createReceipt action result:', result);
 
       if (result.success && result.receipt) {
          const receiptId = result.receipt.receipt_id;
          const shortId = receiptId.substring(0, 8);
-         console.log(`Invoice ${shortId}... created successfully. PDF Path: ${result.pdfPath}`);
-         toast({
-           title: "Invoice Created",
-           description: `Invoice ${shortId}... generated. PDF ready for download.`,
-           action: result.pdfPath ? (
-             <Button variant="outline" size="sm" onClick={() => window.open(`/api/download-pdf?id=${receiptId}`, '_blank')}>
-                  <Download className="mr-2 h-4 w-4" /> Download PDF
-             </Button>
-           ) : undefined,
-         });
-         console.log('Resetting form...');
+
+         // Check PDF status
+         if (result.pdfPath) {
+             logger.info(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created successfully. PDF generated at server path: ${result.pdfPath}`);
+             toast({
+               title: "Invoice Created",
+               description: `Invoice ${shortId}... generated. PDF ready for download.`,
+               action: (
+                 <Button variant="outline" size="sm" onClick={() => window.open(`/api/download-pdf?id=${receiptId}`, '_blank')}>
+                      <Download className="mr-2 h-4 w-4" /> Download PDF
+                 </Button>
+               ),
+             });
+         } else if (result.pdfError) {
+             logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF generation failed: ${result.pdfError}`);
+             toast({
+               title: "Invoice Created (PDF Failed)",
+               description: `Invoice ${shortId}... saved, but PDF generation failed: ${result.pdfError}`,
+               variant: "destructive", // Use warning/error variant
+             });
+         } else {
+             // This case should ideally not happen if the backend returns correctly
+              logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF status is unknown.`);
+              toast({
+               title: "Invoice Created (PDF Status Unknown)",
+               description: `Invoice ${shortId}... saved, but the PDF status is unclear.`,
+               variant: "default",
+             });
+         }
+
+         logger.info(CLIENT_LOG_PREFIX, 'Resetting form...');
          form.reset({
               customer_id: '',
               date_of_purchase: new Date(),
@@ -181,18 +206,19 @@ export default function NewInvoicePage() { // Renamed component
               include_gst: false,
               force_tax_invoice: false,
          });
-          console.log('Resetting calculated totals...');
+          logger.info(CLIENT_LOG_PREFIX, 'Resetting calculated totals...');
           setCalculatedTotals({ subtotal: 0, gst: 0, total: 0 });
-      } else {
-        console.error('Error creating invoice:', result.message);
+
+      } else { // createReceipt failed (data saving or validation issue)
+        logger.error(CLIENT_LOG_PREFIX, 'Error creating invoice (data saving/validation):', result.message);
         toast({
           title: "Error Creating Invoice",
-          description: result.message || "Failed to create invoice. Please check details.",
+          description: result.message || "Failed to save invoice data. Please check details.",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error("Unexpected error during invoice submission:", error);
+      logger.error(CLIENT_LOG_PREFIX, "Unexpected error during invoice submission:", error);
       toast({
         title: "Error",
         description: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -200,7 +226,7 @@ export default function NewInvoicePage() { // Renamed component
       });
     } finally {
       setIsSubmitting(false);
-      console.log('Invoice submission process finished.');
+      logger.info(CLIENT_LOG_PREFIX, 'Invoice submission process finished.');
     }
   };
 
@@ -294,7 +320,7 @@ export default function NewInvoicePage() { // Renamed component
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[45%]">Product</TableHead>
-                    <TableHead className="w-[15%]">Quantity</TableHead>
+                    <TableHead className="w-[15%] text-right">Quantity</TableHead> {/* Align right */}
                     <TableHead className="text-right">Unit Price</TableHead>
                     <TableHead className="text-right">Line Total</TableHead>
                     <TableHead className="w-[50px] text-right">Action</TableHead>
@@ -318,7 +344,7 @@ export default function NewInvoicePage() { // Renamed component
                               <FormItem>
                                 <Select onValueChange={itemField.onChange} defaultValue={itemField.value} value={itemField.value || ''}>
                                   <FormControl>
-                                    <SelectTrigger className="h-9"> {/* Slightly smaller trigger */}
+                                    <SelectTrigger className="h-9">
                                       <SelectValue placeholder="Select product" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -331,19 +357,12 @@ export default function NewInvoicePage() { // Renamed component
                                     ))}
                                   </SelectContent>
                                 </Select>
-                                <FormMessage /> {/* Ensure messages show here */}
+                                <FormMessage />
                               </FormItem>
                             )}
                           />
                         </TableCell>
-                        <TableCell>
-                          {/*
-                            Corrected structure to avoid React.Children.only error.
-                            The issue was likely related to how `FormField`, `FormControl`, and the `Input`
-                            interacted, especially within the `useFieldArray` mapping.
-                            Removing the explicit `FormControl` and passing field props directly to `Input`
-                            within the `FormField` render prop is a common fix.
-                           */}
+                        <TableCell className="text-right"> {/* Align right */}
                           <FormField
                             control={form.control}
                             name={`line_items.${index}.quantity`}
@@ -352,8 +371,8 @@ export default function NewInvoicePage() { // Renamed component
                                   <Input
                                     type="number"
                                     min="1"
-                                    className="h-9 text-right" // Slightly smaller + align
-                                    {...itemField} // Spread field props directly
+                                    className="h-9 w-20 text-right inline-block" // Smaller width, inline, align right
+                                    {...itemField}
                                   />
                                 <FormMessage />
                               </FormItem>
@@ -373,7 +392,7 @@ export default function NewInvoicePage() { // Renamed component
                               variant="ghost"
                               size="icon"
                               onClick={() => remove(index)}
-                              className="text-destructive hover:text-destructive-foreground hover:bg-destructive h-8 w-8" // Smaller icon button
+                              className="text-destructive hover:text-destructive-foreground hover:bg-destructive h-8 w-8"
                             >
                               <Trash2 className="h-4 w-4" />
                               <span className="sr-only">Remove Item</span>
@@ -395,13 +414,14 @@ export default function NewInvoicePage() { // Renamed component
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Item
               </Button>
-               {/* Display array-level errors (e.g., "At least one item required") */}
-               {form.formState.errors.line_items && !form.formState.errors.line_items.root?.message && Array.isArray(form.formState.errors.line_items) && form.formState.errors.line_items.length === 0 && (
-                   <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.line_items.message || 'Issue with line items.'}</p>
-               )}
-                {form.formState.errors.line_items?.root?.message && (
+               {/* Display array-level errors */}
+               {form.formState.errors.line_items?.root?.message && (
                     <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.line_items.root.message}</p>
                )}
+                {/* Check if the error is on the array itself (e.g., minLength) and not on individual items */}
+               {form.formState.errors.line_items && !form.formState.errors.line_items.root && typeof form.formState.errors.line_items === 'object' && 'message' in form.formState.errors.line_items && (
+                  <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.line_items.message}</p>
+                )}
             </div>
 
 
@@ -415,9 +435,9 @@ export default function NewInvoicePage() { // Renamed component
                           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
                             <div className="space-y-0.5">
                               <FormLabel className="text-base">Include GST</FormLabel>
-                              <p className="text-sm text-muted-foreground">
+                              <FormDescription> {/* Use FormDescription */}
                                 Apply 10% GST to eligible products.
-                              </p>
+                              </FormDescription>
                             </div>
                             <FormControl>
                               <Switch
@@ -439,15 +459,17 @@ export default function NewInvoicePage() { // Renamed component
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
                                 id="force-tax-invoice-checkbox"
+                                // Disable if GST is not included
+                                disabled={!form.watch('include_gst')}
                               />
                             </FormControl>
                             <div className="space-y-1 leading-none">
-                              <Label htmlFor="force-tax-invoice-checkbox">
+                              <Label htmlFor="force-tax-invoice-checkbox" className={cn(!form.watch('include_gst') && 'text-muted-foreground/50')}>
                                 Force "Tax Invoice" Label
                               </Label>
-                              <p className="text-sm text-muted-foreground">
+                              <FormDescription className={cn(!form.watch('include_gst') && 'text-muted-foreground/50')}> {/* Use FormDescription */}
                                 Mark as Tax Invoice even if below $82.50 (requires GST to be included).
-                              </p>
+                              </FormDescription>
                             </div>
                           </FormItem>
                         )}
@@ -468,7 +490,7 @@ export default function NewInvoicePage() { // Renamed component
                           </div>
                            <Separator className="my-2"/>
                            <div className="flex justify-between font-semibold text-lg">
-                            <span>Total (incl. GST):</span>
+                            <span>Total Amount:</span> {/* Changed label slightly */}
                             <span>${calculatedTotals.total.toFixed(2)}</span>
                           </div>
                      </CardContent>
@@ -479,7 +501,8 @@ export default function NewInvoicePage() { // Renamed component
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Generate Invoice
             </Button>
-            {!form.formState.isValid && !isSubmitting && (
+            {/* Improved Validity Check Message */}
+            {form.formState.isSubmitted && !form.formState.isValid && !isSubmitting && (
                  <p className="text-sm text-destructive text-center md:text-left mt-2">Please fix the errors above before submitting.</p>
             )}
           </form>
