@@ -46,11 +46,47 @@ const useFormField = () => {
   const itemContext = React.useContext(FormItemContext)
   const { getFieldState, formState } = useFormContext()
 
+  // Check if formState exists before accessing getFieldState
+  // This can happen if useFormField is used outside a FormProvider
+  // or if the form hasn't fully initialized yet.
+  if (!formState) {
+     console.warn('useFormField used outside of a FormProvider or before form initialization.');
+     // Return default values or throw a more specific error
+     return {
+        id: itemContext?.id || '', // Use optional chaining for itemContext
+        name: fieldContext?.name || '', // Use optional chaining for fieldContext
+        formItemId: `${itemContext?.id}-form-item` || 'form-item',
+        formDescriptionId: `${itemContext?.id}-form-item-description` || 'form-item-description',
+        formMessageId: `${itemContext?.id}-form-item-message` || 'form-item-message',
+        invalid: false,
+        isDirty: false,
+        isTouched: false,
+        isValidating: false,
+        error: undefined,
+     };
+  }
+
+
   const fieldState = getFieldState(fieldContext.name, formState)
 
   if (!fieldContext) {
     throw new Error("useFormField should be used within <FormField>")
   }
+   if (!itemContext) {
+     // This might happen if FormItem context is somehow lost, though less likely
+     console.warn('FormItem context not found within useFormField.');
+     // Provide default IDs based only on field name if necessary
+     const baseId = fieldContext.name.replace(/[\.\[\]]/g, '-'); // Simple ID generation
+     return {
+         id: baseId,
+         name: fieldContext.name,
+         formItemId: `${baseId}-form-item`,
+         formDescriptionId: `${baseId}-form-item-description`,
+         formMessageId: `${baseId}-form-item-message`,
+         ...fieldState,
+     };
+   }
+
 
   const { id } = itemContext
 
@@ -167,7 +203,7 @@ const FormMessage = React.forwardRef<
 FormMessage.displayName = "FormMessage"
 
 export {
-  useFormField,
+  useFormField, // Export the hook
   Form,
   FormItem,
   FormLabel,

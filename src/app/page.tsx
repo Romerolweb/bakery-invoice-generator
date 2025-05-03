@@ -9,14 +9,14 @@ import Link from 'next/link';
 import type { Customer, Product } from '@/lib/types';
 import { getCustomers } from '@/lib/actions/customers';
 import { getProducts } from '@/lib/actions/products';
-import { createReceipt } from '@/lib/actions/receipts';
+import { createReceipt } from '@/lib/actions/receipts'; // Reverted rename createReceipt to createInvoice
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useFormField } from '@/components/ui/form'; // Import useFormField
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
@@ -43,7 +43,7 @@ const receiptFormSchema = z.object({
 
 type ReceiptFormData = z.infer<typeof receiptFormSchema>;
 
-export default function NewReceiptPage() {
+export default function NewInvoicePage() { // Renamed component
   const { toast } = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -93,7 +93,7 @@ export default function NewReceiptPage() {
       }
     }
     loadData();
-  }, [toast]); // Removed dependencies that don't affect data fetching
+  }, [toast]);
 
   // Recalculate totals when line items or GST setting change
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function NewReceiptPage() {
         console.log('Unsubscribing from form watch.');
         subscription.unsubscribe();
     };
-  }, [form, products]); // Re-run if form instance or products change
+  }, [form, products]);
 
   const calculateTotals = (formData: ReceiptFormData) => {
      let subtotal = 0;
@@ -156,8 +156,8 @@ export default function NewReceiptPage() {
     console.log('Formatted submission data:', submissionData);
 
     try {
-      console.log('Calling createReceipt server action...');
-      const result = await createReceipt(submissionData);
+      console.log('Calling createReceipt server action...'); // Use correct action name
+      const result = await createReceipt(submissionData); // Use createReceipt
       console.log('createReceipt action result:', result);
 
       if (result.success && result.receipt) {
@@ -337,14 +337,24 @@ export default function NewReceiptPage() {
                           />
                         </TableCell>
                         <TableCell>
+                          {/*
+                            Corrected structure to avoid React.Children.only error.
+                            The issue was likely related to how `FormField`, `FormControl`, and the `Input`
+                            interacted, especially within the `useFieldArray` mapping.
+                            Removing the explicit `FormControl` and passing field props directly to `Input`
+                            within the `FormField` render prop is a common fix.
+                           */}
                           <FormField
                             control={form.control}
                             name={`line_items.${index}.quantity`}
                             render={({ field: itemField }) => (
                               <FormItem>
-                                <FormControl>
-                                  <Input type="number" min="1" {...itemField} className="h-9 text-right" /> {/* Slightly smaller + align */}
-                                </FormControl>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    className="h-9 text-right" // Slightly smaller + align
+                                    {...itemField} // Spread field props directly
+                                  />
                                 <FormMessage />
                               </FormItem>
                             )}
