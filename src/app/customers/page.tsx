@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSearchParams, useRouter } from 'next/navigation';
-
+// Assuming types are defined in '@/lib/types'
 import type { Customer } from '@/lib/types';
 import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '@/lib/actions/customers';
 

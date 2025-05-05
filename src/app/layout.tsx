@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist } from 'next/font/google'; // Assuming Geist is preferred font
 import './globals.css';
+import React from 'react'; // Explicitly import React
 import { cn } from '@/lib/utils';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from '@/components/ui/sidebar'; // Assuming sidebar component exists
 import { Toaster } from "@/components/ui/toaster";

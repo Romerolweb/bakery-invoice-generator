@@ -6,9 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 
-import type { Customer, Product } from '@/lib/types';
-import { getCustomers } from '@/lib/actions/customers';
-import { getProducts } from '@/lib/actions/products';
+import type { Customer, Product, Receipt } from '@/lib/types';
+import { getAllCustomers } from '@/lib/actions/customers';
+import { getAllProducts } from '@/lib/actions/products';
 import { createReceipt } from '@/lib/actions/receipts'; // Correct import name
 
 import { Button } from '@/components/ui/button';
@@ -77,8 +77,8 @@ export default function NewInvoicePage() {
       setIsLoadingData(true);
       try {
         const [customersData, productsData] = await Promise.all([
-          getCustomers(),
-          getProducts(),
+          getAllCustomers(),
+          getAllProducts(),
         ]);
         setCustomers(customersData);
         setProducts(productsData);

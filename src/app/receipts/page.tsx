@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns'; // Keep parseISO
 
-import type { Receipt } from '@/lib/types';
+import { Receipt } from '@/lib/types';
 import { readReceipts, getReceiptPdfPath } from '@/lib/actions/receipts'; // Renamed getReceipts to readReceipts
 
 import { Button } from '@/components/ui/button';

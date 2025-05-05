@@ -1,7 +1,7 @@
 // src/app/api/download-pdf/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getReceiptPdfContent } from '@/lib/actions/receipts'; // Assuming this function reads the PDF buffer
-import { logger } from '@/lib/services/logging'; // Import logger
+import { getReceiptPdfContent } from '@/lib/data-access/receipts'; // Assuming this function reads the PDF buffer
+import { logger } from '@/lib/services/logging';
 
 const LOG_PREFIX = 'DownloadPdfApi';
 

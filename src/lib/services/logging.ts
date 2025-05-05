@@ -1,7 +1,10 @@
 // src/lib/services/logging.ts
 // REMOVED 'use server'; directive as it's not needed for a server-side utility and causes build errors when exporting an object.
 
+import { type } from 'os';
 import { format } from 'date-fns';
+
+type LogData = Record<string, any> | string | number | boolean | Error | undefined;
 
 // Define log levels
 enum LogLevel {
@@ -25,7 +28,7 @@ function isLevelEnabled(level: LogLevel): boolean {
 }
 
 // The core logging function
-function log(level: LogLevel, prefix: string, message: string, data?: any): void {
+function log(level: LogLevel, prefix: string, message: string, data?: LogData): void {
     if (!isLevelEnabled(level)) {
         return;
     }
@@ -40,10 +43,10 @@ function log(level: LogLevel, prefix: string, message: string, data?: any): void
     if (data) {
         // Check if data is an error object
         if (data instanceof Error) {
-            logMethod(logPrefix, message, '\n', data); // Print error stack trace nicely
+            logMethod(logPrefix, message, '\nError:', data); // Print error stack trace nicely
         } else {
              try {
-                // Attempt to stringify complex objects for better readability
+                // Attempt to stringify complex objects for better readability, handle other primitives directly
                 const dataString = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
                 logMethod(logPrefix, message, '\nData:', dataString);
              } catch (e) {
@@ -57,11 +60,16 @@ function log(level: LogLevel, prefix: string, message: string, data?: any): void
 }
 
 // Exported logger functions
-export const logger = {
-  info: (prefix: string, message: string, data?: any) => log(LogLevel.INFO, prefix, message, data),
-  warn: (prefix: string, message: string, data?: any) => log(LogLevel.WARN, prefix, message, data),
-  error: (prefix: string, message: string, error?: any) => log(LogLevel.ERROR, prefix, message, error),
-  debug: (prefix: string, message: string, data?: any) => log(LogLevel.DEBUG, prefix, message, data),
+export const logger: {
+  info: (prefix: string, message: string, data?: LogData) => void;
+  warn: (prefix: string, message: string, data?: LogData) => void;
+  error: (prefix: string, message: string, error?: LogData) => void;
+  debug: (prefix: string, message: string, data?: LogData) => void;
+} = {
+  info: (prefix, message, data) => log(LogLevel.INFO, prefix, message, data),
+  warn: (prefix, message, data) => log(LogLevel.WARN, prefix, message, data),
+  error: (prefix, message, error) => log(LogLevel.ERROR, prefix, message, error),
+  debug: (prefix, message, data) => log(LogLevel.DEBUG, prefix, message, data),
 };
 
 // Example usage within another module:

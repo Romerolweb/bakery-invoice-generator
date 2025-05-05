@@ -3,7 +3,7 @@
 
 import type { Receipt, LineItem, Customer, SellerProfile } from '@/lib/types';
 import { promises as fsPromises, createWriteStream, accessSync, unlinkSync } from 'fs';
-import type { WriteStream } from 'fs';
+import type { WriteStream, PathLike } from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import { format, parseISO } from 'date-fns';
@@ -53,13 +53,13 @@ export class PdfGenerator {
 
     // Define standard font paths for easy reference
     private _helveticaPath: string = HELVETICA_PATH;
-    private _helveticaBoldPath: string = HELVETICA_BOLD_PATH;
+    private _helveticaBoldPath: PathLike = HELVETICA_BOLD_PATH;
 
     // Ensure the PDF directory exists
     private async _ensurePdfDirectoryExists(): Promise<void> {
         const funcPrefix = `${this._logPrefix}:_ensurePdfDirectoryExists`;
         try {
-            await fsPromises.mkdir(PDF_DIR, { recursive: true });
+ await fsPromises.mkdir(PDF_DIR, { recursive: true }) ;
             logger.debug(funcPrefix, `PDF directory ensured: ${PDF_DIR}`);
         } catch (error) {
             logger.error(funcPrefix, 'FATAL: Error creating PDF directory', error);
@@ -70,7 +70,7 @@ export class PdfGenerator {
      // Check if required font files exist
     private _checkRequiredFontsExist(): void {
         const funcPrefix = `${this._logPrefix}:_checkRequiredFontsExist`;
-        const requiredFonts = [this._helveticaPath, this._helveticaBoldPath];
+        const requiredFonts: PathLike[] = [this._helveticaPath, this._helveticaBoldPath];
         const missingFonts = [];
         for (const fontPath of requiredFonts) {
             try {
@@ -108,7 +108,7 @@ export class PdfGenerator {
 
             this._doc = new PDFDocument({
                  margin: 50,
-                 bufferPages: true,
+                 bufferPages: true ,
                  // font: this._helveticaPath, // Set default font path - might not always work as expected, explicit calls are safer
             });
              logger.debug(this._logPrefix, `PDFDocument instantiated successfully.`);
@@ -120,7 +120,7 @@ export class PdfGenerator {
         this._success = false; // Reset success flag
     }
 
-
+    // Sets up the write stream for the PDF document.
     private async _setupStream(): Promise<void> {
         const funcPrefix = `${this._logPrefix}:_setupStream`;
         return new Promise(async (resolve, reject) => {
@@ -162,10 +162,11 @@ export class PdfGenerator {
         });
     }
 
+    // Adds the main header to the PDF.
     private _addHeader(isTaxInvoice: boolean): void {
         if (!this._doc) return;
         // Explicitly set font path
-        this._doc.fontSize(20).font(this._helveticaBoldPath).text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' });
+ this._doc.fontSize(20).font(this._helveticaBoldPath).text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' }) ;
         this._doc.font(this._helveticaPath).fontSize(10); // Revert to regular font path
         this._doc.moveDown();
     }
@@ -175,17 +176,18 @@ export class PdfGenerator {
          const funcPrefix = `${this._logPrefix}:_addSellerInfo`;
          logger.debug(funcPrefix, 'Adding seller info');
          this._doc.fontSize(12).font(this._helveticaBoldPath).text('From:', { underline: false }); // Bold label
-         this._doc.font(this._helveticaPath).fontSize(10); // Normal text for details
-         this._doc.text(seller.name || 'Seller Name Missing');
-         this._doc.text(seller.business_address || 'Seller Address Missing');
-         this._doc.text(`ABN/ACN: ${seller.ABN_or_ACN || 'Seller ABN/ACN Missing'}`);
-         this._doc.text(`Email: ${seller.contact_email || 'Seller Email Missing'}`);
+ this._doc.font(this._helveticaPath).fontSize(10) ; // Normal text for details
+         this._doc.text(seller.name ?? 'Seller Name Missing');
+         this._doc.text(seller.business_address ?? 'Seller Address Missing');
+         this._doc.text(`ABN/ACN: ${seller.ABN_or_ACN ?? 'Seller ABN/ACN Missing'}`);
+         this._doc.text(`Email: ${seller.contact_email ?? 'Seller Email Missing'}`);
          if (seller.phone) {
              this._doc.text(`Phone: ${seller.phone}`);
          }
          this._doc.moveDown();
     }
 
+    // Adds customer information to the PDF.
      private _addCustomerInfo(customer: Omit<Customer, 'id'>): void {
          if (!this._doc) return;
          const funcPrefix = `${this._logPrefix}:_addCustomerInfo`;
@@ -193,18 +195,19 @@ export class PdfGenerator {
          this._doc.fontSize(12).font(this._helveticaBoldPath).text('To:', { underline: false }); // Bold label
          this._doc.font(this._helveticaPath).fontSize(10); // Normal text for details
          if (customer.customer_type === 'business') {
-             this._doc.text(customer.business_name || 'Business Name Missing');
+ this._doc.text(customer.business_name ?? 'Business Name Missing');
              if (customer.abn) {
                  this._doc.text(`ABN: ${customer.abn}`);
              }
-             const contactName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+             const contactName = `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim();
              if (contactName) {
                  this._doc.text(`Contact: ${contactName}`);
              }
          } else {
-             const individualName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+             const individualName = `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim();
              this._doc.text(individualName || 'Customer Name Missing');
          }
+
          this._doc.text(`Email: ${customer.email || 'N/A'}`);
          this._doc.text(`Phone: ${customer.phone || 'N/A'}`);
          this._doc.text(`Address: ${customer.address || 'N/A'}`);
@@ -212,6 +215,7 @@ export class PdfGenerator {
      }
 
      private _addInvoiceDetails(invoiceId: string, dateIsoString: string): void {
+
         if (!this._doc) return;
         const funcPrefix = `${this._logPrefix}:_addInvoiceDetails`;
         logger.debug(funcPrefix, `Adding invoice details ID: ${invoiceId}, Date: ${dateIsoString}`);
@@ -231,6 +235,7 @@ export class PdfGenerator {
         this._doc.moveDown(1.5); // More space before table
     }
 
+    // Draws the header row for the line items table.
     private _drawTableHeader(includeGstColumn: boolean, y: number): void {
          if (!this._doc) return;
          const funcPrefix = `${this._logPrefix}:_drawTableHeader`;
@@ -256,13 +261,14 @@ export class PdfGenerator {
          const totalWidth = endX - effectiveTotalCol;
 
          this._doc.fontSize(10).font(this._helveticaBoldPath); // Ensure bold font path
-         this._doc.text('Item', itemCol, y, { width: itemWidth, underline: true });
-         if (includeGstColumn) this._doc.text('GST?', gstCol, y, { width: gstWidth, underline: true, align: 'center' });
-         this._doc.text('Qty', effectiveQtyCol, y, { width: qtyWidth, underline: true, align: 'right' });
-         this._doc.text('Unit Price', effectivePriceCol, y, { width: priceWidth, underline: true, align: 'right' });
-         this._doc.text('Line Total', effectiveTotalCol, y, { width: totalWidth, underline: true, align: 'right' });
+ this._doc.text('Item', itemCol, y, { width: itemWidth, underline: true }) ;
+         if (includeGstColumn) this._doc.text('GST?', gstCol, y, { width: gstWidth, underline: true, align: 'center' }) ;
+         this._doc.text('Qty', effectiveQtyCol, y, { width: qtyWidth, underline: true, align: 'right' }) ;
+         this._doc.text('Unit Price', effectivePriceCol, y, { width: priceWidth, underline: true, align: 'right' }) ;
+         this._doc.text('Line Total', effectiveTotalCol, y, { width: totalWidth, underline: true, align: 'right' }) ;
          this._doc.moveDown(0.5);
          this._doc.font(this._helveticaPath); // Revert font path
+
      }
 
      private _addLineItemsTable(lineItems: LineItem[], includeGstColumn: boolean): void {
@@ -313,11 +319,11 @@ export class PdfGenerator {
 
              // Draw row content - ensure font is set correctly before drawing text
              this._doc!.font(this._helveticaPath).fontSize(10);
-             this._doc!.text(item.product_name || 'N/A', itemCol, currentY, { width: itemWidth });
-             if (includeGstColumn) this._doc!.text(item.GST_applicable ? 'Yes' : 'No', gstCol, currentY, { width: gstWidth, align: 'center' });
-             this._doc!.text(item.quantity?.toString() ?? '0', effectiveQtyCol, currentY, { width: qtyWidth, align: 'right' });
-             this._doc!.text(`$${unitPriceExGST.toFixed(2)}`, effectivePriceCol, currentY, { width: priceWidth, align: 'right' });
-             this._doc!.text(`$${lineTotalExGST.toFixed(2)}`, effectiveTotalCol, currentY, { width: totalWidth, align: 'right' });
+ this._doc!.text(item.product_name ?? 'N/A', itemCol, currentY, { width: itemWidth }) ;
+             if (includeGstColumn) this._doc!.text(item.GST_applicable ? 'Yes' : 'No', gstCol, currentY, { width: gstWidth, align: 'center' }) ;
+             this._doc!.text(item.quantity?.toString() ?? '0', effectiveQtyCol, currentY, { width: qtyWidth, align: 'right' }) ;
+             this._doc!.text(`$${unitPriceExGST.toFixed(2)}`, effectivePriceCol, currentY, { width: priceWidth, align: 'right' }) ;
+ this._doc!.text(`$${lineTotalExGST.toFixed(2)}`, effectiveTotalCol, currentY, { width: totalWidth, align: 'right' }) ;
 
              // Determine the actual height of the row based on the tallest element (usually item name)
               const actualHeight = this._doc!.heightOfString(item.product_name || 'N/A', { width: itemWidth });
@@ -334,6 +340,7 @@ export class PdfGenerator {
          this._doc!.moveDown(0.5);
      }
 
+    // Adds the summary section with subtotal, GST, and total.
      private _addTotals(subtotal: number, gstAmount: number, total: number): void {
          if (!this._doc) return;
          const funcPrefix = `${this._logPrefix}:_addTotals`;
@@ -360,15 +367,16 @@ export class PdfGenerator {
 
          // Subtotal
          this._doc.text(`Subtotal (ex GST):`, labelX, totalsY, { continued: false, align: 'left' });
-         this._doc.text(`$${subtotal.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth });
+ this._doc.text(`$${subtotal.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth }) ;
          totalsY = this._doc.y + 2; // Add small gap after line
 
          // GST Amount (only show if GST > 0)
          if (gstAmount > 0) {
             this._doc.text(`GST Amount (10%):`, labelX, totalsY, { continued: false, align: 'left' });
-            this._doc.text(`$${gstAmount.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth });
+ this._doc.text(`$${gstAmount.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth }) ;
             totalsY = this._doc.y + 2; // Add small gap after line
          }
+
 
          // Draw separator line
          const lineY = totalsY + 5;
@@ -380,7 +388,7 @@ export class PdfGenerator {
          // Total - Make it bold and slightly larger
          this._doc.font(this._helveticaBoldPath).fontSize(12); // Use bold font path
          this._doc.text(`Total Amount:`, labelX, totalsY, { continued: false, align: 'left'}); // Changed label slightly
-         this._doc.text(`$${total.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth });
+ this._doc.text(`$${total.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth }) ;
          totalsY = this._doc.y; // Update Y after text
 
          // Revert font settings
@@ -390,6 +398,7 @@ export class PdfGenerator {
      }
 
 
+    // Finalizes the PDF document and waits for the stream to finish.
     private async _finalize(): Promise<void> {
         const funcPrefix = `${this._logPrefix}:_finalize`;
         return new Promise((resolve, reject) => {
@@ -422,6 +431,7 @@ export class PdfGenerator {
         });
     }
 
+    // Cleans up the incomplete PDF file in case of an error during generation.
     private async _cleanupFailedPdf(): Promise<void> {
         const funcPrefix = `${this._logPrefix}:_cleanupFailedPdf`;
         if (!this._filePath) {

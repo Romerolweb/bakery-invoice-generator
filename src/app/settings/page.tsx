@@ -1,6 +1,6 @@
 // src/app/settings/page.tsx
 'use client'; // This component needs client-side interaction for the form
-
+// Importing necessary types
 import type { SellerProfile } from '@/lib/types';
 import { getSellerProfile, updateSellerProfile } from '@/lib/actions/seller';
 import { useEffect, useState } from 'react';
@@ -20,13 +20,17 @@ import { Loader2 } from 'lucide-react';
 // Basic ABN/ACN format check (can be more robust)
 const abnRegex = /^\d{2}\s?\d{3}\s?\d{3}\s?\d{3}$/; // Optional spaces
 const acnRegex = /^\d{3}\s?\d{3}\s?\d{3}$/; // Optional spaces
-
+// Defining the Zod schema for seller profile form validation
 const sellerProfileSchema = z.object({
   name: z.string().min(1, 'Business name is required'),
   business_address: z.string().min(1, 'Business address is required'),
   ABN_or_ACN: z.string().min(1, 'ABN or ACN is required').refine(
       (val) => abnRegex.test(val) || acnRegex.test(val),
      'Invalid ABN or ACN format (e.g., 11 111 111 111 or 111 111 111)'
+  ).transform(
+    // Optional: Remove spaces for consistent storage if needed
+    (val) => val.replace(/\s/g, '')
+
   ),
   contact_email: z.string().email('Invalid email address'),
   phone: z.string().optional(), // Optional phone number
@@ -34,7 +38,9 @@ const sellerProfileSchema = z.object({
 });
 
 export default function SettingsPage() {
+  // Hook for displaying toasts
   const { toast } = useToast();
+  // State variables for loading and submission status
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,9 +56,11 @@ export default function SettingsPage() {
     },
   });
 
+  // Effect hook to fetch seller profile data when the component mounts
   useEffect(() => {
     async function fetchProfile() {
       setIsLoading(true);
+      // Fetch data from the server action
       try {
         const profile = await getSellerProfile();
         // Ensure all fields are reset, including optional ones
@@ -78,9 +86,11 @@ export default function SettingsPage() {
     fetchProfile();
   }, [form, toast]);
 
+  // Handler for form submission
   const onSubmit = async (data: SellerProfile) => {
     setIsSubmitting(true);
     try {
+      // Call the server action to update the profile
       const result = await updateSellerProfile(data);
       if (result.success) {
         toast({
@@ -97,6 +107,7 @@ export default function SettingsPage() {
           variant: "destructive",
         });
       }
+    // Catch any unexpected errors during the process
     } catch (error) {
       console.error('Failed to update seller profile:', error);
        toast({
