@@ -59,6 +59,10 @@ export interface LineItem {
    */
   product_id: string;
   /**
+   * The description of the product for display purposes on the receipt.
+   */
+  description: string;
+  /**
    * The quantity of the product purchased. Must be a positive integer.
    */
   quantity: number;
@@ -103,7 +107,7 @@ export interface Receipt {
   // Customer details snapshot
   /**
    * A snapshot of relevant customer details at the time the receipt was created.
-   * 'id' is omitted as it's redundant (already stored in customer_id).
+   * 'id' is duplicated, as it's redundant (already stored in customer_id). But it is left becaus it is easy to work with in the pdfGenerators.ts
    */
-  customer_snapshot: Omit<Customer, 'id'>; // Store relevant customer details directly
+  customer_snapshot: Customer; // Store relevant customer details directly
 }

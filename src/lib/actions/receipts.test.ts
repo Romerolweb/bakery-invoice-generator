@@ -1,13 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createReceipt, getAllReceipts, getReceiptById } from '@/lib/actions/receipts';
 import { createReceipt as createReceiptData, getAllReceipts as getAllReceiptsData, getReceiptById as getReceiptByIdData } from '@/lib/data-access/receipts';
-import { getAllProducts } from '@/lib/data-access/products';
+import { getAllProducts, getProductById } from '@/lib/data-access/products';
 import { getSellerProfile } from '@/lib/data-access/seller';
 import { getCustomerById } from '@/lib/data-access/customers';
 import { Product, SellerProfile, Customer, Receipt } from '@/lib/types';
 
 vi.mock('@/lib/data-access/receipts');
 vi.mock('@/lib/data-access/products');
+vi.mock('../data-access/products');
 vi.mock('@/lib/data-access/seller');
 vi.mock('@/lib/data-access/customers');
 
@@ -54,15 +55,16 @@ describe('Receipt Actions', () => {
       });
 
     it('should fail when product in line items is not found', async () => {
-      vi.mocked(getAllProducts).mockResolvedValue([{ id: '1', name: 'Product 1', unit_price: 10, GST_applicable: true }]);
+      vi.mocked(getProductById).mockResolvedValue(null)
+      vi.mocked(getAllProducts).mockResolvedValue([{ id: '1', name: 'Product 1', unit_price: 10, GST_applicable: true }, { id: '2', name: 'Product 2', unit_price: 20, GST_applicable: false }]);
       vi.mocked(getSellerProfile).mockResolvedValue({ id: 'seller1', business_name: 'Seller 1', abn: '123456789' });
       vi.mocked(getCustomerById).mockResolvedValue({ id: 'customer1', customer_type: 'business', first_name: 'John', last_name: 'Doe', business_name: 'Customer 1', abn: '987654321', email: 'john.doe@example.com', phone: '0412345678', address: '1 Test Rd' });
 
       const result = await createReceipt({ customer_id: 'customer1', date_of_purchase: '2023-01-01', line_items: [{ product_id: '2', quantity: 1 }], include_gst: true, force_tax_invoice: false });
-      expect(result.success).toBe(false);
+ expect(result.message).toBe('Product with ID 2 not found.')
     });
   });
-
+ 
   describe('getAllReceipts', () => {
     it('should successfully retrieve all receipts', async () => {
       const mockReceipts: Receipt[] = [{ receipt_id: 'receipt1', customer_id: 'customer1', date_of_purchase: '2023-01-01', line_items: [], subtotal_excl_GST: 0, GST_amount: 0, total_inc_GST: 0, is_tax_invoice: false, seller_profile_snapshot: { id: 'seller1', business_name: 'Seller 1', abn: '123456789' }, customer_snapshot: { id: 'customer1', customer_type: 'business', first_name: 'John', last_name: 'Doe', business_name: 'Customer 1', abn: '987654321', email: 'john.doe@example.com', phone: '0412345678', address: '1 Test Rd' } }];

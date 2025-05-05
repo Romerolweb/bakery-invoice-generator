@@ -1,18 +1,27 @@
 import { Product } from '@/lib/types';
-import fs from 'fs/promises';
-import path from 'path';
 
-const DATA_DIRECTORY = path.join(process.cwd(), 'src', 'lib', 'data');
-const PRODUCTS_FILE = path.join(DATA_DIRECTORY, 'products.json');
+const PRODUCTS_FILE =
+ process.env.NODE_ENV === 'development' ?
+ '/src/lib/data/products.json' : 'src/lib/data/products.json';
+
+async function readData(filename: string): Promise<string> {
+  const filePath = PRODUCTS_FILE;
+  const res = await fetch(filePath);
+  return await res.text();
+}
+async function writeData(filename: string, data: string): Promise<void> {
+  const filePath = PRODUCTS_FILE;
+  await fetch(filePath, {method: 'POST', headers: {'Content-Type': 'application/json',}, body: data});
+}
 
 export async function getAllProducts(): Promise<Product[]> {
   try {
-    const data = await fs.readFile(PRODUCTS_FILE, 'utf-8');
+    const data = await readData('products.json');
     const products: Product[] = JSON.parse(data);
-    return products;
+ return products;
   } catch (error) {
-    console.error('Error reading products data:', error);
-    return [];
+ console.error('Error reading products data:', error);
+ return [];
   }
 }
 
@@ -29,7 +38,7 @@ export async function getProductById(id: string): Promise<Product | null> {
 
 export async function saveProducts(products: Product[]): Promise<boolean> {
   try {
-    await fs.writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2), 'utf-8');
+ await writeData('products.json', JSON.stringify(products, null, 2));
     return true;
   } catch (error) {
     console.error('Error saving products data:', error);
@@ -68,16 +77,18 @@ export async function updateProduct(id: string, updatedProduct: Partial<Product>
 
 export async function deleteProduct(id: string): Promise<boolean> {
   try {
-      const products = await getAllProducts();
-      const index = products.findIndex((p) => p.id === id);
-      if (index === -1) {
-          return false;
-      }
-      products.splice(index, 1);
-      await saveProducts(products);
-      return true;
-  } catch (error) {
-      console.error(`Error deleting product with ID ${id}:`, error);
+    const products = await getAllProducts();
+    const index = products.findIndex((p) => p.id === id);
+    if (index === -1) {
       return false;
+    }
+    products.splice(index, 1);
+    await saveProducts(products);
+    return true;
+  } catch (error) {
+    console.error(`Error deleting product with ID ${id}:`, error);
+    return false;
   }
 }
+
+

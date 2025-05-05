@@ -1,16 +1,13 @@
 // src/lib/data-access/seller.ts
 import { SellerProfile } from '@/lib/types';
 import { logger } from '../services/logging';
-import fs from 'fs/promises';
-import path from 'path';
 
-const SELLER_DATA_PATH = path.join(process.cwd(), 'src/lib/data/seller-profile.json');
+const SELLER_DATA_PATH = '/src/lib/data/seller-profile.json';
 const DATA_ACCESS_LOG_PREFIX = 'SellerDataAccess';
 
 export async function getSellerProfile(): Promise<SellerProfile | null> {
   try {
-    const data = await fs.readFile(SELLER_DATA_PATH, 'utf-8');
-    const sellerProfile: SellerProfile = JSON.parse(data);
+    const sellerProfile: SellerProfile = await fetch(SELLER_DATA_PATH).then(res => res.json());
     logger.info(DATA_ACCESS_LOG_PREFIX, 'Successfully fetched seller profile.');
     return sellerProfile;
   } catch (error) {
@@ -21,7 +18,13 @@ export async function getSellerProfile(): Promise<SellerProfile | null> {
 
 export async function updateSellerProfile(sellerProfile: SellerProfile): Promise<boolean> {
   try {
-    await fs.writeFile(SELLER_DATA_PATH, JSON.stringify(sellerProfile, null, 2), 'utf-8');
+    await fetch(SELLER_DATA_PATH, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sellerProfile, null, 2),
+    });
     logger.info(DATA_ACCESS_LOG_PREFIX, 'Successfully updated seller profile.');
     return true;
   } catch (error) {
