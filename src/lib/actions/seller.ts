@@ -1,4 +1,4 @@
-import { getSellerProfileFromData } from '@/lib/data-access/seller';
+import { getSellerProfile as getSellerProfileFromData } from '@/lib/data-access/seller';
 import { SellerProfile } from '@/lib/types';
 
 export async function getSellerProfile(): Promise<SellerProfile | null> {

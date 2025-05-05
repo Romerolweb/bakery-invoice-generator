@@ -20,7 +20,7 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
   return receipts.find((receipt) => receipt.receipt_id === id) || null;
 }
 
-export async function createNewReceipt(newReceipt: Receipt): Promise<Receipt> {
+export async function createReceipt(newReceipt: Receipt): Promise<Receipt> {
   const receipts = await getAllReceipts();
   receipts.push(newReceipt);
   try {

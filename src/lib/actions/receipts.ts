@@ -2,7 +2,7 @@
 'use server';
 
 import { Receipt, LineItem, Product, SellerProfile, Customer } from '@/lib/types';
-import { createNewReceipt as createReceiptData, getAllReceipts as getAllReceiptsData, getReceiptById as getReceiptByIdData } from '@/lib/data-access/receipts';
+import { createReceipt as createReceiptData, getAllReceipts as getAllReceiptsData, getReceiptById as getReceiptByIdData } from '@/lib/data-access/receipts';
 import { getAllProducts } from '@/lib/data-access/products';
 import { getSellerProfile } from '@/lib/data-access/seller';
 import { getCustomerById } from '@/lib/data-access/customers';
