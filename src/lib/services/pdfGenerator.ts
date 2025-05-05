@@ -45,10 +45,10 @@ const HELVETICA_BOLD_PATH = path.join(FONTS_DIR, 'Helvetica-Bold.afm');
  */
 export class PdfGenerator {
     private _doc: PDFKit.PDFDocument | null = null;
-    private _stream: WriteStream | null = null;
     private _filePath: string = '';
     private _logPrefix: string = '';
     private _success: boolean = false;
+    private static isGenerating: boolean = false; // Lock mechanism for concurrency
     private _operationId: string = ''; // To correlate logs
 
     // Define standard font paths for easy reference
@@ -62,7 +62,7 @@ export class PdfGenerator {
  await fsPromises.mkdir(PDF_DIR, { recursive: true }) ;
             logger.debug(funcPrefix, `PDF directory ensured: ${PDF_DIR}`);
         } catch (error) {
-            logger.error(funcPrefix, 'FATAL: Error creating PDF directory', error);
+            logger.error(funcPrefix, 'FATAL: Error creating PDF directory:', error);
             throw new Error(`Failed to ensure PDF directory exists: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
@@ -77,10 +77,10 @@ export class PdfGenerator {
                 accessSync(fontPath); // Check if file exists and is readable
                 logger.debug(funcPrefix, `Font found: ${fontPath}`);
             } catch (err: any) {
-                if (err.code === 'ENOENT') {
+                if (err.code === 'ENOENT') { // Change this line
                     logger.error(funcPrefix, `Required font file missing: ${fontPath}`);
                     missingFonts.push(path.basename(fontPath));
-                } else {
+                } else { // Change this line
                      logger.error(funcPrefix, `Error accessing font file ${fontPath}`, err);
                      // Treat access errors other than ENOENT as potentially critical
                      throw new Error(`Error accessing required font file ${path.basename(fontPath)}: ${err.message}`);
@@ -113,7 +113,7 @@ export class PdfGenerator {
             });
              logger.debug(this._logPrefix, `PDFDocument instantiated successfully.`);
         } catch (initError) {
-            logger.error(this._logPrefix, `FATAL: Error initializing PDF Generator`, initError);
+            logger.error(this._logPrefix, `FATAL: Error initializing PDF Generator:`, initError);
             // Rethrow or handle specific errors (like font missing error)
             throw new Error(`PDF library initialization error: ${initError instanceof Error ? initError.message : String(initError)}`);
         }
@@ -136,14 +136,14 @@ export class PdfGenerator {
                 });
 
                 this._stream.on('error', (err) => {
-                    logger.error(funcPrefix, 'PDF stream error', err);
+                    logger.error(funcPrefix, 'PDF stream error:', err);
                     this._success = false;
                     reject(new Error(`PDF stream error: ${err.message}`));
                 });
 
                 if (!this._doc) {
                     reject(new Error("PDF Document not initialized before setting up stream."));
-                    return;
+ return;
                 }
 
                 this._doc.on('error', (err) => {
@@ -156,7 +156,7 @@ export class PdfGenerator {
                 this._doc.pipe(this._stream);
 
             } catch (setupError) {
-                 logger.error(funcPrefix, 'Error setting up PDF stream or piping', setupError);
+                 logger.error(funcPrefix, 'Error setting up PDF stream or piping:', setupError);
                  reject(setupError); // Reject the promise on setup error
             }
         });
@@ -424,7 +424,7 @@ export class PdfGenerator {
                      resolve();
                  })
                  .catch((err) => {
-                     logger.error(funcPrefix, 'Stream or document error during finalize', err);
+                     logger.error(funcPrefix, 'Stream or document error during finalize:', err);
                       this._success = false;
                      reject(err);
                  });
@@ -433,29 +433,13 @@ export class PdfGenerator {
 
     // Cleans up the incomplete PDF file in case of an error during generation.
     private async _cleanupFailedPdf(): Promise<void> {
-        const funcPrefix = `${this._logPrefix}:_cleanupFailedPdf`;
+        const funcPrefix = `${this._logPrefix || `[${this._operationId} PDF ${path.basename(this._filePath, '.pdf') || 'unknown'}]`}:_cleanupFailedPdf`;
         if (!this._filePath) {
             logger.debug(funcPrefix, "Cleanup called without a file path, likely initialization failed early.");
             return;
         }
-        logger.warn(funcPrefix, `Attempting cleanup for: ${this._filePath}`);
+        logger.debug(funcPrefix, `Attempting cleanup for: ${this._filePath}`);
         try {
-            // Attempt to close the stream safely
-            if (this._stream && !this._stream.closed) {
-                 logger.debug(funcPrefix, 'Closing potentially open write stream...');
-                 await new Promise<void>((resolve) => {
-                    // Handle potential errors during close/end
-                    this._stream!.on('error', (err) => { logger.error(funcPrefix, 'Error closing stream during cleanup', err); resolve(); });
-                    this._stream!.on('close', resolve);
-                    this._stream!.end(); // Ensure stream is ended
-                 });
-                 logger.debug(funcPrefix, 'Finished waiting for stream close/error.');
-            } else if (this._stream && this._stream.closed) {
-                 logger.debug(funcPrefix, 'Stream already closed.');
-            } else {
-                logger.debug(funcPrefix, 'No active stream to close.');
-            }
-
             // Attempt to delete the file
             logger.debug(funcPrefix, `Checking existence of potentially incomplete PDF: ${this._filePath}`);
              try {
@@ -467,24 +451,27 @@ export class PdfGenerator {
                  if (accessOrUnlinkError.code === 'ENOENT') {
                      logger.info(funcPrefix, `Incomplete PDF ${this._filePath} did not exist, no need to delete.`);
                  } else {
-                     logger.error(funcPrefix, 'Error accessing or deleting potentially corrupted PDF during cleanup', accessOrUnlinkError);
+                     logger.error(funcPrefix, 'Error accessing or deleting potentially corrupted PDF during cleanup:', accessOrUnlinkError);
                  }
              }
         } catch (cleanupError) {
-            logger.error(funcPrefix, 'Error during PDF cleanup process itself', cleanupError);
+            logger.error(funcPrefix, 'Error during PDF cleanup process itself:', cleanupError as any);
         } finally {
             this._doc = null;
-            this._stream = null;
-            // Keep _filePath and _logPrefix if you need them for error reporting after cleanup attempt
-        }
     }
 
     // Public method to generate the PDF. This can be called by a Server Action.
-    public async generate(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
+ async generate(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
+        if (PdfGenerator.isGenerating) { // Check lock
+             logger.warn(`[${operationId} PDF ${receipt?.receipt_id || 'unknown'}]`, 'PDF generation is already in progress. Rejecting concurrent request.');
+             return { success: false, message: "Another PDF generation is currently in progress. Please try again shortly." };
+        }
+
+        PdfGenerator.isGenerating = true; // Acquire lock
         try {
             this._initialize(receipt.receipt_id, operationId);
         } catch(initError: any) {
-             logger.error(this._logPrefix || `[${operationId} PDF ${receipt?.receipt_id || 'unknown'}]`, 'ERROR during PDF initialization', initError);
+             logger.error(this._logPrefix || `[${operationId} PDF ${receipt?.receipt_id || 'unknown'}]`, 'ERROR during PDF initialization:', initError);
              return { success: false, message: initError.message || "PDF initialization failed." };
         }
 
@@ -511,13 +498,13 @@ export class PdfGenerator {
             logger.info(this._logPrefix, 'PDF generation successful.');
             const finalFilePath = this._filePath; // Store before potential cleanup resets it
              // Reset internal state for potential reuse
-             this._doc = null;
-             this._stream = null;
              this._filePath = '';
             return { success: true, filePath: finalFilePath };
+        } finally {
+            PdfGenerator.isGenerating = false; // Release lock regardless of success or failure
 
         } catch (error: any) {
-            logger.error(this._logPrefix, 'ERROR during PDF generation orchestration', error);
+            logger.error(this._logPrefix || `[${operationId} PDF ${receipt?.receipt_id || 'unknown'}]`, 'ERROR during PDF generation orchestration:', error);
             await this._cleanupFailedPdf(); // Ensure cleanup happens
 
             let message = `Failed to generate PDF: ${error.message || 'Unknown error'}`;
@@ -529,6 +516,7 @@ export class PdfGenerator {
                  message = `Failed to generate PDF: Could not find required font metric file (.afm). Ensure fonts are in src/lib/fonts/. Details: ${error.message}`;
             }
 
+            PdfGenerator.isGenerating = false; // Release lock on error
             return { success: false, message };
         }
     }

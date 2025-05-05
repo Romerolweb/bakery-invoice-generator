@@ -1,14 +1,13 @@
 // src/lib/data-access/customers.ts
 
-import fs from 'fs/promises';
 import path from 'path';
-import { Customer } from '@/lib/types';
 
 const dataDirectory = path.join(process.cwd(), 'src/lib/data');
 const customersFilePath = path.join(dataDirectory, 'customers.json');
 
 export async function getAllCustomers(): Promise<Customer[]> {
   try {
+    const fs = await import('fs/promises'); // Use fs/promises
     const data = await fs.readFile(customersFilePath, 'utf8');
     return JSON.parse(data) as Customer[];
   } catch (error) {
@@ -30,7 +29,8 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
 
 export async function createCustomer(customer: Omit<Customer, 'id'>): Promise<Customer | null> {
   try {
-    const customers = await getAllCustomers();
+    const fs = await import('fs/promises'); // Use fs/promises
+    const customers = await (await import('./customers')).getAllCustomers(); // Use dynamic import here
     const newCustomer: Customer = { id: crypto.randomUUID(), ...customer };
     customers.push(newCustomer);
     await fs.writeFile(customersFilePath, JSON.stringify(customers, null, 2));
@@ -43,7 +43,8 @@ export async function createCustomer(customer: Omit<Customer, 'id'>): Promise<Cu
 
 export async function updateCustomer(id: string, updatedCustomer: Partial<Omit<Customer, 'id'>>): Promise<Customer | null> {
   try {
-    const customers = await getAllCustomers();
+    const fs = await import('fs/promises'); // Use fs/promises
+    const customers = await (await import('./customers')).getAllCustomers(); // Use dynamic import here
     const customerIndex = customers.findIndex(c => c.id === id);
     if (customerIndex === -1) {
       return null;
@@ -59,7 +60,8 @@ export async function updateCustomer(id: string, updatedCustomer: Partial<Omit<C
 
 export async function deleteCustomer(id: string): Promise<boolean> {
   try {
-    const customers = await getAllCustomers();
+    const fs = await import('fs/promises'); // Use fs/promises
+    const customers = await (await import('./customers')).getAllCustomers(); // Use dynamic import here
     const customerIndex = customers.findIndex(c => c.id === id);
     if (customerIndex === -1) {
       return false;
