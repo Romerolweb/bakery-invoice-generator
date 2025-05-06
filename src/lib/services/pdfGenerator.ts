@@ -1,4 +1,4 @@
-={// src/lib/services/pdfGenerator.ts
+// src/lib/services/pdfGenerator.ts
 import type { Receipt, LineItem, Customer, SellerProfile } from '@/lib/types';
 import { promises as fsPromises, createWriteStream, WriteStream, accessSync, unlinkSync } from 'fs';
 import path from 'path';
@@ -7,6 +7,7 @@ import { format, parseISO } from 'date-fns';
 import { logger } from '@/lib/services/logging'; // Import the logger
 
 const DATA_DIR = path.join(process.cwd(), 'src/lib/data');
+const FONT_DIR = path.join(process.cwd(), 'src/lib/fonts'); // Define Font directory path
 const PDF_DIR = path.join(DATA_DIR, 'receipt-pdfs'); // Directory to store generated PDFs
 
 // Define standard font names as used in PDFKit
@@ -44,8 +45,22 @@ export class PdfGenerator {
             this._doc = new PDFDocument({
                  margin: 50,
                  bufferPages: true,
-                 // Use default Helvetica font
+                 // Register custom fonts if needed, otherwise default to Helvetica
+                 // Example: font: path.join(FONT_DIR, 'YourFont.ttf'), // Requires font file
+                 // For standard fonts, just ensure Helvetica is available
             });
+             // PDFKit typically expects AFM files in its data directory. If fonts are missing,
+             // ensure the `pdfkit` installation is complete and permissions are correct.
+             // Registering Helvetica explicitly might help in some environments:
+              try {
+                this._doc.registerFont('Helvetica', path.join(FONT_DIR, 'Helvetica.afm'));
+                this._doc.registerFont('Helvetica-Bold', path.join(FONT_DIR, 'Helvetica-Bold.afm'));
+                logger.debug(this._logPrefix, 'Explicitly registered Helvetica fonts from lib/fonts.');
+              } catch (fontRegError: any) {
+                 // Log a warning but proceed - PDFKit might still find the font internally
+                 logger.warn(this._logPrefix, `Could not register font from local path: ${fontRegError.message}. PDFKit might use internal fonts.`);
+              }
+
              logger.debug(this._logPrefix, `PDFDocument instantiated successfully.`);
         } catch (instantiationError) {
             logger.error(this._logPrefix, `FATAL: Error instantiating PDFDocument`, instantiationError);
@@ -393,7 +408,7 @@ export class PdfGenerator {
         }
     }
 
-    public async generate(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
+    public async generatePdf(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
         try {
             this._initialize(receipt.receipt_id, operationId);
         } catch(initError: any) {
@@ -433,11 +448,13 @@ export class PdfGenerator {
             await this._cleanupFailedPdf(); // Ensure cleanup happens
 
             let message = `Failed to generate PDF: ${error.message || 'Unknown error'}`;
-            // Add specific error handling if needed (e.g., font errors)
-            // if (error.message.includes('ENOENT') && error.message.includes('.afm')) { ... }
+            // Add specific error handling for font errors
+            if (error.message?.includes('ENOENT') && error.message?.includes('.afm')) {
+                message = `Failed to generate PDF: Font file missing or inaccessible (${error.message}). Ensure fonts are correctly placed in src/lib/fonts and readable.`;
+                logger.error(this._logPrefix, `Font file error details: ${error.stack || error}`);
+            }
 
             return { success: false, message };
         }
     }
 }
-
