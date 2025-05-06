@@ -148,7 +148,6 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
         // 6. Generate PDF (async, but wait for result here)
         logger.info(funcPrefix, `Initiating PDF generation for receipt ID: ${newReceipt.receipt_id}`);
         const pdfGenerator = new PdfGenerator();
-        // **FIX**: Call the correct method `generatePdf`
         const pdfResult = await pdfGenerator.generatePdf(newReceipt, operationId);
 
         if (pdfResult.success) {
@@ -160,25 +159,34 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
             };
         } else {
             // PDF generation failed, but receipt data *was* saved.
-            logger.error(funcPrefix, `PDF generation failed for receipt ID: ${newReceipt.receipt_id}. Reason: ${pdfResult.message}`);
+             const pdfErrorMessage = pdfResult.message || 'Unknown PDF generation error.';
+             logger.error(funcPrefix, `PDF generation failed for receipt ID: ${newReceipt.receipt_id}. Reason: ${pdfErrorMessage}`);
             return {
                 success: true, // Data was saved, so action partially succeeded
                 receipt: { receipt_id: newReceipt.receipt_id },
-                pdfError: pdfResult.message || 'Unknown PDF generation error.', // Return specific PDF error
+                 pdfError: pdfErrorMessage, // Return specific PDF error as a string
             };
         }
 
     } catch (error) {
         logger.error(funcPrefix, 'An unexpected error occurred during invoice creation', error);
-        // Check if the error is the specific TypeError we're looking for
-        if (error instanceof TypeError && error.message.includes('.generate is not a function')) {
-             logger.error(funcPrefix, "Corrected the call from generate() to generatePdf(). Potential previous error source identified.");
-             // Return a more specific message if needed, or the generic one
-             return { success: false, message: `An unexpected error occurred: Incorrect PDF generation function called.` };
+        // Format the error message properly
+        let errorMessage = 'An unexpected error occurred during invoice creation.';
+        if (error instanceof Error) {
+            errorMessage += `: ${error.message}`;
+        } else if (typeof error === 'string') {
+             errorMessage += `: ${error}`;
+        } else {
+            // Fallback for unknown error types
+             try {
+                errorMessage += `: ${JSON.stringify(error)}`;
+             } catch {
+                 errorMessage += ': Unknown error type.';
+             }
         }
         return {
             success: false,
-            message: `An unexpected error occurred during invoice creation: ${error instanceof Error ? error.message : String(error)}`,
+             message: errorMessage,
         };
     }
 }
