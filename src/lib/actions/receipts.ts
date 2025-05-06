@@ -39,7 +39,7 @@ interface CreateReceiptParams {
 export async function createReceipt(data: CreateReceiptParams): Promise<CreateReceiptResult> {
     const operationId = uuidv4().substring(0, 8); // Unique ID for this operation flow
     const funcPrefix = `${ACTION_LOG_PREFIX}:createReceipt:${operationId}`;
-    logger.info(funcPrefix, 'Starting createReceipt action execution.', data);
+    logger.info(funcPrefix, 'Starting createReceipt action execution.', {customerId: data.customer_id, date: data.date_of_purchase, itemCount: data.line_items.length}); // Avoid logging full line items
 
     try {
         // 1. Fetch required data concurrently
@@ -75,7 +75,8 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
             const product = products.find((p) => p.id === item.product_id);
             if (!product) {
                 logger.error(funcPrefix, `Data inconsistency: Product with ID ${item.product_id} from input not found in fetched products.`);
-                throw new Error(`Product with ID ${item.product_id} not found. Data might be outdated.`); // Throw to indicate critical failure
+                // Return a user-friendly error instead of throwing
+                return { success: false, message: `Product with ID ${item.product_id} not found. Please refresh products and try again.` };
             }
             const lineTotal = product.unit_price * item.quantity;
             lineItems.push({
@@ -147,7 +148,8 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
         // 6. Generate PDF (async, but wait for result here)
         logger.info(funcPrefix, `Initiating PDF generation for receipt ID: ${newReceipt.receipt_id}`);
         const pdfGenerator = new PdfGenerator();
-        const pdfResult = await pdfGenerator.generate(newReceipt, operationId); // Pass the full receipt and operation ID
+        // **FIX**: Call the correct method `generatePdf`
+        const pdfResult = await pdfGenerator.generatePdf(newReceipt, operationId);
 
         if (pdfResult.success) {
             logger.info(funcPrefix, `PDF generated successfully. Path: ${pdfResult.filePath}`);
@@ -168,6 +170,12 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
 
     } catch (error) {
         logger.error(funcPrefix, 'An unexpected error occurred during invoice creation', error);
+        // Check if the error is the specific TypeError we're looking for
+        if (error instanceof TypeError && error.message.includes('.generate is not a function')) {
+             logger.error(funcPrefix, "Corrected the call from generate() to generatePdf(). Potential previous error source identified.");
+             // Return a more specific message if needed, or the generic one
+             return { success: false, message: `An unexpected error occurred: Incorrect PDF generation function called.` };
+        }
         return {
             success: false,
             message: `An unexpected error occurred during invoice creation: ${error instanceof Error ? error.message : String(error)}`,
