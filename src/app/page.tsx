@@ -7,16 +7,16 @@ import { z } from 'zod';
 import Link from 'next/link';
 
 import type { Customer, Product, Receipt } from '@/lib/types';
-import { getAllCustomers } from '@/lib/actions/customers';
-import { getAllProducts } from '@/lib/actions/products';
-import { createReceipt } from '@/lib/actions/receipts'; // Correct import name
+import { getCustomers } from '@/lib/actions/customers'; // Updated import
+import { getProducts } from '@/lib/actions/products'; // Updated import
+import { createReceipt } from '@/lib/actions/receipts'; // Use createReceipt
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'; // Added FormDescription
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle, Trash2, CalendarIcon, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { logger } from '@/lib/services/logging'; // Import logger for client-side logging if needed
+import { logger } from '@/lib/services/logging'; // Import logger
 
 const lineItemSchema = z.object({
   product_id: z.string().min(1, 'Product selection is required'),
@@ -77,8 +77,8 @@ export default function NewInvoicePage() {
       setIsLoadingData(true);
       try {
         const [customersData, productsData] = await Promise.all([
-          getAllCustomers(),
-          getAllProducts(),
+          getCustomers(), // Use updated import
+          getProducts(),  // Use updated import
         ]);
         setCustomers(customersData);
         setProducts(productsData);
@@ -96,7 +96,7 @@ export default function NewInvoicePage() {
       }
     }
     loadData();
-  }, [toast]); // Removed redundant dependency
+  }, [toast]);
 
   // Recalculate totals when line items or GST setting change
   useEffect(() => {
@@ -106,8 +106,7 @@ export default function NewInvoicePage() {
         calculateTotals(value as ReceiptFormData);
       }
     });
-    // Initial calculation on load/data ready
-    if (products.length > 0 && !isLoadingData) { // Ensure data is loaded before first calc
+    if (products.length > 0 && !isLoadingData) {
         logger.debug(CLIENT_LOG_PREFIX, 'Performing initial total calculation...');
         calculateTotals(form.getValues());
     }
@@ -115,7 +114,6 @@ export default function NewInvoicePage() {
         logger.debug(CLIENT_LOG_PREFIX, 'Unsubscribing from form watch.');
         subscription.unsubscribe();
     };
-    // Depend on products and isLoadingData to trigger initial calculation correctly
   }, [form, products, isLoadingData]);
 
   const calculateTotals = (formData: ReceiptFormData) => {
@@ -127,14 +125,12 @@ export default function NewInvoicePage() {
          if (product && item.quantity > 0) {
              const lineTotalExclGST = product.unit_price * item.quantity;
              subtotal += lineTotalExclGST;
-             // Only add GST if global flag is true AND product is applicable
              if (formData.include_gst && product.GST_applicable) {
                  gstAmount += lineTotalExclGST * 0.1;
              }
          }
      });
 
-     // If GST is not included globally, ensure final GST is zero
      if (!formData.include_gst) {
          gstAmount = 0;
      }
@@ -158,18 +154,17 @@ export default function NewInvoicePage() {
         ...data,
         date_of_purchase: format(data.date_of_purchase, 'yyyy-MM-dd'),
     };
-    logger.info(CLIENT_LOG_PREFIX, 'Formatted submission data:', { customer_id: submissionData.customer_id, date: submissionData.date_of_purchase, items: submissionData.line_items.length }); // Avoid logging potentially sensitive data
+    logger.info(CLIENT_LOG_PREFIX, 'Formatted submission data:', { customer_id: submissionData.customer_id, date: submissionData.date_of_purchase, itemCount: submissionData.line_items.length });
 
     try {
       logger.info(CLIENT_LOG_PREFIX, 'Calling createReceipt server action...');
-      const result = await createReceipt(submissionData);
+      const result = await createReceipt(submissionData); // Use createReceipt
       logger.info(CLIENT_LOG_PREFIX, 'createReceipt action result:', result);
 
       if (result.success && result.receipt) {
          const receiptId = result.receipt.receipt_id;
          const shortId = receiptId.substring(0, 8);
 
-         // Check PDF status
          if (result.pdfPath) {
              logger.info(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created successfully. PDF generated at server path: ${result.pdfPath}`);
              toast({
@@ -185,13 +180,11 @@ export default function NewInvoicePage() {
              logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF generation failed: ${result.pdfError}`);
              toast({
                title: "Invoice Created (PDF Failed)",
-               // Use the more specific pdfError message from the backend
                description: `Invoice ${shortId}... saved, but PDF generation failed: ${result.pdfError}`,
-               variant: "destructive", // Use warning/error variant
-               duration: 9000, // Longer duration for error messages
+               variant: "destructive",
+               duration: 9000,
              });
          } else {
-             // This case should ideally not happen if the backend returns correctly
               logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF status is unknown.`);
               toast({
                title: "Invoice Created (PDF Status Unknown)",
@@ -211,11 +204,11 @@ export default function NewInvoicePage() {
           logger.info(CLIENT_LOG_PREFIX, 'Resetting calculated totals...');
           setCalculatedTotals({ subtotal: 0, gst: 0, total: 0 });
 
-      } else { // createReceipt failed (data saving or validation issue)
+      } else {
         logger.error(CLIENT_LOG_PREFIX, 'Error creating invoice (data saving/validation):', result.message);
         toast({
           title: "Error Creating Invoice",
-          description: result.message || "Failed to save invoice data. Please check details.",
+          description: result.message || "Failed to create invoice. Please check details.",
           variant: "destructive",
         });
       }
@@ -322,7 +315,7 @@ export default function NewInvoicePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[45%]">Product</TableHead>
-                    <TableHead className="w-[15%] text-right">Quantity</TableHead> {/* Align right */}
+                    <TableHead className="w-[15%] text-right">Quantity</TableHead>
                     <TableHead className="text-right">Unit Price</TableHead>
                     <TableHead className="text-right">Line Total</TableHead>
                     <TableHead className="w-[50px] text-right">Action</TableHead>
@@ -364,7 +357,7 @@ export default function NewInvoicePage() {
                             )}
                           />
                         </TableCell>
-                        <TableCell className="text-right"> {/* Align right */}
+                        <TableCell className="text-right">
                           <FormField
                             control={form.control}
                             name={`line_items.${index}.quantity`}
@@ -374,7 +367,7 @@ export default function NewInvoicePage() {
                                   <Input
                                     type="number"
                                     min="1"
-                                    className="h-9 w-20 text-right inline-block" // Smaller width, inline, align right
+                                    className="h-9 w-20 text-right inline-block"
                                     {...itemField}
                                   />
                                 </FormControl>
@@ -418,11 +411,9 @@ export default function NewInvoicePage() {
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Item
               </Button>
-               {/* Display array-level errors */}
                {form.formState.errors.line_items?.root?.message && (
                     <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.line_items.root.message}</p>
                )}
-                {/* Check if the error is on the array itself (e.g., minLength) and not on individual items */}
                {form.formState.errors.line_items && !form.formState.errors.line_items.root && typeof form.formState.errors.line_items === 'object' && 'message' in form.formState.errors.line_items && (
                   <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.line_items.message}</p>
                 )}
@@ -439,7 +430,7 @@ export default function NewInvoicePage() {
                           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
                             <div className="space-y-0.5">
                               <FormLabel className="text-base">Include GST</FormLabel>
-                              <FormDescription> {/* Use FormDescription */}
+                              <FormDescription>
                                 Apply 10% GST to eligible products.
                               </FormDescription>
                             </div>
@@ -463,7 +454,6 @@ export default function NewInvoicePage() {
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
                                 id="force-tax-invoice-checkbox"
-                                // Disable if GST is not included
                                 disabled={!form.watch('include_gst')}
                               />
                             </FormControl>
@@ -471,7 +461,7 @@ export default function NewInvoicePage() {
                               <Label htmlFor="force-tax-invoice-checkbox" className={cn(!form.watch('include_gst') && 'text-muted-foreground/50')}>
                                 Force "Tax Invoice" Label
                               </Label>
-                              <FormDescription className={cn(!form.watch('include_gst') && 'text-muted-foreground/50')}> {/* Use FormDescription */}
+                              <FormDescription className={cn(!form.watch('include_gst') && 'text-muted-foreground/50')}>
                                 Mark as Tax Invoice even if below $82.50 (requires GST to be included).
                               </FormDescription>
                             </div>
@@ -494,7 +484,7 @@ export default function NewInvoicePage() {
                           </div>
                            <Separator className="my-2"/>
                            <div className="flex justify-between font-semibold text-lg">
-                            <span>Total Amount:</span> {/* Changed label slightly */}
+                            <span>Total Amount:</span>
                             <span>${calculatedTotals.total.toFixed(2)}</span>
                           </div>
                      </CardContent>
@@ -505,7 +495,6 @@ export default function NewInvoicePage() {
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Generate Invoice
             </Button>
-            {/* Improved Validity Check Message */}
             {form.formState.isSubmitted && !form.formState.isValid && !isSubmitting && (
                  <p className="text-sm text-destructive text-center md:text-left mt-2">Please fix the errors above before submitting.</p>
             )}

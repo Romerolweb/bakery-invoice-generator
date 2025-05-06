@@ -7,10 +7,16 @@ import { getAllProducts } from '@/lib/data-access/products';
 import { getSellerProfile } from '@/lib/data-access/seller';
 import { getCustomerById } from '@/lib/data-access/customers';
 import { v4 as uuidv4 } from 'uuid';
-import { PdfGenerator } from '@/lib/services/pdfGenerator'; // Import the PdfGenerator service
-import { logger } from '@/lib/services/logging'; // Import logger
+// Import both generators
+import { PdfGenerator } from '@/lib/services/pdfGenerator';
+import { PuppeteerPdfGenerator } from '@/lib/services/puppeteerPdfGenerator'; // Import the new generator
+import { logger } from '@/lib/services/logging';
 
 const ACTION_LOG_PREFIX = 'ReceiptActions';
+
+// Choose which generator to use (e.g., based on an environment variable or config)
+// For simplicity, let's add a parameter to choose. Default to original PdfKit.
+const USE_PUPPETEER_PDF = process.env.PDF_GENERATOR === 'puppeteer'; // Example using env var
 
 // Result structure for the action
 interface CreateReceiptResult {
@@ -38,8 +44,9 @@ interface CreateReceiptParams {
 
 export async function createReceipt(data: CreateReceiptParams): Promise<CreateReceiptResult> {
     const operationId = uuidv4().substring(0, 8); // Unique ID for this operation flow
-    const funcPrefix = `${ACTION_LOG_PREFIX}:createReceipt:${operationId}`;
-    logger.info(funcPrefix, 'Starting createReceipt action execution.', {customerId: data.customer_id, date: data.date_of_purchase, itemCount: data.line_items.length}); // Avoid logging full line items
+    const pdfGeneratorChoice = USE_PUPPETEER_PDF ? 'Puppeteer' : 'PDFKit';
+    const funcPrefix = `${ACTION_LOG_PREFIX}:createReceipt:${operationId} [${pdfGeneratorChoice}]`;
+    logger.info(funcPrefix, 'Starting createReceipt action execution.', {customerId: data.customer_id, date: data.date_of_purchase, itemCount: data.line_items.length});
 
     try {
         // 1. Fetch required data concurrently
@@ -75,7 +82,6 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
             const product = products.find((p) => p.id === item.product_id);
             if (!product) {
                 logger.error(funcPrefix, `Data inconsistency: Product with ID ${item.product_id} from input not found in fetched products.`);
-                // Return a user-friendly error instead of throwing
                 return { success: false, message: `Product with ID ${item.product_id} not found. Please refresh products and try again.` };
             }
             const lineTotal = product.unit_price * item.quantity;
@@ -95,17 +101,14 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
             }
         }
 
-        // Ensure GST is zero if not included globally
         if (!data.include_gst) {
             GSTAmount = 0;
         }
 
-        // Round totals to 2 decimal places *after* all calculations
         subtotalExclGST = parseFloat(subtotalExclGST.toFixed(2));
         GSTAmount = parseFloat(GSTAmount.toFixed(2));
         const totalIncGST = parseFloat((subtotalExclGST + GSTAmount).toFixed(2));
 
-        // Determine if it qualifies as a Tax Invoice (Can be more complex based on AU law, this is simplified)
         const isTaxInvoice = data.force_tax_invoice || (data.include_gst && totalIncGST >= 82.50);
         logger.debug(funcPrefix, `Calculated Totals: Subtotal=${subtotalExclGST}, GST=${GSTAmount}, Total=${totalIncGST}, IsTaxInvoice=${isTaxInvoice}`);
 
@@ -113,16 +116,15 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
         const newReceipt: Receipt = {
             receipt_id: uuidv4(),
             customer_id: data.customer_id,
-            date_of_purchase: data.date_of_purchase, // Store as ISO string (or YYYY-MM-DD)
+            date_of_purchase: data.date_of_purchase,
             line_items: lineItems,
             subtotal_excl_GST: subtotalExclGST,
             GST_amount: GSTAmount,
             total_inc_GST: totalIncGST,
             is_tax_invoice: isTaxInvoice,
-            seller_profile_snapshot: sellerProfile, // Snapshot seller details
-            customer_snapshot: { // Snapshot relevant customer details
-                // Include all fields from Customer type, ensuring type safety
-                id: customer.id, // Include id here for completeness, though redundant
+            seller_profile_snapshot: sellerProfile,
+            customer_snapshot: {
+                id: customer.id,
                 customer_type: customer.customer_type,
                 first_name: customer.first_name,
                 last_name: customer.last_name,
@@ -140,45 +142,47 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
         const createdReceipt = await createReceiptData(newReceipt);
         if (!createdReceipt) {
             logger.error(funcPrefix, 'Data access layer failed to save the receipt.');
-            // Note: PDF is not generated if saving fails
             return { success: false, message: 'Failed to save invoice data.' };
         }
         logger.info(funcPrefix, `Receipt data saved successfully for ID: ${newReceipt.receipt_id}`);
 
-        // 6. Generate PDF (async, but wait for result here)
-        logger.info(funcPrefix, `Initiating PDF generation for receipt ID: ${newReceipt.receipt_id}`);
-        const pdfGenerator = new PdfGenerator();
-        const pdfResult = await pdfGenerator.generatePdf(newReceipt, operationId); // Use generatePdf
+        // 6. Generate PDF using the chosen generator
+        logger.info(funcPrefix, `Initiating PDF generation using ${pdfGeneratorChoice} for receipt ID: ${newReceipt.receipt_id}`);
+
+        let pdfResult;
+        if (USE_PUPPETEER_PDF) {
+            const puppeteerGenerator = new PuppeteerPdfGenerator();
+            pdfResult = await puppeteerGenerator.generate(newReceipt, operationId);
+        } else {
+            const pdfkitGenerator = new PdfGenerator();
+            pdfResult = await pdfkitGenerator.generate(newReceipt, operationId);
+        }
 
         if (pdfResult.success) {
-            logger.info(funcPrefix, `PDF generated successfully. Path: ${pdfResult.filePath}`);
+            logger.info(funcPrefix, `PDF generated successfully using ${pdfGeneratorChoice}. Path: ${pdfResult.filePath}`);
             return {
                 success: true,
                 receipt: { receipt_id: newReceipt.receipt_id },
-                pdfPath: pdfResult.filePath, // Include server path if needed internally
+                pdfPath: pdfResult.filePath,
             };
         } else {
-            // PDF generation failed, but receipt data *was* saved.
-             // Use the message directly from pdfResult
-             const pdfErrorMessage = pdfResult.message || 'Unknown PDF generation error.';
-             logger.error(funcPrefix, `PDF generation failed for receipt ID: ${newReceipt.receipt_id}. Reason: ${pdfErrorMessage}`);
+             const pdfErrorMessage = pdfResult.message || `Unknown ${pdfGeneratorChoice} PDF generation error.`;
+             logger.error(funcPrefix, `PDF generation failed using ${pdfGeneratorChoice} for receipt ID: ${newReceipt.receipt_id}. Reason: ${pdfErrorMessage}`);
             return {
-                success: true, // Data was saved, so action partially succeeded
+                success: true, // Data was saved
                 receipt: { receipt_id: newReceipt.receipt_id },
-                 pdfError: pdfErrorMessage, // Return specific PDF error as a string
+                 pdfError: pdfErrorMessage,
             };
         }
 
     } catch (error) {
-        logger.error(funcPrefix, 'An unexpected error occurred during invoice creation', error);
-        // Format the error message properly
+        logger.error(funcPrefix, 'An unexpected error occurred during invoice creation orchestration', error);
         let errorMessage = 'An unexpected error occurred during invoice creation.';
         if (error instanceof Error) {
             errorMessage += `: ${error.message}`;
         } else if (typeof error === 'string') {
              errorMessage += `: ${error}`;
         } else {
-            // Fallback for unknown error types
              try {
                 errorMessage += `: ${JSON.stringify(error)}`;
              } catch {
