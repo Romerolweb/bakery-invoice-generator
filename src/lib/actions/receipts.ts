@@ -148,7 +148,7 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
         // 6. Generate PDF (async, but wait for result here)
         logger.info(funcPrefix, `Initiating PDF generation for receipt ID: ${newReceipt.receipt_id}`);
         const pdfGenerator = new PdfGenerator();
-        const pdfResult = await pdfGenerator.generatePdf(newReceipt, operationId);
+        const pdfResult = await pdfGenerator.generatePdf(newReceipt, operationId); // Use generatePdf
 
         if (pdfResult.success) {
             logger.info(funcPrefix, `PDF generated successfully. Path: ${pdfResult.filePath}`);
@@ -159,6 +159,7 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
             };
         } else {
             // PDF generation failed, but receipt data *was* saved.
+             // Use the message directly from pdfResult
              const pdfErrorMessage = pdfResult.message || 'Unknown PDF generation error.';
              logger.error(funcPrefix, `PDF generation failed for receipt ID: ${newReceipt.receipt_id}. Reason: ${pdfErrorMessage}`);
             return {

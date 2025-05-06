@@ -1,8 +1,6 @@
-// src/lib/services/pdfGenerator.ts
-// REMOVED 'use server'; directive as this file exports a class, not Server Action functions.
-
+={// src/lib/services/pdfGenerator.ts
 import type { Receipt, LineItem, Customer, SellerProfile } from '@/lib/types';
-import { promises as fsPromises, createWriteStream, accessSync, unlinkSync, WriteStream } from 'fs';
+import { promises as fsPromises, createWriteStream, WriteStream, accessSync, unlinkSync } from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import { format, parseISO } from 'date-fns';
@@ -10,7 +8,12 @@ import { logger } from '@/lib/services/logging'; // Import the logger
 
 const DATA_DIR = path.join(process.cwd(), 'src/lib/data');
 const PDF_DIR = path.join(DATA_DIR, 'receipt-pdfs'); // Directory to store generated PDFs
-const FONT_DIR = path.join(process.cwd(), 'src/lib/fonts'); // Corrected font directory path
+
+// Define standard font names as used in PDFKit
+const FONT_NAMES = {
+    Regular: 'Helvetica',
+    Bold: 'Helvetica-Bold',
+};
 
 export class PdfGenerator {
     private _doc: PDFKit.PDFDocument | null = null;
@@ -32,59 +35,21 @@ export class PdfGenerator {
         }
     }
 
-    // Check if required font files are accessible
-    private _checkRequiredFontsExist(): void {
-        const funcPrefix = `${this._logPrefix}:_checkRequiredFontsExist`;
-        const requiredFonts = [
-            'Helvetica.afm',
-            'Helvetica-Bold.afm'
-            // Add other required fonts like Oblique, BoldOblique if used
-        ];
-        logger.debug(funcPrefix, "Checking for required font files...");
-        for (const fontFile of requiredFonts) {
-            const fontPath = path.join(FONT_DIR, fontFile);
-            try {
-                accessSync(fontPath); // Check if file exists and is accessible
-                logger.debug(funcPrefix, `Font file found: ${fontPath}`);
-            } catch (err) {
-                 const error = err as NodeJS.ErrnoException; // Type assertion
-                 logger.error(funcPrefix, `FATAL: Required font file missing or inaccessible: ${fontPath}`, error);
-                 // Throw a more specific error to be caught by the caller
-                 throw new Error(`Required font file missing: ${fontFile}. Please ensure it exists in ${FONT_DIR}. Details: ${error.message}`);
-            }
-        }
-         logger.debug(funcPrefix, "All required font files found.");
-    }
-
-
     private _initialize(receiptId: string, operationId: string): void {
         this._operationId = operationId;
         this._logPrefix = `[${operationId} PDF ${receiptId}]`;
         this._filePath = path.join(PDF_DIR, `${receiptId}.pdf`);
         logger.info(this._logPrefix, `Initializing PDF generation for path: ${this._filePath}`);
-
-        // Check for fonts before initializing PDFDocument
-        this._checkRequiredFontsExist();
-
         try {
             this._doc = new PDFDocument({
                  margin: 50,
                  bufferPages: true,
-                 // pdfkit requires AFM files for standard fonts to be accessible
-                 // We don't explicitly set the font path here, relying on pdfkit's lookup mechanism
-                 // which should work if the files are in a place it expects or if bundled correctly.
-                 // However, direct font registration is safer if issues persist.
+                 // Use default Helvetica font
             });
              logger.debug(this._logPrefix, `PDFDocument instantiated successfully.`);
         } catch (instantiationError) {
             logger.error(this._logPrefix, `FATAL: Error instantiating PDFDocument`, instantiationError);
-             const errMsg = instantiationError instanceof Error ? instantiationError.message : String(instantiationError);
-             // Check if the error is font-related
-             if (errMsg.includes('Font') || errMsg.includes('font') || errMsg.includes('.afm')) {
-                 throw new Error(`PDF library font error: ${errMsg}. Ensure font files are in ${FONT_DIR}.`);
-             } else {
-                 throw new Error(`PDF library initialization error: ${errMsg}`);
-             }
+            throw new Error(`PDF library initialization error: ${instantiationError instanceof Error ? instantiationError.message : String(instantiationError)}`);
         }
         this._success = false; // Reset success flag
     }
@@ -114,18 +79,10 @@ export class PdfGenerator {
                     return;
                 }
 
-                // Catch errors during the piping process itself
                 this._doc.on('error', (err) => {
                     logger.error(funcPrefix, 'PDF document error during piping', err);
                     this._success = false;
-                    // Try to close the stream to prevent leaks if it's open
-                    if (this._stream && !this._stream.closed) {
-                         this._stream.end(() => {
-                             reject(new Error(`PDF document error: ${err.message}`));
-                         });
-                    } else {
-                        reject(new Error(`PDF document error: ${err.message}`));
-                    }
+                    reject(new Error(`PDF document error: ${err.message}`));
                 });
 
                 logger.debug(funcPrefix, 'Piping PDF document to stream...');
@@ -138,29 +95,10 @@ export class PdfGenerator {
         });
     }
 
-    // Helper function to safely set font and handle potential errors
-    private _safeSetFont(fontName: string, size?: number): void {
-        if (!this._doc) return;
-        try {
-            this._doc.font(fontName);
-            if (size) {
-                this._doc.fontSize(size);
-            }
-        } catch (fontError) {
-            logger.error(`${this._logPrefix}:_safeSetFont`, `Error setting font to ${fontName}`, fontError);
-            // Fallback to default Helvetica if specific font fails
-            this._doc.font('Helvetica');
-            if (size) {
-                this._doc.fontSize(size);
-            }
-        }
-    }
-
     private _addHeader(isTaxInvoice: boolean): void {
         if (!this._doc) return;
-         this._safeSetFont('Helvetica-Bold', 20);
-         this._doc.text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' });
-         this._safeSetFont('Helvetica', 10); // Revert to regular, smaller size
+        this._doc.fontSize(20).font(FONT_NAMES.Bold).text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' });
+        this._doc.font(FONT_NAMES.Regular).fontSize(10); // Revert to regular, smaller size for subsequent text
         this._doc.moveDown();
     }
 
@@ -168,9 +106,8 @@ export class PdfGenerator {
          if (!this._doc) return;
          const funcPrefix = `${this._logPrefix}:_addSellerInfo`;
          logger.debug(funcPrefix, 'Adding seller info');
-          this._safeSetFont('Helvetica-Bold', 12); // Bold label
-          this._doc.text('From:', { underline: false });
-          this._safeSetFont('Helvetica', 10); // Normal text for details
+         this._doc.fontSize(12).font(FONT_NAMES.Bold).text('From:', { underline: false }); // Bold label
+         this._doc.font(FONT_NAMES.Regular).fontSize(10); // Normal text for details
          this._doc.text(seller.name || 'Seller Name Missing');
          this._doc.text(seller.business_address || 'Seller Address Missing');
          this._doc.text(`ABN/ACN: ${seller.ABN_or_ACN || 'Seller ABN/ACN Missing'}`);
@@ -185,9 +122,8 @@ export class PdfGenerator {
          if (!this._doc) return;
          const funcPrefix = `${this._logPrefix}:_addCustomerInfo`;
          logger.debug(funcPrefix, 'Adding customer info');
-          this._safeSetFont('Helvetica-Bold', 12); // Bold label
-          this._doc.text('To:', { underline: false });
-          this._safeSetFont('Helvetica', 10); // Normal text for details
+         this._doc.fontSize(12).font(FONT_NAMES.Bold).text('To:', { underline: false }); // Bold label
+         this._doc.font(FONT_NAMES.Regular).fontSize(10); // Normal text for details
          if (customer.customer_type === 'business') {
              this._doc.text(customer.business_name || 'Business Name Missing');
              if (customer.abn) {
@@ -211,7 +147,7 @@ export class PdfGenerator {
         if (!this._doc) return;
         const funcPrefix = `${this._logPrefix}:_addInvoiceDetails`;
         logger.debug(funcPrefix, `Adding invoice details ID: ${invoiceId}, Date: ${dateIsoString}`);
-         this._safeSetFont('Helvetica', 10);
+        this._doc.fontSize(10);
         this._doc.text(`Invoice ID: ${invoiceId}`);
         try {
             const dateObject = parseISO(dateIsoString);
@@ -233,7 +169,6 @@ export class PdfGenerator {
          logger.debug(funcPrefix, `Drawing table header at Y=${y}`);
          const startX = this._doc.page.margins.left;
          const endX = this._doc.page.width - this._doc.page.margins.right;
-         // Define column start positions (adjust as needed)
          const itemCol = startX;
          const gstCol = 250;
          const qtyCol = 320;
@@ -245,21 +180,21 @@ export class PdfGenerator {
          const effectivePriceCol = includeGstColumn ? priceCol : qtyCol;
          const effectiveTotalCol = includeGstColumn ? totalCol : priceCol;
 
-         // Calculate widths based on start positions
+
          const itemWidth = (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10;
          const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
          const qtyWidth = effectivePriceCol - effectiveQtyCol - 10;
          const priceWidth = effectiveTotalCol - effectivePriceCol - 10;
-         const totalWidth = endX - effectiveTotalCol - 5; // Ensure it fits
+         const totalWidth = endX - effectiveTotalCol;
 
-         this._safeSetFont('Helvetica-Bold', 10);
+         this._doc.fontSize(10).font(FONT_NAMES.Bold);
          this._doc.text('Item', itemCol, y, { width: itemWidth, underline: true });
          if (includeGstColumn) this._doc.text('GST?', gstCol, y, { width: gstWidth, underline: true, align: 'center' });
          this._doc.text('Qty', effectiveQtyCol, y, { width: qtyWidth, underline: true, align: 'right' });
          this._doc.text('Unit Price', effectivePriceCol, y, { width: priceWidth, underline: true, align: 'right' });
          this._doc.text('Line Total', effectiveTotalCol, y, { width: totalWidth, underline: true, align: 'right' });
          this._doc.moveDown(0.5);
-         this._safeSetFont('Helvetica'); // Revert font
+         this._doc.font(FONT_NAMES.Regular); // Revert font
      }
 
      private _addLineItemsTable(lineItems: LineItem[], includeGstColumn: boolean): void {
@@ -284,7 +219,7 @@ export class PdfGenerator {
          const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
          const qtyWidth = effectivePriceCol - effectiveQtyCol - 10;
          const priceWidth = effectiveTotalCol - effectivePriceCol - 10;
-         const totalWidth = endX - effectiveTotalCol - 5;
+         const totalWidth = endX - effectiveTotalCol;
 
 
          const tableBottomMargin = 70; // Space needed for totals + buffer
@@ -294,9 +229,8 @@ export class PdfGenerator {
          let currentY = this._doc.y;
 
          lineItems.forEach((item, index) => {
-             const rowHeightEstimate = this._doc!.heightOfString(item.product_name || 'N/A', { width: itemWidth, fontSize: 10 }) + 5; // Estimate height
-
-             if (currentY + rowHeightEstimate > pageBottom) {
+             const itemHeightEstimate = this._doc!.heightOfString('X', { fontSize: 10 }) + 5; // Estimate row height dynamically
+             if (currentY + itemHeightEstimate > pageBottom) {
                  logger.debug(funcPrefix, `Adding new page before item ${index + 1} at Y=${currentY}. Page bottom limit: ${pageBottom}`);
                  this._doc!.addPage();
                  currentY = this._doc!.page.margins.top; // Reset Y to top margin
@@ -308,17 +242,17 @@ export class PdfGenerator {
              const lineTotalExGST = item.line_total ?? 0;
 
              // Draw row content
-              this._safeSetFont('Helvetica', 10);
+             this._doc!.fontSize(10).font(FONT_NAMES.Regular);
              this._doc!.text(item.product_name || 'N/A', itemCol, currentY, { width: itemWidth });
              if (includeGstColumn) this._doc!.text(item.GST_applicable ? 'Yes' : 'No', gstCol, currentY, { width: gstWidth, align: 'center' });
              this._doc!.text(item.quantity?.toString() ?? '0', effectiveQtyCol, currentY, { width: qtyWidth, align: 'right' });
              this._doc!.text(`$${unitPriceExGST.toFixed(2)}`, effectivePriceCol, currentY, { width: priceWidth, align: 'right' });
              this._doc!.text(`$${lineTotalExGST.toFixed(2)}`, effectiveTotalCol, currentY, { width: totalWidth, align: 'right' });
 
-             // Move Y down by the actual height of the row (determined by the text function implicitly)
-              // We need to get the Y position *after* drawing the potentially multi-line text.
-              // PDFKit advances the Y position automatically.
-              currentY = this._doc!.y + 3; // Add a small gap after the row
+             // Determine the actual height of the row based on the tallest element (usually item name)
+              const actualHeight = this._doc!.heightOfString(item.product_name || 'N/A', { width: itemWidth });
+              currentY += actualHeight + 3; // Move Y down by height + small gap
+              this._doc!.y = currentY; // Sync doc's Y position
 
          });
 
@@ -350,7 +284,8 @@ export class PdfGenerator {
              this._doc.y = totalsY; // Set doc's current Y
          }
 
-          this._safeSetFont('Helvetica', 10);
+         // Use consistent font and size for labels and amounts initially
+         this._doc.fontSize(10).font(FONT_NAMES.Regular);
          const amountWidth = endX - totalsX;
 
          // Subtotal
@@ -373,13 +308,13 @@ export class PdfGenerator {
          this._doc.y = totalsY;
 
          // Total - Make it bold and slightly larger
-          this._safeSetFont('Helvetica-Bold', 12);
+         this._doc.font(FONT_NAMES.Bold).fontSize(12);
          this._doc.text(`Total Amount:`, labelX, totalsY, { continued: false, align: 'left'}); // Changed label slightly
          this._doc.text(`$${total.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth });
          totalsY = this._doc.y; // Update Y after text
 
          // Revert font settings
-          this._safeSetFont('Helvetica', 10);
+         this._doc.font(FONT_NAMES.Regular).fontSize(10);
          this._doc.y = totalsY; // Ensure doc.y is at the end of the totals block
          this._doc.moveDown();
      }
@@ -393,26 +328,25 @@ export class PdfGenerator {
                  return reject(new Error(errorMsg));
             }
 
-             // Create a combined promise that resolves on stream 'finish' or rejects on any error
              const streamFinishPromise = new Promise<void>((res, rej) => {
-                 this._stream!.once('finish', res); // Resolve on finish
-                 this._stream!.once('error', rej); // Reject on stream error
-                 this._doc!.once('error', rej); // Also reject on document error during finalization
+                 this._stream!.once('finish', res);
+                 this._stream!.once('error', rej);
+                 this._doc!.once('error', rej);
              });
 
             logger.info(funcPrefix, 'Finalizing PDF document (calling end())...');
-            this._doc.end(); // Trigger finish/error events on stream
+            this._doc.end(); // Trigger finish/error events
 
              streamFinishPromise
                  .then(() => {
                      logger.info(funcPrefix, 'Stream finished successfully during finalize.');
-                     // Success is already set by 'finish' handler in _setupStream
+                     this._success = true; // Confirm success
                      resolve();
                  })
                  .catch((err) => {
                      logger.error(funcPrefix, 'Stream or document error during finalize', err);
-                      this._success = false; // Ensure success is false on error
-                     reject(err); // Reject the finalize promise
+                      this._success = false;
+                     reject(err);
                  });
         });
     }
@@ -425,13 +359,12 @@ export class PdfGenerator {
         }
         logger.warn(funcPrefix, `Attempting cleanup for: ${this._filePath}`);
         try {
-            // Ensure stream is closed before attempting deletion
             if (this._stream && !this._stream.closed && this._stream.writable) {
                 logger.debug(funcPrefix, 'Closing potentially open write stream...');
                 await new Promise<void>((resolve) => {
                      this._stream!.once('close', resolve);
                      this._stream!.once('error', (err) => { logger.error(funcPrefix, 'Error closing stream during cleanup', err); resolve(); });
-                     this._stream!.end(); // End the stream gracefully
+                     this._stream!.end();
                  });
                  logger.debug(funcPrefix, 'Finished waiting for stream close/error.');
             } else {
@@ -440,9 +373,9 @@ export class PdfGenerator {
 
             logger.debug(funcPrefix, `Checking existence of potentially incomplete PDF: ${this._filePath}`);
              try {
-                 await fsPromises.access(this._filePath); // Use async access check
+                 accessSync(this._filePath);
                  logger.warn(funcPrefix, `Attempting to delete incomplete/corrupted PDF: ${this._filePath}`);
-                 await fsPromises.unlink(this._filePath); // Use async unlink
+                 unlinkSync(this._filePath);
                  logger.info(funcPrefix, `Deleted incomplete/corrupted PDF: ${this._filePath}`);
              } catch (accessOrUnlinkError: any) {
                  if (accessOrUnlinkError.code === 'ENOENT') {
@@ -454,21 +387,18 @@ export class PdfGenerator {
         } catch (cleanupError) {
             logger.error(funcPrefix, 'Error during PDF cleanup process itself', cleanupError);
         } finally {
-            // Reset state regardless of cleanup success/failure
             this._doc = null;
             this._stream = null;
+            // Keep _filePath and _logPrefix if you need them for error reporting after cleanup attempt
         }
     }
 
-    public async generatePdf(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
+    public async generate(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
         try {
             this._initialize(receipt.receipt_id, operationId);
         } catch(initError: any) {
-             const errorPrefix = this._logPrefix || `[${operationId} PDF ${receipt?.receipt_id || 'unknown'}]`;
-             logger.error(errorPrefix, 'ERROR during PDF initialization', initError);
-             // Ensure the message is a string
-             const errorMessage = initError instanceof Error ? initError.message : String(initError);
-             return { success: false, message: errorMessage };
+             logger.error(this._logPrefix || `[${operationId} PDF ${receipt?.receipt_id || 'unknown'}]`, 'ERROR during PDF initialization', initError);
+             return { success: false, message: initError.message || "PDF initialization failed." };
         }
 
         try {
@@ -488,15 +418,11 @@ export class PdfGenerator {
 
             logger.info(this._logPrefix, `PDF generation process completed. Success flag: ${this._success}`);
             if (!this._success) {
-                // This case should ideally be caught by errors in _setupStream or _finalize
-                logger.error(this._logPrefix, "PDF generation finished, but success flag is false. Stream might have errored silently.");
-                await this._cleanupFailedPdf();
-                return { success: false, message: "PDF generation failed due to an unknown stream error." };
+                throw new Error("Stream finished or errored, but success flag was not set correctly.");
             }
-
             logger.info(this._logPrefix, 'PDF generation successful.');
-            const finalFilePath = this._filePath; // Store before resetting
-            // Reset internal state for potential reuse
+            const finalFilePath = this._filePath; // Store before potential cleanup resets it
+             // Reset internal state for potential reuse
              this._doc = null;
              this._stream = null;
              this._filePath = '';
@@ -506,9 +432,12 @@ export class PdfGenerator {
             logger.error(this._logPrefix, 'ERROR during PDF generation orchestration', error);
             await this._cleanupFailedPdf(); // Ensure cleanup happens
 
-            // Ensure the message is a string
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            return { success: false, message: `Failed to generate PDF: ${errorMessage}` };
+            let message = `Failed to generate PDF: ${error.message || 'Unknown error'}`;
+            // Add specific error handling if needed (e.g., font errors)
+            // if (error.message.includes('ENOENT') && error.message.includes('.afm')) { ... }
+
+            return { success: false, message };
         }
     }
 }
+

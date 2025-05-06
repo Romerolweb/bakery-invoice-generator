@@ -185,8 +185,10 @@ export default function NewInvoicePage() {
              logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF generation failed: ${result.pdfError}`);
              toast({
                title: "Invoice Created (PDF Failed)",
+               // Use the more specific pdfError message from the backend
                description: `Invoice ${shortId}... saved, but PDF generation failed: ${result.pdfError}`,
                variant: "destructive", // Use warning/error variant
+               duration: 9000, // Longer duration for error messages
              });
          } else {
              // This case should ideally not happen if the backend returns correctly
@@ -368,12 +370,14 @@ export default function NewInvoicePage() {
                             name={`line_items.${index}.quantity`}
                             render={({ field: itemField }) => (
                               <FormItem>
+                                <FormControl>
                                   <Input
                                     type="number"
                                     min="1"
                                     className="h-9 w-20 text-right inline-block" // Smaller width, inline, align right
                                     {...itemField}
                                   />
+                                </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
