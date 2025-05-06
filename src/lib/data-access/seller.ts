@@ -1,34 +1,62 @@
 // src/lib/data-access/seller.ts
-import { SellerProfile } from '@/lib/types';
-import { logger } from '../services/logging';
+import fs from 'fs/promises'; // Direct import
+import path from 'path';
+import type { SellerProfile } from '@/lib/types';
+import { logger } from '@/lib/services/logging'; // Adjusted path
 
-const SELLER_DATA_PATH = '/src/lib/data/seller-profile.json';
 const DATA_ACCESS_LOG_PREFIX = 'SellerDataAccess';
+const dataDirectory = path.join(process.cwd(), 'src/lib/data');
+const sellerProfileFilePath = path.join(dataDirectory, 'seller-profile.json');
+
+// Reads the seller profile data file
+async function readSellerProfileFile(): Promise<SellerProfile | null> {
+  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:readSellerProfileFile`;
+  try {
+    const data = await fs.readFile(sellerProfileFilePath, 'utf8');
+    logger.debug(funcPrefix, `Successfully read seller profile file: ${sellerProfileFilePath}`);
+    return JSON.parse(data) as SellerProfile;
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+       logger.warn(funcPrefix, `Seller profile file not found at ${sellerProfileFilePath}, returning null.`);
+       return null; // File doesn't exist
+    }
+    logger.error(funcPrefix, `Error reading seller profile file: ${sellerProfileFilePath}`, error);
+    throw new Error(`Failed to read seller profile data: ${error.message}`); // Re-throw other errors
+  }
+}
+
+// Writes the seller profile data file
+async function writeSellerProfileFile(profile: SellerProfile): Promise<void> {
+  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:writeSellerProfileFile`;
+  try {
+    await fs.writeFile(sellerProfileFilePath, JSON.stringify(profile, null, 2));
+    logger.debug(funcPrefix, `Successfully wrote seller profile file: ${sellerProfileFilePath}`);
+  } catch (error: any) {
+    logger.error(funcPrefix, `Error writing seller profile file: ${sellerProfileFilePath}`, error);
+    throw new Error(`Failed to write seller profile data: ${error.message}`); // Re-throw error
+  }
+}
 
 export async function getSellerProfile(): Promise<SellerProfile | null> {
+  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getSellerProfile`;
+  logger.debug(funcPrefix, 'Attempting to get seller profile.');
   try {
-    const sellerProfile: SellerProfile = await fetch(SELLER_DATA_PATH).then(res => res.json());
-    logger.info(DATA_ACCESS_LOG_PREFIX, 'Successfully fetched seller profile.');
-    return sellerProfile;
+    return await readSellerProfileFile();
   } catch (error) {
-    logger.error(DATA_ACCESS_LOG_PREFIX, `Error reading seller profile from file: ${SELLER_DATA_PATH}`, error);
+    logger.error(funcPrefix, 'Error retrieving seller profile', error);
     return null;
   }
 }
 
-export async function updateSellerProfile(sellerProfile: SellerProfile): Promise<boolean> {
+export async function updateSellerProfile(profile: SellerProfile): Promise<boolean> {
+  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:updateSellerProfile`;
+  logger.debug(funcPrefix, 'Attempting to update seller profile.');
   try {
-    await fetch(SELLER_DATA_PATH, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(sellerProfile, null, 2),
-    });
-    logger.info(DATA_ACCESS_LOG_PREFIX, 'Successfully updated seller profile.');
+    await writeSellerProfileFile(profile);
+    logger.info(funcPrefix, 'Seller profile updated successfully.');
     return true;
   } catch (error) {
-    logger.error(DATA_ACCESS_LOG_PREFIX, `Error writing seller profile to file: ${SELLER_DATA_PATH}`, error);
+    logger.error(funcPrefix, 'Error updating seller profile', error);
     return false;
   }
 }

@@ -111,3 +111,9 @@ export interface Receipt {
    */
   customer_snapshot: Customer; // Store relevant customer details directly
 }
+
+export interface Result<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
