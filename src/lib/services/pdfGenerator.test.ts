@@ -243,6 +243,30 @@ describe('PdfGenerator', () => {
          expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(`$100.00`, expect.any(Number), expect.any(Number), expect.any(Object));
     });
 
+    it('should use default Helvetica fonts', async () => {
+        const mockLineItems: LineItem[] = [{ product_id: 'p1', description: 'Desc', quantity: 1, unit_price: 10, line_total: 10, product_name: 'Test Product', GST_applicable: false }];
+        const mockCustomer: Omit<Customer, 'id'> = { customer_type: 'individual', first_name: 'Test', last_name: 'Cust', email: 't@e.st' };
+        const mockSeller: SellerProfile = { name: 'Seller', business_address: 'Addr', ABN_or_ACN: '123', contact_email: 's@e.st' };
+        const mockReceipt: Receipt = {
+            receipt_id: mockReceiptId, customer_id: 'test-customer', date_of_purchase: '2024-01-01T00:00:00.000Z', line_items: mockLineItems, subtotal_excl_GST: 100, GST_amount: 10, total_inc_GST: 110, is_tax_invoice: true, seller_profile_snapshot: mockSeller, customer_snapshot: mockCustomer as Customer
+        };
+
+        // Mock the stream to emit 'finish'
+        const mockStream = new stream.PassThrough();
+        mockedCreateWriteStream.mockReturnValue(mockStream as any);
+        setTimeout(() => mockStream.emit('finish'), 10); // Emit finish event
+
+        await pdfGenerator.generate(mockReceipt, mockOperationId);
+
+        // Assert that font is called with the default fonts
+        expect(mockPDFDocumentInstance.font).toHaveBeenCalledWith('Helvetica-Bold');
+        expect(mockPDFDocumentInstance.font).toHaveBeenCalledWith('Helvetica');
+    });
+
+
+
+
+
     it('should finalize PDF', async () => {
          (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
          // Mock the stream setup
