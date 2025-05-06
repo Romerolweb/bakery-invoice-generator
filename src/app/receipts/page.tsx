@@ -32,7 +32,10 @@ export default function ReceiptsHistoryPage() {
       logger.debug(CLIENT_LOG_PREFIX, 'Calling getAllReceipts action...');
       const data = await getAllReceipts(); // Use getAllReceipts action here
       logger.info(CLIENT_LOG_PREFIX, `Fetched ${data.length} receipts.`);
-      setReceipts(data);
+      // Ensure receipts are sorted by date descending (most recent first)
+      // Sorting is now handled in the server action, but redundant client-side sort doesn't hurt
+      const sortedData = data.sort((a, b) => new Date(b.date_of_purchase).getTime() - new Date(a.date_of_purchase).getTime());
+      setReceipts(sortedData);
     } catch (error) {
       logger.error(CLIENT_LOG_PREFIX, 'Failed to fetch receipts', error);
        toast({
@@ -59,40 +62,44 @@ export default function ReceiptsHistoryPage() {
     try {
       const response = await fetch(`/api/pdf-status?id=${receiptId}`);
       if (!response.ok) {
-           throw new Error(`API error: ${response.status} ${response.statusText}`);
+           // Handle non-2xx responses from the API route itself
+           const errorText = await response.text();
+           throw new Error(`API error ${response.status}: ${errorText || response.statusText}`);
       }
       const data = await response.json();
 
       if (data.status === 'ready') {
         logger.info(funcPrefix, `PDF is ready, initiating download.`);
         toast({ title: "PDF Ready", description: `Downloading PDF for ${receiptId.substring(0, 8)}...`, duration: 3000 });
+        // Directly trigger download now that we know it's ready
         window.open(`/api/download-pdf?id=${receiptId}`, '_blank');
       } else if (data.status === 'not_found') {
         logger.warn(funcPrefix, `PDF not found. It might be generating or failed.`);
         toast({
             title: "PDF Not Ready",
-            description: "PDF is not available yet. It might still be generating, or an error occurred. Please wait a moment and try again.",
-            variant: "default", // Use default variant as it's informational but potentially requires action
-            duration: 7000, // Longer duration
+            description: "PDF is not available yet. It might still be generating, or an error occurred during creation. Please wait a moment and try again, or regenerate if the issue persists.",
+            variant: "default", // Use default variant as it's informational
+            duration: 9000, // Longer duration
          });
       } else {
-         // Should not happen with current API, but handle defensively
+         // Handle unexpected status values from the API
          logger.warn(funcPrefix, `Unknown PDF status received: ${data.status}`);
          toast({ title: "Unknown Status", description: "Could not determine PDF status.", variant: "destructive", duration: 5000 });
       }
     } catch (error) {
-      logger.error(funcPrefix, "Error checking PDF status", error);
-      toast({ title: "Error Checking Status", description: "Could not check PDF status. Please try again.", variant: "destructive", duration: 5000 });
+      logger.error(funcPrefix, "Error checking PDF status via API", error);
+      toast({ title: "Error Checking Status", description: `Could not check PDF status: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive", duration: 7000 });
     } finally {
-        setCheckingPdfId(null); // Indicate checking finished
+        setCheckingPdfId(null); // Indicate checking finished regardless of outcome
     }
   };
 
    const handleDownloadPdf = (receiptId: string) => {
         const funcPrefix = `${CLIENT_LOG_PREFIX}:handleDownloadPdf:${receiptId.substring(0,8)}`;
         logger.info(funcPrefix, `Initiating PDF status check for download.`);
-        toast({ title: "Checking PDF...", description: `Checking availability for ${receiptId.substring(0, 8)}...`, duration: 2000 });
-        checkPdfStatus(receiptId); // Check status first
+        // Show initial toast that checking has started
+        toast({ title: "Checking PDF...", description: `Checking availability for ${receiptId.substring(0, 8)}...`, duration: 2500 });
+        checkPdfStatus(receiptId); // Check status first, which will trigger download if ready
   };
 
 
@@ -113,7 +120,7 @@ export default function ReceiptsHistoryPage() {
       <Card>
         <CardHeader>
           <CardTitle>Generated Invoices</CardTitle>
-           <CardDescription>List of all invoices generated.</CardDescription>
+           <CardDescription>List of all invoices generated, sorted by most recent.</CardDescription>
         </CardHeader>
         <CardContent>
              {isLoading ? (
@@ -139,27 +146,28 @@ export default function ReceiptsHistoryPage() {
                 {receipts.map((receipt) => (
                     <TableRow key={receipt.receipt_id}>
                     <TableCell className="font-mono text-xs">{receipt.receipt_id.substring(0, 8)}...</TableCell>
-                    <TableCell>{format(parseISO(receipt.date_of_purchase), 'dd/MM/yyyy')}</TableCell>
+                     <TableCell>
+                         { /* Ensure date is parsed correctly before formatting */ }
+                         {receipt.date_of_purchase ? format(parseISO(receipt.date_of_purchase), 'dd/MM/yyyy') : 'N/A'}
+                     </TableCell>
                      <TableCell>
                          {receipt.customer_snapshot.customer_type === 'business'
                             ? receipt.customer_snapshot.business_name
                             : `${receipt.customer_snapshot.first_name || ''} ${receipt.customer_snapshot.last_name || ''}`.trim()
                          }
+                         {receipt.customer_snapshot.email ? ` (${receipt.customer_snapshot.email})` : ''}
                      </TableCell>
                     <TableCell>${receipt.total_inc_GST.toFixed(2)}</TableCell>
                      <TableCell>
                          {receipt.is_tax_invoice ? (
                              <Badge variant="default">Tax Invoice</Badge>
                          ) : (
-                             <Badge variant="secondary">Invoice</Badge> // Updated text
+                             <Badge variant="secondary">Invoice</Badge> // Standard Invoice
                          )}
                      </TableCell>
                     <TableCell className="text-right space-x-2">
-                       {/* Placeholder: Add view/details button later */}
-                       {/* <Button variant="ghost" size="icon" title="View Details">
-                            <FileText className="h-4 w-4" />
-                            <span className="sr-only">View Details</span>
-                        </Button> */}
+                       {/* Placeholder: Add view/details button later if needed */}
+                       {/* <Button variant="ghost" size="icon" title="View Details">... */}
                        <Button
                           variant="outline"
                           size="sm"

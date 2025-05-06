@@ -29,22 +29,22 @@ export async function GET(request: NextRequest) {
   try {
     logger.debug(funcPrefix, `Attempting to get PDF path for receipt ${receiptId}...`);
     // Use the data-access function directly
-    const pdfPath = await getReceiptPdfPath(receiptId);
+    const pdfPath = await getReceiptPdfPath(receiptId); // Relies on logging within the action
 
     if (pdfPath) {
-      logger.info(funcPrefix, `PDF status is 'ready'. Path: ${pdfPath}`);
+      logger.info(funcPrefix, `PDF status is 'ready'. Path (internal): ${pdfPath}`);
       // Don't return the actual server path to the client for security.
       return NextResponse.json({ status: 'ready' });
     } else {
       // This means the file wasn't found by getReceiptPdfPath.
       // It could be still generating, or generation failed, or it never existed.
-      // For simplicity, we'll return 'not_found'. A more complex system
-      // might track generation state separately.
-      logger.info(funcPrefix, `PDF status is 'not_found' (file does not exist).`);
+      // Logging within getReceiptPdfPath should indicate if ENOENT or other error.
+      logger.info(funcPrefix, `PDF status is 'not_found' (file does not exist or access error).`);
       return NextResponse.json({ status: 'not_found' });
     }
   } catch (error) {
-    logger.error(funcPrefix, `Error checking PDF status for receipt ${receiptId}`, error);
+    // Catch unexpected errors during the check process
+    logger.error(funcPrefix, `Unexpected error checking PDF status for receipt ${receiptId}`, error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

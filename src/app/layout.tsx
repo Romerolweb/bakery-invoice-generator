@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist } from 'next/font/google'; // Assuming Geist is preferred font
+// Removed Geist font import
 import './globals.css';
 import React from 'react'; // Explicitly import React
 import { cn } from '@/lib/utils';
@@ -8,10 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Link from 'next/link';
 import { Home, Settings, Users, FileText, ShoppingBag } from 'lucide-react';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
+// Removed Geist font loading
 
 export const metadata: Metadata = {
   title: "Baker's Invoice", // Updated title
@@ -25,7 +22,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn(geistSans.variable, 'antialiased')}>
+      {/* Removed font variable class from body */}
+      <body className={cn('antialiased')}>
         <SidebarProvider>
           <Sidebar>
             <SidebarHeader className="p-4">

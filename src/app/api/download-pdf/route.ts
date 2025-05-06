@@ -32,13 +32,14 @@ export async function GET(request: NextRequest) {
     const pdfBuffer = await getReceiptPdfContent(receiptId); // Relies on logging within the action
 
     if (!pdfBuffer) {
-      logger.warn(funcPrefix, 'PDF content not found for receipt.');
-      return new NextResponse('PDF not found', { status: 404 });
+      // Logged within getReceiptPdfContent if file not found or read error
+      logger.warn(funcPrefix, 'PDF content not found or could not be read for receipt.');
+      return new NextResponse('PDF not found or unreadable', { status: 404 });
     }
     logger.info(funcPrefix, `PDF content retrieved (${pdfBuffer.length} bytes).`);
 
     // Determine filename (optional, browser might infer)
-    const filename = `${receiptId}.pdf`;
+    const filename = `invoice-${receiptId}.pdf`; // Changed filename prefix
 
     // Set headers for file download
     const headers = new Headers();
@@ -49,7 +50,8 @@ export async function GET(request: NextRequest) {
     logger.info(funcPrefix, 'Sending PDF content as response.');
     return new NextResponse(pdfBuffer, { status: 200, headers });
   } catch (error) {
-    logger.error(funcPrefix, `Error fetching PDF for receipt ${receiptId}`, error);
+    // Catch unexpected errors during the process
+    logger.error(funcPrefix, `Unexpected error processing PDF download for receipt ${receiptId}`, error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

@@ -20,11 +20,12 @@ const USE_PUPPETEER_PDF = process.env.PDF_GENERATOR === 'puppeteer'; // Example 
 
 // Result structure for the action
 interface CreateReceiptResult {
-    success: boolean;
-    message?: string;
-    receipt?: { receipt_id: string }; // Return minimal receipt info
-    pdfPath?: string; // Path on the server (for potential internal use)
-    pdfError?: string; // Specific PDF generation error message
+    success: boolean; // Overall success (including data saving)
+    message?: string; // General message or data saving error message
+    receipt?: { receipt_id: string }; // Return minimal receipt info if data saved
+    pdfGenerated: boolean; // Indicates if PDF generation step was successful
+    pdfPath?: string; // Path on the server (only if pdfGenerated is true)
+    pdfError?: string; // Specific PDF generation error message (only if pdfGenerated is false but success is true)
 }
 
 // Input parameters for the action
@@ -46,10 +47,12 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
     const operationId = uuidv4().substring(0, 8); // Unique ID for this operation flow
     const pdfGeneratorChoice = USE_PUPPETEER_PDF ? 'Puppeteer' : 'PDFKit';
     const funcPrefix = `${ACTION_LOG_PREFIX}:createReceipt:${operationId} [${pdfGeneratorChoice}]`;
+    let newReceipt: Receipt | null = null; // Hold the receipt data for PDF generation
+
     logger.info(funcPrefix, 'Starting createReceipt action execution.', {customerId: data.customer_id, date: data.date_of_purchase, itemCount: data.line_items.length});
 
     try {
-        // 1. Fetch required data concurrently
+        // --- Step 1: Fetch required data ---
         logger.debug(funcPrefix, 'Fetching products, seller profile, and customer data concurrently.');
         const [products, sellerProfile, customer] = await Promise.all([
             getAllProducts(),
@@ -58,21 +61,21 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
         ]);
         logger.debug(funcPrefix, `Fetched ${products.length} products, seller profile ${sellerProfile ? 'found' : 'not found'}, customer ${customer ? 'found' : 'not found'}.`);
 
-        // 2. Validate fetched data
+        // --- Step 2: Validate fetched data ---
         if (!products || products.length === 0) {
             logger.warn(funcPrefix, 'Validation failed: No products found in data access.');
-            return { success: false, message: 'Cannot create invoice: No products defined in the system.' };
+            return { success: false, message: 'Cannot create invoice: No products defined in the system.', pdfGenerated: false };
         }
         if (!sellerProfile) {
             logger.warn(funcPrefix, 'Validation failed: Seller profile not found.');
-            return { success: false, message: 'Cannot create invoice: Seller profile is not configured.' };
+            return { success: false, message: 'Cannot create invoice: Seller profile is not configured.', pdfGenerated: false };
         }
         if (!customer) {
             logger.warn(funcPrefix, `Validation failed: Customer not found for ID: ${data.customer_id}`);
-            return { success: false, message: `Cannot create invoice: Customer with ID ${data.customer_id} not found.` };
+            return { success: false, message: `Cannot create invoice: Customer with ID ${data.customer_id} not found.`, pdfGenerated: false };
         }
 
-        // 3. Process Line Items and Calculate Totals
+        // --- Step 3: Process Line Items and Calculate Totals ---
         logger.debug(funcPrefix, 'Processing line items and calculating totals.');
         const lineItems: LineItem[] = [];
         let subtotalExclGST = 0;
@@ -82,7 +85,8 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
             const product = products.find((p) => p.id === item.product_id);
             if (!product) {
                 logger.error(funcPrefix, `Data inconsistency: Product with ID ${item.product_id} from input not found in fetched products.`);
-                return { success: false, message: `Product with ID ${item.product_id} not found. Please refresh products and try again.` };
+                // Note: This validation could technically happen client-side too, but good to have server-side check.
+                return { success: false, message: `Product with ID ${item.product_id} not found. Please refresh products and try again.`, pdfGenerated: false };
             }
             const lineTotal = product.unit_price * item.quantity;
             lineItems.push({
@@ -102,18 +106,20 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
         }
 
         if (!data.include_gst) {
-            GSTAmount = 0;
+            GSTAmount = 0; // Ensure GST is zero if not included
         }
 
+        // Ensure calculations are rounded to 2 decimal places
         subtotalExclGST = parseFloat(subtotalExclGST.toFixed(2));
         GSTAmount = parseFloat(GSTAmount.toFixed(2));
         const totalIncGST = parseFloat((subtotalExclGST + GSTAmount).toFixed(2));
 
+        // Determine if it's a Tax Invoice
         const isTaxInvoice = data.force_tax_invoice || (data.include_gst && totalIncGST >= 82.50);
         logger.debug(funcPrefix, `Calculated Totals: Subtotal=${subtotalExclGST}, GST=${GSTAmount}, Total=${totalIncGST}, IsTaxInvoice=${isTaxInvoice}`);
 
-        // 4. Create Receipt Object
-        const newReceipt: Receipt = {
+        // --- Step 4: Create Receipt Object ---
+         newReceipt = { // Assign to the outer scope variable
             receipt_id: uuidv4(),
             customer_id: data.customer_id,
             date_of_purchase: data.date_of_purchase,
@@ -122,8 +128,8 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
             GST_amount: GSTAmount,
             total_inc_GST: totalIncGST,
             is_tax_invoice: isTaxInvoice,
-            seller_profile_snapshot: sellerProfile,
-            customer_snapshot: {
+            seller_profile_snapshot: sellerProfile, // Snapshot seller details
+            customer_snapshot: { // Snapshot customer details
                 id: customer.id,
                 customer_type: customer.customer_type,
                 first_name: customer.first_name,
@@ -137,61 +143,70 @@ export async function createReceipt(data: CreateReceiptParams): Promise<CreateRe
         };
         logger.debug(funcPrefix, `Constructed new receipt object with ID: ${newReceipt.receipt_id}`);
 
-        // 5. Save Receipt Data
+        // --- Step 5: Save Receipt Data ---
         logger.debug(funcPrefix, `Attempting to save receipt data for ID: ${newReceipt.receipt_id}`);
         const createdReceipt = await createReceiptData(newReceipt);
         if (!createdReceipt) {
             logger.error(funcPrefix, 'Data access layer failed to save the receipt.');
-            return { success: false, message: 'Failed to save invoice data.' };
+            // Do not attempt PDF generation if data saving failed
+            return { success: false, message: 'Failed to save invoice data.', pdfGenerated: false };
         }
         logger.info(funcPrefix, `Receipt data saved successfully for ID: ${newReceipt.receipt_id}`);
 
-        // 6. Generate PDF using the chosen generator
+        // --- Step 6: Attempt PDF Generation (ONLY if data saving was successful) ---
         logger.info(funcPrefix, `Initiating PDF generation using ${pdfGeneratorChoice} for receipt ID: ${newReceipt.receipt_id}`);
-
         let pdfResult;
-        if (USE_PUPPETEER_PDF) {
-            const puppeteerGenerator = new PuppeteerPdfGenerator();
-            pdfResult = await puppeteerGenerator.generate(newReceipt, operationId);
-        } else {
-            const pdfkitGenerator = new PdfGenerator();
-            pdfResult = await pdfkitGenerator.generate(newReceipt, operationId);
-        }
+        try {
+            if (USE_PUPPETEER_PDF) {
+                const puppeteerGenerator = new PuppeteerPdfGenerator();
+                pdfResult = await puppeteerGenerator.generate(newReceipt, operationId);
+            } else {
+                const pdfkitGenerator = new PdfGenerator();
+                pdfResult = await pdfkitGenerator.generate(newReceipt, operationId);
+            }
 
-        if (pdfResult.success) {
-            logger.info(funcPrefix, `PDF generated successfully using ${pdfGeneratorChoice}. Path: ${pdfResult.filePath}`);
+            if (pdfResult.success) {
+                logger.info(funcPrefix, `PDF generated successfully using ${pdfGeneratorChoice}. Path: ${pdfResult.filePath}`);
+                return {
+                    success: true, // Data saved, PDF generated
+                    receipt: { receipt_id: newReceipt.receipt_id },
+                    pdfGenerated: true,
+                    pdfPath: pdfResult.filePath,
+                };
+            } else {
+                 const pdfErrorMessage = pdfResult.message || `Unknown ${pdfGeneratorChoice} PDF generation error.`;
+                 logger.error(funcPrefix, `PDF generation failed using ${pdfGeneratorChoice}. Reason: ${pdfErrorMessage}`);
+                // Data was saved, but PDF failed
+                return {
+                    success: true,
+                    receipt: { receipt_id: newReceipt.receipt_id },
+                    pdfGenerated: false,
+                    pdfError: pdfErrorMessage,
+                };
+            }
+        } catch (pdfGenError: any) {
+            const pdfErrorMessage = pdfGenError.message || `Unexpected ${pdfGeneratorChoice} PDF generation error.`;
+            logger.error(funcPrefix, `Critical error during PDF generation call for ${pdfGeneratorChoice}`, pdfGenError);
+             // Data was saved, but PDF generation threw an unexpected error
             return {
                 success: true,
                 receipt: { receipt_id: newReceipt.receipt_id },
-                pdfPath: pdfResult.filePath,
-            };
-        } else {
-             const pdfErrorMessage = pdfResult.message || `Unknown ${pdfGeneratorChoice} PDF generation error.`;
-             logger.error(funcPrefix, `PDF generation failed using ${pdfGeneratorChoice} for receipt ID: ${newReceipt.receipt_id}. Reason: ${pdfErrorMessage}`);
-            return {
-                success: true, // Data was saved
-                receipt: { receipt_id: newReceipt.receipt_id },
-                 pdfError: pdfErrorMessage,
+                pdfGenerated: false,
+                pdfError: pdfErrorMessage,
             };
         }
 
     } catch (error) {
-        logger.error(funcPrefix, 'An unexpected error occurred during invoice creation orchestration', error);
+        // Catch errors from Steps 1-5 (data fetching, validation, calculation, saving)
+        logger.error(funcPrefix, 'An unexpected error occurred before PDF generation attempt', error);
         let errorMessage = 'An unexpected error occurred during invoice creation.';
         if (error instanceof Error) {
             errorMessage += `: ${error.message}`;
-        } else if (typeof error === 'string') {
-             errorMessage += `: ${error}`;
-        } else {
-             try {
-                errorMessage += `: ${JSON.stringify(error)}`;
-             } catch {
-                 errorMessage += ': Unknown error type.';
-             }
         }
         return {
-            success: false,
-             message: errorMessage,
+            success: false, // Overall failure
+            message: errorMessage,
+            pdfGenerated: false, // PDF was not attempted or failed implicitly
         };
     }
 }
@@ -201,7 +216,9 @@ export async function getAllReceipts(): Promise<Receipt[]> {
     logger.debug(funcPrefix, 'Executing getAllReceipts server action.');
     try {
         const receipts = await getAllReceiptsData();
-        logger.info(funcPrefix, `Retrieved ${receipts.length} receipts.`);
+        // Sort receipts by date descending (most recent first)
+        receipts.sort((a, b) => new Date(b.date_of_purchase).getTime() - new Date(a.date_of_purchase).getTime());
+        logger.info(funcPrefix, `Retrieved and sorted ${receipts.length} receipts.`);
         return receipts;
     } catch (error) {
         logger.error(funcPrefix, 'Error getting all receipts', error);

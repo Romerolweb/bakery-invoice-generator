@@ -7,8 +7,8 @@ import { z } from 'zod';
 import Link from 'next/link';
 
 import type { Customer, Product, Receipt } from '@/lib/types';
-import { getCustomers } from '@/lib/actions/customers'; // Updated import
-import { getProducts } from '@/lib/actions/products'; // Updated import
+import { getCustomers } from '@/lib/actions/customers';
+import { getProducts } from '@/lib/actions/products';
 import { createReceipt } from '@/lib/actions/receipts'; // Use createReceipt
 
 import { Button } from '@/components/ui/button';
@@ -77,8 +77,8 @@ export default function NewInvoicePage() {
       setIsLoadingData(true);
       try {
         const [customersData, productsData] = await Promise.all([
-          getCustomers(), // Use updated import
-          getProducts(),  // Use updated import
+          getCustomers(),
+          getProducts(),
         ]);
         setCustomers(customersData);
         setProducts(productsData);
@@ -96,7 +96,7 @@ export default function NewInvoicePage() {
       }
     }
     loadData();
-  }, [toast]);
+  }, [toast]); // Dependency array includes toast
 
   // Recalculate totals when line items or GST setting change
   useEffect(() => {
@@ -106,6 +106,7 @@ export default function NewInvoicePage() {
         calculateTotals(value as ReceiptFormData);
       }
     });
+    // Trigger initial calculation once products are loaded
     if (products.length > 0 && !isLoadingData) {
         logger.debug(CLIENT_LOG_PREFIX, 'Performing initial total calculation...');
         calculateTotals(form.getValues());
@@ -114,6 +115,7 @@ export default function NewInvoicePage() {
         logger.debug(CLIENT_LOG_PREFIX, 'Unsubscribing from form watch.');
         subscription.unsubscribe();
     };
+    // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
   }, [form, products, isLoadingData]);
 
   const calculateTotals = (formData: ReceiptFormData) => {
@@ -125,16 +127,19 @@ export default function NewInvoicePage() {
          if (product && item.quantity > 0) {
              const lineTotalExclGST = product.unit_price * item.quantity;
              subtotal += lineTotalExclGST;
+             // Only apply GST if 'include_gst' is checked AND the product is GST applicable
              if (formData.include_gst && product.GST_applicable) {
                  gstAmount += lineTotalExclGST * 0.1;
              }
          }
      });
 
+     // Ensure GST is zero if the main flag is off
      if (!formData.include_gst) {
          gstAmount = 0;
      }
 
+     // Ensure calculations are rounded to 2 decimal places
      const total = subtotal + gstAmount;
      const newTotals = {
          subtotal: parseFloat(subtotal.toFixed(2)),
@@ -150,6 +155,7 @@ export default function NewInvoicePage() {
     logger.info(CLIENT_LOG_PREFIX, 'onSubmit triggered. Starting invoice submission...');
     setIsSubmitting(true);
 
+    // Format date correctly before sending to server action
     const submissionData = {
         ...data,
         date_of_purchase: format(data.date_of_purchase, 'yyyy-MM-dd'),
@@ -158,42 +164,47 @@ export default function NewInvoicePage() {
 
     try {
       logger.info(CLIENT_LOG_PREFIX, 'Calling createReceipt server action...');
-      const result = await createReceipt(submissionData); // Use createReceipt
+      const result = await createReceipt(submissionData);
       logger.info(CLIENT_LOG_PREFIX, 'createReceipt action result:', result);
 
       if (result.success && result.receipt) {
          const receiptId = result.receipt.receipt_id;
          const shortId = receiptId.substring(0, 8);
 
-         if (result.pdfPath) {
-             logger.info(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created successfully. PDF generated at server path: ${result.pdfPath}`);
+         // Handle PDF status based on the result
+         if (result.pdfGenerated && result.pdfPath) {
+             logger.info(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created AND PDF generated. Server Path (internal): ${result.pdfPath}`);
              toast({
-               title: "Invoice Created",
-               description: `Invoice ${shortId}... generated. PDF ready for download.`,
+               title: "Invoice Created & PDF Ready",
+               description: `Invoice ${shortId}... generated successfully.`,
                action: (
                  <Button variant="outline" size="sm" onClick={() => window.open(`/api/download-pdf?id=${receiptId}`, '_blank')}>
                       <Download className="mr-2 h-4 w-4" /> Download PDF
                  </Button>
                ),
+               duration: 9000, // Longer duration for action button
              });
          } else if (result.pdfError) {
-             logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF generation failed: ${result.pdfError}`);
+             logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF generation FAILED: ${result.pdfError}`);
              toast({
                title: "Invoice Created (PDF Failed)",
                description: `Invoice ${shortId}... saved, but PDF generation failed: ${result.pdfError}`,
                variant: "destructive",
-               duration: 9000,
+               duration: 15000, // Keep visible longer for error details
              });
          } else {
-              logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF status is unknown.`);
+             // This case should be less common now with the refactored action result
+             logger.warn(CLIENT_LOG_PREFIX, `Invoice ${shortId}... created, but PDF status is unknown or generation was not attempted due to prior error.`);
               toast({
-               title: "Invoice Created (PDF Status Unknown)",
-               description: `Invoice ${shortId}... saved, but the PDF status is unclear.`,
-               variant: "default",
+               title: "Invoice Created (PDF Status Uncertain)",
+               description: `Invoice ${shortId}... saved, but the PDF status is unclear. Check history later.`,
+               variant: "default", // Use default variant
+               duration: 7000,
              });
          }
 
-         logger.info(CLIENT_LOG_PREFIX, 'Resetting form...');
+         // Reset form only on successful data save
+         logger.info(CLIENT_LOG_PREFIX, 'Resetting form and totals...');
          form.reset({
               customer_id: '',
               date_of_purchase: new Date(),
@@ -201,23 +212,26 @@ export default function NewInvoicePage() {
               include_gst: false,
               force_tax_invoice: false,
          });
-          logger.info(CLIENT_LOG_PREFIX, 'Resetting calculated totals...');
           setCalculatedTotals({ subtotal: 0, gst: 0, total: 0 });
 
       } else {
+        // Handle overall failure (likely data saving or validation failed)
         logger.error(CLIENT_LOG_PREFIX, 'Error creating invoice (data saving/validation):', result.message);
         toast({
           title: "Error Creating Invoice",
           description: result.message || "Failed to create invoice. Please check details.",
           variant: "destructive",
+          duration: 10000,
         });
       }
     } catch (error) {
-      logger.error(CLIENT_LOG_PREFIX, "Unexpected error during invoice submission:", error);
+      // Catch unexpected errors during the action call itself
+      logger.error(CLIENT_LOG_PREFIX, "Unexpected error during invoice submission process:", error);
       toast({
         title: "Error",
         description: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
+        duration: 10000,
       });
     } finally {
       setIsSubmitting(false);
@@ -411,9 +425,11 @@ export default function NewInvoicePage() {
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Item
               </Button>
+               {/* Display root error for line_items array if present */}
                {form.formState.errors.line_items?.root?.message && (
                     <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.line_items.root.message}</p>
                )}
+               {/* Display general array message if root is not set but array itself has an error message */}
                {form.formState.errors.line_items && !form.formState.errors.line_items.root && typeof form.formState.errors.line_items === 'object' && 'message' in form.formState.errors.line_items && (
                   <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.line_items.message}</p>
                 )}
@@ -454,7 +470,7 @@ export default function NewInvoicePage() {
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
                                 id="force-tax-invoice-checkbox"
-                                disabled={!form.watch('include_gst')}
+                                disabled={!form.watch('include_gst')} // Disable if GST is not included
                               />
                             </FormControl>
                             <div className="space-y-1 leading-none">
@@ -495,6 +511,7 @@ export default function NewInvoicePage() {
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Generate Invoice
             </Button>
+            {/* Show general form error message if submitted and invalid */}
             {form.formState.isSubmitted && !form.formState.isValid && !isSubmitting && (
                  <p className="text-sm text-destructive text-center md:text-left mt-2">Please fix the errors above before submitting.</p>
             )}
