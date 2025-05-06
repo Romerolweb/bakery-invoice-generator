@@ -1,5 +1,5 @@
 // src/lib/data-access/receipts.ts
-import fs from 'fs/promises'; // Direct import
+import fs from 'fs/promises'; // Use promises API
 import path from 'path';
 import type { Receipt } from '@/lib/types';
 import { logger } from '@/lib/services/logging';
@@ -81,6 +81,12 @@ export async function createReceipt(newReceipt: Receipt): Promise<Receipt | null
   logger.debug(funcPrefix, `Attempting to create receipt with ID: ${newReceipt.receipt_id}`);
   try {
     const receipts = await readReceiptsFile();
+    // Optional: Check if receipt ID already exists to prevent duplicates
+    if (receipts.some(r => r.receipt_id === newReceipt.receipt_id)) {
+        logger.warn(funcPrefix, `Receipt with ID ${newReceipt.receipt_id} already exists. Creation aborted.`);
+        // Depending on requirements, you might want to throw an error or return the existing one
+        return null;
+    }
     receipts.push(newReceipt);
     await writeReceiptsFile(receipts);
     logger.info(funcPrefix, `Receipt created successfully: ${newReceipt.receipt_id}`);
@@ -91,38 +97,54 @@ export async function createReceipt(newReceipt: Receipt): Promise<Receipt | null
   }
 }
 
+/**
+ * Checks if the PDF file for a given receipt ID exists.
+ * Returns the full path if it exists, otherwise returns null.
+ * Logs errors but doesn't throw unless it's a critical configuration issue.
+ */
 export async function getReceiptPdfPath(receiptId: string): Promise<string | null> {
     const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptPdfPath:${receiptId}`;
     const filePath = path.join(pdfDirectory, `${receiptId}.pdf`);
+    logger.debug(funcPrefix, `Checking for PDF file at path: ${filePath}`);
     try {
-        // Check if the file exists
-        await fs.access(filePath);
-        logger.debug(funcPrefix, `PDF found at path: ${filePath}`);
+        // Check if the file exists and is accessible
+        await fs.access(filePath, fs.constants.F_OK); // F_OK checks existence
+        logger.info(funcPrefix, `PDF found at path: ${filePath}`);
         return filePath;
     } catch (error: any) {
         if (error.code === 'ENOENT') {
-             logger.warn(funcPrefix, `PDF file not found at ${filePath}`);
+             // File does not exist - this is an expected case if PDF is not ready/failed
+             logger.info(funcPrefix, `PDF file not found at ${filePath}. It might be generating or failed.`);
         } else {
+            // Log other errors (e.g., permission issues) but still return null
             logger.error(funcPrefix, `Error accessing PDF file at ${filePath}`, error);
         }
-        return null; // Return null if file doesn't exist or other error
+        return null; // Return null if file doesn't exist or other access error
     }
 }
 
+/**
+ * Reads the content of a PDF file for a given receipt ID.
+ * Returns the content as a Buffer if successful, otherwise returns null.
+ */
 export async function getReceiptPdfContent(receiptId: string): Promise<Buffer | null> {
     const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptPdfContent:${receiptId}`;
     const filePath = path.join(pdfDirectory, `${receiptId}.pdf`);
     logger.debug(funcPrefix, `Attempting to read PDF content from: ${filePath}`);
     try {
+        // First, check if the file exists using getReceiptPdfPath logic
+        const existingPath = await getReceiptPdfPath(receiptId);
+        if (!existingPath) {
+             // Logged within getReceiptPdfPath
+             return null;
+        }
+        // If path exists, attempt to read the file content
         const pdfBuffer = await fs.readFile(filePath);
         logger.info(funcPrefix, `Successfully read PDF content (${pdfBuffer.length} bytes).`);
         return pdfBuffer;
     } catch (error: any) {
-        if (error.code === 'ENOENT') {
-             logger.warn(funcPrefix, `PDF file not found at ${filePath}.`);
-        } else {
-            logger.error(funcPrefix, `Error reading PDF file at ${filePath}`, error);
-        }
+        // Catch potential errors during readFile itself (though access check reduces likelihood)
+        logger.error(funcPrefix, `Error reading PDF file content at ${filePath}`, error);
         return null;
     }
 }
