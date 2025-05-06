@@ -1,5 +1,5 @@
 // src/lib/services/puppeteerPdfGenerator.ts
-'use server'; // Indicate this runs on the server
+// REMOVED 'use server'; directive as it's not needed for a server-side utility and causes build errors when exporting a class.
 
 import puppeteer, { Browser } from 'puppeteer';
 import { promises as fsPromises } from 'fs';
@@ -246,6 +246,8 @@ export class PuppeteerPdfGenerator {
 }
 
 // Factory function to create an instance (optional, but can be useful)
-export function createPuppeteerPdfGenerator(): PuppeteerPdfGenerator {
+// Exporting as an async function to comply with 'use server' rules if this file were to be marked as such.
+// Although the directive is removed, keeping it async doesn't hurt and maintains flexibility.
+export async function createPuppeteerPdfGenerator(): Promise<PuppeteerPdfGenerator> {
     return new PuppeteerPdfGenerator();
 }
