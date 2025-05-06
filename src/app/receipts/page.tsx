@@ -1,10 +1,11 @@
+// src/app/receipts/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns'; // Keep parseISO
 
-import { Receipt } from '@/lib/types';
-import { readReceipts, getReceiptPdfPath } from '@/lib/actions/receipts'; // Renamed getReceipts to readReceipts
+import type { Receipt } from '@/lib/types';
+import { getAllReceipts } from '@/lib/actions/receipts'; // Import getAllReceipts
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,10 @@ import { Badge } from '@/components/ui/badge'; // To show Tax Invoice status
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Download, PlusCircle } from 'lucide-react'; // Keep PlusCircle if needed elsewhere, or import inline
 import Link from 'next/link'; // For linking back to create new
+import { logger } from '@/lib/services/logging'; // Import logger
 
+
+const CLIENT_LOG_PREFIX = 'ReceiptsHistoryPage';
 
 export default function ReceiptsHistoryPage() {
   const { toast } = useToast();
@@ -21,12 +25,15 @@ export default function ReceiptsHistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchReceipts = async () => {
+    logger.info(CLIENT_LOG_PREFIX, 'Starting fetchReceipts...');
     setIsLoading(true);
     try {
-      const data = await readReceipts(); // Use readReceipts here
+      logger.debug(CLIENT_LOG_PREFIX, 'Calling getAllReceipts action...');
+      const data = await getAllReceipts(); // Use getAllReceipts here
+      logger.info(CLIENT_LOG_PREFIX, `Fetched ${data.length} receipts.`);
       setReceipts(data);
     } catch (error) {
-      console.error('Failed to fetch receipts:', error);
+      logger.error(CLIENT_LOG_PREFIX, 'Failed to fetch receipts', error);
        toast({
             title: "Error",
             description: "Could not load invoice history. Please try again later.", // Updated text
@@ -34,6 +41,7 @@ export default function ReceiptsHistoryPage() {
         });
     } finally {
       setIsLoading(false);
+      logger.info(CLIENT_LOG_PREFIX, 'Finished fetchReceipts.');
     }
   };
 
@@ -41,27 +49,19 @@ export default function ReceiptsHistoryPage() {
     fetchReceipts();
   }, []); // Fetch only once
 
-   const handleDownloadPdf = async (receiptId: string) => {
-    toast({ title: "Download Initiated", description: "Checking for PDF..." });
-     try {
-        // NOTE: This action currently just gets the *path* on the server.
-        // For a real web download, you need an API endpoint.
-        const pdfPath = await getReceiptPdfPath(receiptId);
-        if (pdfPath) {
-            // Simulate download - In a real app, you'd redirect to an API endpoint
-            // e.g., window.location.href = `/api/download-receipt?id=${receiptId}`;
-             // Use window.open for a better "download" simulation in the browser
-             // In a real app, this would point to an API route that serves the file
-             window.open(`/api/download-pdf?id=${receiptId}`, '_blank');
-             toast({ title: "PDF Download Started", description: `Attempting to download PDF for ${receiptId.substring(0, 8)}...`, variant: "default"});
-
-        } else {
-            toast({ title: "PDF Not Found", description: `Could not find the PDF for invoice ${receiptId.substring(0, 8)}... It might need to be regenerated.`, variant: "destructive" }); // Updated text
+   const handleDownloadPdf = (receiptId: string) => {
+        const funcPrefix = `${CLIENT_LOG_PREFIX}:handleDownloadPdf:${receiptId.substring(0,8)}`;
+        logger.info(funcPrefix, `Initiating PDF download request.`);
+        toast({ title: "Download Initiated", description: `Preparing PDF for ${receiptId.substring(0, 8)}...` });
+        try {
+            // Directly open the API endpoint for download
+            window.open(`/api/download-pdf?id=${receiptId}`, '_blank');
+            logger.info(funcPrefix, 'PDF download window opened.');
+            toast({ title: "PDF Download Started", description: `Attempting to download PDF...`, variant: "default" });
+        } catch (error) {
+            logger.error(funcPrefix, "Error initiating PDF download", error);
+            toast({ title: "Error", description: "Could not initiate PDF download.", variant: "destructive" });
         }
-    } catch (error) {
-        console.error("Error getting PDF path:", error);
-        toast({ title: "Error", description: "Could not initiate PDF download.", variant: "destructive" });
-    }
   };
 
 
@@ -88,6 +88,7 @@ export default function ReceiptsHistoryPage() {
              {isLoading ? (
                  <div className="flex justify-center items-center h-40">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                     <span className="ml-2">Loading history...</span>
                 </div>
             ) : receipts.length === 0 ? (
                  <p className="text-center text-muted-foreground py-4">No invoices found yet. Create one to see it here!</p> // Updated text
@@ -111,7 +112,7 @@ export default function ReceiptsHistoryPage() {
                      <TableCell>
                          {receipt.customer_snapshot.customer_type === 'business'
                             ? receipt.customer_snapshot.business_name
-                            : `${receipt.customer_snapshot.first_name || ''} ${receipt.customer_snapshot.last_name || ''}`
+                            : `${receipt.customer_snapshot.first_name || ''} ${receipt.customer_snapshot.last_name || ''}`.trim()
                          }
                      </TableCell>
                     <TableCell>${receipt.total_inc_GST.toFixed(2)}</TableCell>
