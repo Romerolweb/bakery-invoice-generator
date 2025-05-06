@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getReceiptPdfPath } from '@/lib/data-access/receipts'; // Import from data-access layer
 import { logger } from '@/lib/services/logging';
+import { recordChange } from '@/lib/recordChanges'; // Import change recorder
 
 const LOG_PREFIX = 'PdfStatusApi';
 
@@ -11,6 +12,8 @@ export async function GET(request: NextRequest) {
   const funcPrefix = `${LOG_PREFIX}:${receiptId || 'no-id'}`;
 
   logger.info(funcPrefix, `Received request to check PDF status.`);
+  recordChange('src/app/api/pdf-status/route.ts', 'No code changes, but logging setup potentially affects behavior.'); // Record the 'change' context
+
 
   if (!receiptId) {
     logger.warn(funcPrefix, 'Request failed: Missing receipt ID.');
@@ -40,6 +43,7 @@ export async function GET(request: NextRequest) {
       // It could be still generating, or generation failed, or it never existed.
       // Logging within getReceiptPdfPath should indicate if ENOENT or other error.
       logger.info(funcPrefix, `PDF status is 'not_found' (file does not exist or access error).`);
+      // Return 'not_found' instead of 'generating' as we don't know the actual status
       return NextResponse.json({ status: 'not_found' });
     }
   } catch (error) {

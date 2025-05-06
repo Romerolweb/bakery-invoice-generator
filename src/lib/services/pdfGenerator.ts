@@ -4,16 +4,10 @@ import { promises as fsPromises, createWriteStream, WriteStream, accessSync, unl
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import { format, parseISO } from 'date-fns';
-import { logger } from '@/lib/services/logging'; // Import the logger
+import { logger } from '@/lib/services/logging';
 
 const DATA_DIR = path.join(process.cwd(), 'src', 'lib', 'data');
 const PDF_DIR = path.join(DATA_DIR, 'receipt-pdfs'); // Directory to store generated PDFs
-
-// Define standard font names as used in PDFKit
-const FONT_NAMES = {
-    Regular: 'Helvetica',
-    Bold: 'Helvetica-Bold',
-};
 
 export class PdfGenerator {
     private doc: PDFKit.PDFDocument | null = null;
@@ -44,9 +38,9 @@ export class PdfGenerator {
             this.doc = new PDFDocument({
                  margin: 50,
                  bufferPages: true,
-                 // Use default built-in Helvetica font. No need to register explicitly unless using custom fonts.
-                 // PDFKit bundles standard fonts. Errors often relate to missing files if the installation is corrupt
-                 // or if custom font paths are incorrect.
+                 // Use default built-in fonts by not specifying font here.
+                 // PDFKit uses Helvetica by default.
+                 // Avoids issues with finding external .afm files.
             });
              logger.debug(this.logPrefix, `PDFDocument instantiated successfully.`);
         } catch (instantiationError) {
@@ -60,13 +54,13 @@ export class PdfGenerator {
         const funcPrefix = `${this.logPrefix}:setupStream`;
         return new Promise(async (resolve, reject) => {
             try {
-                await this.ensurePdfDirectoryExists(); // Ensure directory exists right before creating the stream
+                await this.ensurePdfDirectoryExists();
                 logger.debug(funcPrefix, `Creating write stream for ${this.filePath}`);
                 this.stream = createWriteStream(this.filePath);
 
                 this.stream.on('finish', () => {
                     logger.info(funcPrefix, 'PDF stream finished.');
-                    this.success = true; // Mark success on finish
+                    this.success = true;
                     resolve();
                 });
 
@@ -81,11 +75,9 @@ export class PdfGenerator {
                     return;
                 }
 
-                // Handle errors from the PDF document itself during the piping process
                 this.doc.on('error', (err) => {
                     logger.error(funcPrefix, 'PDF document error during piping', err);
                     this.success = false;
-                    // Attempt to close the stream to prevent hanging resources
                     this.stream?.close();
                     reject(new Error(`PDF document error: ${err.message}`));
                 });
@@ -95,16 +87,16 @@ export class PdfGenerator {
 
             } catch (setupError) {
                  logger.error(funcPrefix, 'Error setting up PDF stream or piping', setupError);
-                 reject(setupError); // Reject the promise on setup error
+                 reject(setupError);
             }
         });
     }
 
-    // Renamed from _addHeader to addHeader, follows same pattern for others
     private addHeader(isTaxInvoice: boolean): void {
         if (!this.doc) return;
-        this.doc.fontSize(20).font(FONT_NAMES.Bold).text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center' });
-        this.doc.font(FONT_NAMES.Regular).fontSize(10); // Revert to regular, smaller size
+        // Use default font, specify size and bold style (PDFKit handles this internally for standard fonts)
+        this.doc.fontSize(20).text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', { align: 'center', characterSpacing: 1 }); // Added spacing for emphasis
+        this.doc.fontSize(10); // Revert size for subsequent text
         this.doc.moveDown();
     }
 
@@ -112,14 +104,14 @@ export class PdfGenerator {
          if (!this.doc) return;
          const funcPrefix = `${this.logPrefix}:addSellerInfo`;
          logger.debug(funcPrefix, 'Adding seller info');
-         this.doc.fontSize(12).font(FONT_NAMES.Bold).text('From:', { underline: false });
-         this.doc.font(FONT_NAMES.Regular).fontSize(10);
-         this.doc.text(seller.name || 'Seller Name Missing');
-         this.doc.text(seller.business_address || 'Seller Address Missing');
-         this.doc.text(`ABN/ACN: ${seller.ABN_or_ACN || 'Seller ABN/ACN Missing'}`);
-         this.doc.text(`Email: ${seller.contact_email || 'Seller Email Missing'}`);
+         this.doc.fontSize(12).text('From:', { underline: false }); // Keep label slightly larger
+         this.doc.fontSize(10); // Normal text for details
+         this.doc.text(seller.name || 'Seller Name Missing', {continued: false}); // Ensure each text call starts on a new line if needed
+         this.doc.text(seller.business_address || 'Seller Address Missing', {continued: false});
+         this.doc.text(`ABN/ACN: ${seller.ABN_or_ACN || 'Seller ABN/ACN Missing'}`, {continued: false});
+         this.doc.text(`Email: ${seller.contact_email || 'Seller Email Missing'}`, {continued: false});
          if (seller.phone) {
-             this.doc.text(`Phone: ${seller.phone}`);
+             this.doc.text(`Phone: ${seller.phone}`, {continued: false});
          }
          this.doc.moveDown();
     }
@@ -128,24 +120,24 @@ export class PdfGenerator {
          if (!this.doc) return;
          const funcPrefix = `${this.logPrefix}:addCustomerInfo`;
          logger.debug(funcPrefix, 'Adding customer info');
-         this.doc.fontSize(12).font(FONT_NAMES.Bold).text('To:', { underline: false });
-         this.doc.font(FONT_NAMES.Regular).fontSize(10);
+         this.doc.fontSize(12).text('To:', { underline: false });
+         this.doc.fontSize(10);
          if (customer.customer_type === 'business') {
-             this.doc.text(customer.business_name || 'Business Name Missing');
+             this.doc.text(customer.business_name || 'Business Name Missing', {continued: false});
              if (customer.abn) {
-                 this.doc.text(`ABN: ${customer.abn}`);
+                 this.doc.text(`ABN: ${customer.abn}`, {continued: false});
              }
              const contactName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
              if (contactName) {
-                 this.doc.text(`Contact: ${contactName}`);
+                 this.doc.text(`Contact: ${contactName}`, {continued: false});
              }
          } else {
              const individualName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
-             this.doc.text(individualName || 'Customer Name Missing');
+             this.doc.text(individualName || 'Customer Name Missing', {continued: false});
          }
-         this.doc.text(`Email: ${customer.email || 'N/A'}`);
-         this.doc.text(`Phone: ${customer.phone || 'N/A'}`);
-         this.doc.text(`Address: ${customer.address || 'N/A'}`);
+         this.doc.text(`Email: ${customer.email || 'N/A'}`, {continued: false});
+         this.doc.text(`Phone: ${customer.phone || 'N/A'}`, {continued: false});
+         this.doc.text(`Address: ${customer.address || 'N/A'}`, {continued: false});
          this.doc.moveDown();
      }
 
@@ -154,22 +146,19 @@ export class PdfGenerator {
         const funcPrefix = `${this.logPrefix}:addInvoiceDetails`;
         logger.debug(funcPrefix, `Adding invoice details ID: ${invoiceId}, Date: ${dateIsoString}`);
         this.doc.fontSize(10);
-        this.doc.text(`Invoice ID: ${invoiceId}`);
+        this.doc.text(`Invoice ID: ${invoiceId}`, {continued: false});
         try {
-            // Attempt to parse the date string (assuming ISO format from backend)
             const dateObject = parseISO(dateIsoString);
-             // Check if parsing resulted in a valid date
             if (isNaN(dateObject.getTime())) {
                 throw new Error('Invalid date object after parsing');
             }
             const formattedDate = format(dateObject, 'dd/MM/yyyy');
-            this.doc.text(`Date: ${formattedDate}`);
+            this.doc.text(`Date: ${formattedDate}`, {continued: false});
         } catch (e) {
             logger.warn(funcPrefix, `Could not parse or format date for PDF: ${dateIsoString}. Using original string.`, e);
-            // Fallback: Display the original string if parsing/formatting fails
-            this.doc.text(`Date: ${dateIsoString}`);
+            this.doc.text(`Date: ${dateIsoString}`, {continued: false});
         }
-        this.doc.moveDown(1.5); // More space before table
+        this.doc.moveDown(1.5);
     }
 
     private drawTableHeader(includeGstColumn: boolean, y: number): void {
@@ -178,33 +167,33 @@ export class PdfGenerator {
          logger.debug(funcPrefix, `Drawing table header at Y=${y}`);
          const startX = this.doc.page.margins.left;
          const endX = this.doc.page.width - this.doc.page.margins.right;
-         // Define column positions (adjust these based on desired layout)
          const itemCol = startX;
          const gstCol = 250;
          const qtyCol = 320;
          const priceCol = 400;
          const totalCol = 480;
 
-        // Dynamically adjust columns based on whether GST column is needed
-         const effectiveQtyCol = includeGstColumn ? qtyCol : gstCol; // Qty starts where GST would if no GST col
-         const effectivePriceCol = includeGstColumn ? priceCol : qtyCol; // Price starts where Qty would
-         const effectiveTotalCol = includeGstColumn ? totalCol : priceCol; // Total starts where Price would
+         const effectiveQtyCol = includeGstColumn ? qtyCol : gstCol;
+         const effectivePriceCol = includeGstColumn ? priceCol : qtyCol;
+         const effectiveTotalCol = includeGstColumn ? totalCol : priceCol;
 
-         // Calculate widths based on adjusted positions
-         const itemWidth = (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10; // Width up to next column
-         const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0; // Zero width if not included
+         const itemWidth = (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10;
+         const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
          const qtyWidth = effectivePriceCol - effectiveQtyCol - 10;
          const priceWidth = effectiveTotalCol - effectivePriceCol - 10;
-         const totalWidth = endX - effectiveTotalCol; // Width to the right margin
+         const totalWidth = endX - effectiveTotalCol;
 
-         this.doc.fontSize(10).font(FONT_NAMES.Bold);
+         this.doc.fontSize(10); // Using default font, potentially bolded by PDFKit for headers if standard
+         // PDFKit might not support direct bolding without font switching for default fonts in all cases.
+         // If bold is critical, switching back to Helvetica-Bold temporarily might be needed,
+         // but we're avoiding explicit font files here. Text styling like underline is safer.
          this.doc.text('Item', itemCol, y, { width: itemWidth, underline: true });
          if (includeGstColumn) this.doc.text('GST?', gstCol, y, { width: gstWidth, underline: true, align: 'center' });
          this.doc.text('Qty', effectiveQtyCol, y, { width: qtyWidth, underline: true, align: 'right' });
          this.doc.text('Unit Price', effectivePriceCol, y, { width: priceWidth, underline: true, align: 'right' });
          this.doc.text('Line Total', effectiveTotalCol, y, { width: totalWidth, underline: true, align: 'right' });
          this.doc.moveDown(0.5);
-         this.doc.font(FONT_NAMES.Regular); // Revert font
+         // No need to revert font if we didn't explicitly set it to bold
      }
 
      private addLineItemsTable(lineItems: LineItem[], includeGstColumn: boolean): void {
@@ -214,69 +203,63 @@ export class PdfGenerator {
          const tableTopInitial = this.doc.y;
          const startX = this.doc.page.margins.left;
          const endX = this.doc.page.width - this.doc.page.margins.right;
-         // Define column positions consistent with drawTableHeader
          const itemCol = startX;
          const gstCol = 250;
          const qtyCol = 320;
          const priceCol = 400;
          const totalCol = 480;
 
-        // Dynamically adjust columns based on whether GST column is needed
          const effectiveQtyCol = includeGstColumn ? qtyCol : gstCol;
          const effectivePriceCol = includeGstColumn ? priceCol : qtyCol;
          const effectiveTotalCol = includeGstColumn ? totalCol : priceCol;
 
-         // Calculate widths based on adjusted positions
          const itemWidth = (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10;
          const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
          const qtyWidth = effectivePriceCol - effectiveQtyCol - 10;
          const priceWidth = effectiveTotalCol - effectivePriceCol - 10;
          const totalWidth = endX - effectiveTotalCol;
 
-         const tableBottomMargin = 70; // Reserve space for totals + buffer
+         const tableBottomMargin = 70;
          const pageBottomLimit = this.doc.page.height - this.doc.page.margins.bottom - tableBottomMargin;
 
          this.drawTableHeader(includeGstColumn, tableTopInitial);
          let currentY = this.doc.y;
 
          lineItems.forEach((item, index) => {
-             // Estimate height needed for the current item description
              const itemNameText = `${item.product_name || 'N/A'}${item.description ? `\n(${item.description})` : ''}`;
-             const itemHeightEstimate = this.doc!.heightOfString(itemNameText, { width: itemWidth, fontSize: 10 }) + 5; // Add padding
+             const itemHeightEstimate = this.doc!.heightOfString(itemNameText, { width: itemWidth, fontSize: 10 }) + 5;
 
-             // Check if adding this item exceeds the page limit
              if (currentY + itemHeightEstimate > pageBottomLimit) {
                  logger.debug(funcPrefix, `Adding new page before item ${index + 1} at Y=${currentY}. Page bottom limit: ${pageBottomLimit}`);
                  this.doc!.addPage();
-                 currentY = this.doc!.page.margins.top; // Reset Y to top margin of new page
-                 this.drawTableHeader(includeGstColumn, currentY); // Redraw header on new page
-                 currentY = this.doc!.y; // Get Y position after drawing the header
+                 currentY = this.doc!.page.margins.top;
+                 this.drawTableHeader(includeGstColumn, currentY);
+                 currentY = this.doc!.y;
              }
 
              const unitPriceExGST = item.unit_price ?? 0;
              const lineTotalExGST = item.line_total ?? 0;
 
-             // Draw row content at currentY
-             this.doc!.fontSize(10).font(FONT_NAMES.Regular);
-             this.doc!.text(itemNameText, itemCol, currentY, { width: itemWidth });
+             this.doc!.fontSize(10);
+             const rowStartY = currentY; // Remember start Y for alignment
+             this.doc!.text(itemNameText, itemCol, rowStartY, { width: itemWidth });
 
-             // Store Y before drawing right-aligned columns to align them vertically with multi-line item text
-             const rightColumnsY = currentY;
+             // Calculate Y position for right-aligned columns AFTER drawing the potentially multi-line item text
+             const itemNameActualHeight = this.doc!.heightOfString(itemNameText, { width: itemWidth });
+             const rightColumnsY = rowStartY; // Align to the start of the item text
 
              if (includeGstColumn) this.doc!.text(item.GST_applicable ? 'Yes' : 'No', gstCol, rightColumnsY, { width: gstWidth, align: 'center' });
              this.doc!.text(item.quantity?.toString() ?? '0', effectiveQtyCol, rightColumnsY, { width: qtyWidth, align: 'right' });
              this.doc!.text(`$${unitPriceExGST.toFixed(2)}`, effectivePriceCol, rightColumnsY, { width: priceWidth, align: 'right' });
              this.doc!.text(`$${lineTotalExGST.toFixed(2)}`, effectiveTotalCol, rightColumnsY, { width: totalWidth, align: 'right' });
 
-             // Calculate the actual height used by the potentially multi-line item name/description
-             const actualHeight = this.doc!.heightOfString(itemNameText, { width: itemWidth });
-             currentY += actualHeight + 3; // Move Y down by the actual height + a small gap
+             // Move Y down by the height of the tallest element in the row (the item name) plus gap
+             currentY = rowStartY + itemNameActualHeight + 3;
              this.doc!.y = currentY; // Sync the document's internal Y position
          });
 
-         this.doc!.moveDown(0.5); // Add a bit more space before the separator line
+         this.doc!.moveDown(0.5);
 
-         // Draw a line separating items from totals
          logger.debug(funcPrefix, `Drawing separator line before totals at Y=${this.doc!.y}`);
          this.doc!.moveTo(startX, this.doc!.y).lineTo(endX, this.doc!.y).strokeColor('#cccccc').stroke();
          this.doc!.moveDown(0.5);
@@ -286,57 +269,53 @@ export class PdfGenerator {
          if (!this.doc) return;
          const funcPrefix = `${this.logPrefix}:addTotals`;
          logger.debug(funcPrefix, `Adding totals: Sub=${subtotal}, GST=${gstAmount}, Total=${total}`);
-         // Define layout for totals section
-         const totalsX = 400; // X position for the start of the amount values
-         const labelX = this.doc.page.margins.left; // X position for the labels (align left)
-         const endX = this.doc.page.width - this.doc.page.margins.right; // Right edge for alignment
-         let totalsY = this.doc.y; // Current Y position
+         const totalsX = 400;
+         const labelX = this.doc.page.margins.left;
+         const endX = this.doc.page.width - this.doc.page.margins.right;
+         let totalsY = this.doc.y;
 
-         const pageBottom = this.doc.page.height - this.doc.page.margins.bottom - 20; // Leave some bottom margin
-         const totalsHeightEstimate = 60; // Estimated height for the entire totals block
+         const pageBottom = this.doc.page.height - this.doc.page.margins.bottom - 20;
+         const totalsHeightEstimate = 60;
 
-         // Check if there's enough space for totals, add a new page if not
          if (totalsY + totalsHeightEstimate > pageBottom) {
              logger.debug(funcPrefix, `Adding new page before totals section at Y=${totalsY}. Page bottom limit: ${pageBottom}`);
              this.doc.addPage();
-             totalsY = this.doc.page.margins.top; // Reset Y position for the new page
-             this.doc.y = totalsY; // Set the document's Y position
+             totalsY = this.doc.page.margins.top;
+             this.doc.y = totalsY;
          }
 
-         // Set font for labels and amounts (except the final total)
-         this.doc.fontSize(10).font(FONT_NAMES.Regular);
-         const amountWidth = endX - totalsX; // Calculate width for amount column
+         this.doc.fontSize(10);
+         const amountWidth = endX - totalsX;
 
-         // Draw Subtotal
+         // Subtotal
          this.doc.text(`Subtotal (ex GST):`, labelX, totalsY, { continued: false, align: 'left' });
          this.doc.text(`$${subtotal.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth });
-         totalsY = this.doc.y + 2; // Move Y down slightly
+         totalsY = this.doc.y + 2;
 
-         // Draw GST Amount (only if applicable)
+         // GST Amount (only if applicable)
          if (gstAmount > 0) {
             this.doc.text(`GST Amount (10%):`, labelX, totalsY, { continued: false, align: 'left' });
             this.doc.text(`$${gstAmount.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth });
-            totalsY = this.doc.y + 2; // Move Y down slightly
+            totalsY = this.doc.y + 2;
          }
 
          // Draw Separator Line before the final total
-         const lineY = totalsY + 5; // Position the line below the last entry
+         const lineY = totalsY + 5;
          logger.debug(funcPrefix, `Drawing separator line for totals at Y=${lineY}`);
-         // Draw line only above the total amount column for emphasis
          this.doc.moveTo(totalsX - 10, lineY).lineTo(endX, lineY).strokeColor('#aaaaaa').stroke();
-         totalsY = lineY + 5; // Move current position below the line
+         totalsY = lineY + 5;
          this.doc.y = totalsY;
 
-         // Draw Total Amount (Bold and slightly larger)
-         this.doc.font(FONT_NAMES.Bold).fontSize(12);
+         // Total Amount (slightly larger, maybe bold if default font supports it well)
+         this.doc.fontSize(12);
          this.doc.text(`Total Amount:`, labelX, totalsY, { continued: false, align: 'left'});
          this.doc.text(`$${total.toFixed(2)}`, totalsX, totalsY, { align: 'right', width: amountWidth });
-         totalsY = this.doc.y; // Update Y after drawing the text
+         totalsY = this.doc.y;
 
-         // Revert font settings for any subsequent text
-         this.doc.font(FONT_NAMES.Regular).fontSize(10);
-         this.doc.y = totalsY; // Ensure doc.y is at the end of the totals block
-         this.doc.moveDown(); // Add final spacing
+         // Revert font settings
+         this.doc.fontSize(10);
+         this.doc.y = totalsY;
+         this.doc.moveDown();
      }
 
     private async finalize(): Promise<void> {
@@ -348,37 +327,25 @@ export class PdfGenerator {
                  return reject(new Error(errorMsg));
             }
 
-             // Wrap stream events in a promise
              const streamFinishPromise = new Promise<void>((res, rej) => {
-                 this.stream!.once('finish', () => {
-                     logger.debug(funcPrefix, 'Stream emitted "finish" event.');
-                     res();
-                 });
-                 this.stream!.once('error', (err) => {
-                     logger.error(funcPrefix, 'Stream emitted "error" event.', err);
-                     rej(err);
-                 });
-                  // Also listen for errors on the document itself during finalization
-                 this.doc!.once('error', (err) => {
-                      logger.error(funcPrefix, 'Document emitted "error" event during finalization.', err);
-                      rej(err);
-                  });
+                 this.stream!.once('finish', () => { logger.debug(funcPrefix, 'Stream finished.'); res(); });
+                 this.stream!.once('error', (err) => { logger.error(funcPrefix, 'Stream error.', err); rej(err); });
+                 this.doc!.once('error', (err) => { logger.error(funcPrefix, 'Document error.', err); rej(err); });
              });
 
             logger.info(funcPrefix, 'Finalizing PDF document (calling end())...');
-            this.doc.end(); // This triggers the piping process to complete and emits 'finish' or 'error' on the stream.
+            this.doc.end();
 
-             // Wait for the stream to finish or error out
              streamFinishPromise
                  .then(() => {
                      logger.info(funcPrefix, 'Stream finished successfully during finalize.');
-                     this.success = true; // Confirm success
+                     this.success = true;
                      resolve();
                  })
                  .catch((err) => {
                      logger.error(funcPrefix, 'Stream or document error caught during finalize', err);
-                     this.success = false; // Mark as failed
-                     reject(err); // Propagate the error
+                     this.success = false;
+                     reject(err);
                  });
         });
     }
@@ -386,107 +353,91 @@ export class PdfGenerator {
     private async cleanupFailedPdf(): Promise<void> {
         const funcPrefix = `${this.logPrefix}:cleanupFailedPdf`;
         if (!this.filePath) {
-            logger.debug(funcPrefix, "Cleanup called without a file path, likely initialization failed early.");
+            logger.debug(funcPrefix, "Cleanup called without a file path.");
             return;
         }
-        logger.warn(funcPrefix, `Attempting cleanup for potentially failed PDF generation: ${this.filePath}`);
-
-        // Ensure stream is closed before attempting delete
-        if (this.stream && !this.stream.closed) {
-            logger.debug(funcPrefix, 'Closing potentially open write stream...');
-            await new Promise<void>((resolve) => {
-                this.stream!.once('close', () => { logger.debug(funcPrefix, 'Stream closed during cleanup.'); resolve(); });
-                this.stream!.once('error', (err) => { logger.error(funcPrefix, 'Error closing stream during cleanup', err); resolve(); }); // Resolve even on error to proceed with unlink attempt
-                this.stream!.end(() => { logger.debug(funcPrefix, 'Stream end() called during cleanup.'); });
-            });
-        } else {
-            logger.debug(funcPrefix, 'No active/writable stream to close or stream already closed.');
-        }
-
-        // Attempt to delete the file
+        logger.warn(funcPrefix, `Attempting cleanup for: ${this.filePath}`);
         try {
-            logger.debug(funcPrefix, `Checking existence and attempting delete: ${this.filePath}`);
-            accessSync(this.filePath); // Check if file exists (throws if not)
-            logger.warn(funcPrefix, `Deleting incomplete/corrupted PDF: ${this.filePath}`);
-            unlinkSync(this.filePath);
-            logger.info(funcPrefix, `Successfully deleted incomplete/corrupted PDF: ${this.filePath}`);
-        } catch (error: any) {
-            if (error.code === 'ENOENT') {
-                logger.info(funcPrefix, `Incomplete PDF ${this.filePath} did not exist, no need to delete.`);
+            if (this.stream && !this.stream.closed && this.stream.writable) {
+                logger.debug(funcPrefix, 'Closing potentially open write stream...');
+                await new Promise<void>((resolve) => {
+                     this.stream!.once('close', resolve);
+                     this.stream!.once('error', (err) => { logger.error(funcPrefix, 'Error closing stream during cleanup', err); resolve(); });
+                     this.stream!.end();
+                 });
+                 logger.debug(funcPrefix, 'Finished waiting for stream close/error.');
             } else {
-                // Log other errors (e.g., permissions) but don't let cleanup fail the whole process
-                logger.error(funcPrefix, 'Error during PDF file deletion in cleanup', error);
+                logger.debug(funcPrefix, 'No active/writable stream to close or already closed.');
             }
+
+            logger.debug(funcPrefix, `Checking existence of potentially incomplete PDF: ${this.filePath}`);
+             try {
+                 accessSync(this.filePath); // Use sync version here for simplicity in cleanup
+                 logger.warn(funcPrefix, `Attempting to delete incomplete/corrupted PDF: ${this.filePath}`);
+                 unlinkSync(this.filePath); // Use sync version
+                 logger.info(funcPrefix, `Deleted incomplete/corrupted PDF: ${this.filePath}`);
+             } catch (accessOrUnlinkError: any) {
+                 if (accessOrUnlinkError.code === 'ENOENT') {
+                     logger.info(funcPrefix, `Incomplete PDF ${this.filePath} did not exist, no need to delete.`);
+                 } else {
+                     logger.error(funcPrefix, 'Error accessing or deleting potentially corrupted PDF during cleanup', accessOrUnlinkError);
+                 }
+             }
+        } catch (cleanupError) {
+            logger.error(funcPrefix, 'Error during PDF cleanup process itself', cleanupError);
         } finally {
-             // Reset state even if cleanup had issues
              this.doc = null;
              this.stream = null;
-             // Keep filePath and logPrefix for potential further debugging if needed
+             // Maybe keep filePath and logPrefix for reporting? For now, reset fully.
+             // this.filePath = '';
+             // this.logPrefix = '';
         }
     }
 
-    /**
-     * Generates the PDF receipt.
-     * @param receipt - The receipt data.
-     * @param operationId - A unique ID for logging this specific generation attempt.
-     * @returns Promise resolving to an object indicating success, optional error message, and file path.
-     */
     public async generate(receipt: Receipt, operationId: string): Promise<{ success: boolean; message?: string; filePath?: string }> {
         try {
             this.initialize(receipt.receipt_id, operationId);
         } catch(initError: any) {
-             // Initialization errors are critical (e.g., cannot instantiate PDFDocument)
              logger.error(this.logPrefix || `[${operationId} PDFKit ${receipt?.receipt_id || 'unknown'}]`, 'ERROR during PDF initialization', initError);
              return { success: false, message: initError.message || "PDF initialization failed." };
         }
 
         try {
-            // Setup the stream - this might fail if directory creation fails
             await this.setupStream();
 
-            // --- Add Content to PDF ---
-            // Errors during content addition should be caught here
-            logger.debug(this.logPrefix, 'Adding content to PDF document...');
+            logger.debug(this.logPrefix, 'Adding content to PDF...');
             this.addHeader(receipt.is_tax_invoice);
             this.addSellerInfo(receipt.seller_profile_snapshot);
             this.addCustomerInfo(receipt.customer_snapshot);
             this.addInvoiceDetails(receipt.receipt_id, receipt.date_of_purchase);
             this.addLineItemsTable(receipt.line_items, receipt.GST_amount > 0);
             this.addTotals(receipt.subtotal_excl_GST, receipt.GST_amount, receipt.total_inc_GST);
-            logger.debug(this.logPrefix, 'Finished adding content to PDF document.');
 
-            // --- Finalize Document and Stream ---
-            // This waits for the stream 'finish' or 'error' event
             await this.finalize();
 
-            logger.info(this.logPrefix, `PDF generation process completed.`);
-
+            logger.info(this.logPrefix, `PDF generation process completed. Success flag: ${this.success}`);
             if (!this.success) {
-                 // Should ideally be caught by finalize() rejection, but double-check
-                 throw new Error("PDF generation failed after content addition, stream did not finish successfully.");
+                throw new Error("Stream finished or errored, but success flag was not set correctly.");
             }
-
             logger.info(this.logPrefix, 'PDF generation successful.');
-            const finalFilePath = this.filePath; // Capture path before reset
-             // Reset internal state for potential reuse of the instance (though unlikely in serverless action)
+            const finalFilePath = this.filePath;
              this.doc = null;
              this.stream = null;
              this.filePath = '';
-             this.logPrefix = '';
-             this.operationId = '';
-             this.success = false;
             return { success: true, filePath: finalFilePath };
 
         } catch (error: any) {
-             // Catch errors from setupStream, content addition, or finalize
-             logger.error(this.logPrefix, 'ERROR during PDF generation orchestration', error);
-             await this.cleanupFailedPdf(); // Attempt cleanup regardless of where error occurred
+            logger.error(this.logPrefix, 'ERROR during PDF generation orchestration', error);
+            await this.cleanupFailedPdf();
 
-             const message = `Failed to generate PDF: ${error.message || 'Unknown error during generation'}`;
-             // Optionally add more specific checks here (e.g., font errors mentioned previously)
-             // if (error.message?.includes('Font')) { ... }
+            let message = `Failed to generate PDF: ${error.message || 'Unknown error'}`;
+            // Check for potential font-related errors (though less likely now)
+             if (error.message?.includes('ENOENT') && error.message?.includes('.afm')) {
+                 message = `Failed to generate PDF: Missing font file (${error.message}). Please ensure standard fonts are available.`;
+                 logger.error(this.logPrefix, "Font file missing error detected.", error);
+             }
 
-             return { success: false, message };
+            return { success: false, message };
         }
     }
 }

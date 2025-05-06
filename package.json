@@ -1,3 +1,4 @@
+
 {
   "name": "nextn",
   "version": "0.1.0",
@@ -11,7 +12,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "log-change": "node -e \"require('./src/lib/recordChanges').recordChange(process.argv[2], process.argv.slice(3).join(' '))\""
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.6.2",
@@ -75,4 +77,3 @@
     "vitest": "^2.0.4"
   }
 }
-

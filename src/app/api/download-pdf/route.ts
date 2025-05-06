@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getReceiptPdfContent } from '@/lib/data-access/receipts'; // Assuming this function reads the PDF buffer
 import { logger } from '@/lib/services/logging';
+import { recordChange } from '@/lib/recordChanges'; // Import change recorder
 
 const LOG_PREFIX = 'DownloadPdfApi';
 
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
   const funcPrefix = `${LOG_PREFIX}:${receiptId || 'no-id'}`;
 
   logger.info(funcPrefix, `Received request to download PDF.`);
+  recordChange('src/app/api/download-pdf/route.ts', 'No code changes, but logging setup potentially affects behavior.'); // Record the 'change' context
 
   if (!receiptId) {
     logger.warn(funcPrefix, 'Request failed: Missing receipt ID.');

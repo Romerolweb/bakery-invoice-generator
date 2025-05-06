@@ -1,5 +1,5 @@
 // src/lib/services/puppeteerPdfGenerator.ts
-import puppeteer, { Browser, Page } from 'puppeteer'; // Import Page type
+import puppeteer, { Browser, Page } from 'puppeteer';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { format, parseISO } from 'date-fns';
@@ -47,16 +47,12 @@ export class PuppeteerPdfGenerator {
 
         const formatDate = (dateString: string): string => {
             try {
-                // Attempt to parse the date string assuming ISO format
                 const dateObject = parseISO(dateString);
-                 // Check if parsing resulted in a valid date
-                if (isNaN(dateObject.getTime())) {
-                    throw new Error('Invalid date object after parsing');
-                }
+                if (isNaN(dateObject.getTime())) { throw new Error('Invalid date'); }
                 return format(dateObject, 'dd/MM/yyyy');
             } catch (e) {
                 logger.warn(funcPrefix, `Could not parse date: ${dateString}. Using original string.`, e);
-                return dateString; // Fallback to original string
+                return dateString;
             }
         };
 
@@ -75,18 +71,21 @@ export class PuppeteerPdfGenerator {
             </tr>
         `).join('');
 
-        // Basic CSS for styling - Consider moving to a separate CSS file for better maintainability
+        // Simplified CSS relying on browser defaults more
         const css = `
-            body { font-family: Arial, sans-serif; font-size: 10pt; margin: 50px; color: #333; }
-            h1 { text-align: center; font-size: 16pt; margin-bottom: 30px; color: #111; }
-            .info-section { display: flex; justify-content: space-between; margin-bottom: 25px; width: 100%; }
-            .info-block { width: 48%; line-height: 1.4; }
+            body {
+                /* font-family: Arial, sans-serif; -- REMOVED to use browser default */
+                font-size: 10pt; margin: 50px; color: #333; line-height: 1.4;
+            }
+            h1 { text-align: center; font-size: 16pt; margin-bottom: 30px; color: #111; font-weight: bold; }
+            .info-section { display: flex; justify-content: space-between; margin-bottom: 25px; width: 100%; flex-wrap: wrap; } /* Added wrap */
+            .info-block { width: 48%; margin-bottom: 10px; } /* Added bottom margin */
             .info-block h2 { font-size: 11pt; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 4px; color: #444; font-weight: bold;}
-            .info-block p { margin: 2px 0; }
+            .info-block p { margin: 3px 0; }
             .invoice-details { margin-bottom: 25px; text-align: right;}
-            .invoice-details p { margin: 3px 0; }
+            .invoice-details p { margin: 4px 0; font-size: 9pt; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; word-wrap: break-word; } /* Added word-wrap */
             th { background-color: #f8f8f8; font-weight: bold; }
             .text-right { text-align: right; }
             .text-center { text-align: center; }
@@ -189,7 +188,7 @@ export class PuppeteerPdfGenerator {
         }
         logger.warn(funcPrefix, `Attempting cleanup for potentially failed Puppeteer PDF: ${this.filePath}`);
         try {
-            await fsPromises.access(this.filePath); // Check if file exists
+            await fsPromises.access(this.filePath);
             logger.warn(funcPrefix, `Deleting incomplete/corrupted PDF: ${this.filePath}`);
             await fsPromises.unlink(this.filePath);
             logger.info(funcPrefix, `Deleted incomplete PDF: ${this.filePath}`);
@@ -200,20 +199,13 @@ export class PuppeteerPdfGenerator {
                 logger.error(funcPrefix, 'Error during PDF file cleanup', error);
             }
         } finally {
-             // Reset path to prevent repeated attempts if cleanup fails
-             this.filePath = '';
+             this.filePath = ''; // Reset path to prevent repeated attempts
         }
     }
 
-    /**
-     * Generates the PDF receipt using Puppeteer.
-     * @param receipt - The receipt data.
-     * @param operationId - A unique ID for logging this specific generation attempt.
-     * @returns Promise resolving to an object indicating success, optional error message, and file path.
-     */
     public async generate(receipt: Receipt, operationId: string): Promise<PdfGenerationResult> {
         let browser: Browser | null = null;
-        let page: Page | null = null; // Keep track of page for cleanup
+        let page: Page | null = null;
         try {
             this.initialize(receipt.receipt_id, operationId);
             await this.ensurePdfDirectoryExists();
@@ -221,7 +213,6 @@ export class PuppeteerPdfGenerator {
             const htmlContent = this.generateInvoiceHtml(receipt);
 
             logger.debug(this.logPrefix, 'Launching Puppeteer browser...');
-            // Launch puppeteer with recommended args for server/container environments
              browser = await puppeteer.launch({
                  headless: true,
                  args: [
@@ -231,7 +222,7 @@ export class PuppeteerPdfGenerator {
                      '--disable-accelerated-2d-canvas',
                      '--no-first-run',
                      '--no-zygote',
-                     '--disable-gpu' // Often helps in server environments
+                     '--disable-gpu'
                  ]
              });
             logger.debug(this.logPrefix, 'Puppeteer browser launched.');
@@ -239,11 +230,9 @@ export class PuppeteerPdfGenerator {
             page = await browser.newPage();
             logger.debug(this.logPrefix, 'Puppeteer page created.');
 
-            // Increase timeout for setContent if needed, e.g., { waitUntil: 'networkidle0', timeout: 60000 }
             await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
             logger.debug(this.logPrefix, 'HTML content set on page.');
 
-             // Increase timeout for pdf generation if needed, e.g., timeout: 60000
             await page.pdf({
                 path: this.filePath,
                 format: 'A4',
@@ -252,33 +241,22 @@ export class PuppeteerPdfGenerator {
             });
             logger.info(this.logPrefix, 'PDF file generated successfully.');
 
-            const finalFilePath = this.filePath; // Store path before closing browser/resetting state
+            const finalFilePath = this.filePath;
 
-             // Close page first
-             await page.close();
-             page = null;
-             logger.debug(this.logPrefix, 'Puppeteer page closed.');
+             await page.close(); page = null; logger.debug(this.logPrefix, 'Puppeteer page closed.');
+             await browser.close(); browser = null; logger.debug(this.logPrefix, 'Puppeteer browser closed.');
 
-            // Close browser
-             await browser.close();
-             browser = null;
-             logger.debug(this.logPrefix, 'Puppeteer browser closed.');
-
-             // Reset internal state
-             this.filePath = '';
-             this.logPrefix = '';
-             this.operationId = '';
+             this.filePath = ''; this.logPrefix = ''; this.operationId = ''; // Reset state
 
             return { success: true, filePath: finalFilePath };
 
         } catch (error: any) {
             logger.error(this.logPrefix, 'ERROR during Puppeteer PDF generation orchestration', error);
-            await this.cleanupFailedPdf(); // Attempt to remove partial file
+            await this.cleanupFailedPdf();
 
             return { success: false, message: `Failed to generate PDF using Puppeteer: ${error.message || 'Unknown error'}` };
         } finally {
-            // Ensure browser is closed even if errors occurred before explicit close calls
-             if (page) {
+            if (page) {
                  try { await page.close(); logger.debug(this.logPrefix, 'Puppeteer page closed in finally block.'); } catch (e) { logger.warn(this.logPrefix, 'Error closing page in finally block', e); }
              }
             if (browser) {
@@ -288,7 +266,7 @@ export class PuppeteerPdfGenerator {
     }
 }
 
-// Keep the async factory function if needed, though direct instantiation is also fine
+// Factory function to create an instance (optional, but can be useful)
 export async function createPuppeteerPdfGenerator(): Promise<PuppeteerPdfGenerator> {
     return new PuppeteerPdfGenerator();
 }
