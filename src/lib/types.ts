@@ -43,7 +43,7 @@ export interface Customer {
    * Unique identifier for the customer (UUID format).
    */
   id: string; // UUID
-  customer_type: 'individual' | 'business';
+  customer_type: "individual" | "business";
   first_name?: string; // Optional for business, required for individual (will be enforced by schema)
   last_name?: string; // Optional
   business_name?: string; // Optional for individual, required for business (will be enforced by schema)

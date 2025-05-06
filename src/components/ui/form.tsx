@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
 import * as React from "react";
-import * as LabelPrimitive from "@radix-ui/react-label"
-import { Slot } from "@radix-ui/react-slot"
+import * as LabelPrimitive from "@radix-ui/react-label";
+import { Slot } from "@radix-ui/react-slot";
 import {
   Controller,
   FormProvider,
@@ -10,85 +10,94 @@ import {
   type ControllerProps,
   type FieldPath, // Importing types explicitly
   type FieldValues, // Importing types explicitly
-} from "react-hook-form"
+} from "react-hook-form";
 
-import { cn } from "@/lib/utils"
-import { Label } from "@/components/ui/label" // Assuming Label is already typed
+import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label"; // Assuming Label is already typed
 
-const Form = FormProvider
+const Form = FormProvider;
 
 type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > = {
-  name: TName
-}
+  name: TName;
+};
 
 const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
-)
+  {} as FormFieldContextValue,
+);
 
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 >({
   ...props
 }: ControllerProps<TFieldValues, TName>) => {
-  return ( // Explicitly returning JSX
+  return (
+    // Explicitly returning JSX
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller {...props} />
     </FormFieldContext.Provider>
   );
-}
+};
 
 const useFormField = () => {
-  const fieldContext = React.useContext(FormFieldContext)
-  const itemContext = React.useContext(FormItemContext)
-  const { getFieldState, formState } = useFormContext()
+  const fieldContext = React.useContext(FormFieldContext);
+  const itemContext = React.useContext(FormItemContext);
+  const { getFieldState, formState } = useFormContext();
 
   // Check if formState exists before accessing getFieldState
   // This can happen if useFormField is used outside a FormProvider
   // or if the form hasn't fully initialized yet.
   if (!formState) {
-     console.warn('useFormField used outside of a FormProvider or before form initialization.');
-     // Return default values or throw a more specific error
-     return { // Explicitly returning an object
-        id: itemContext?.id || '', // Use optional chaining for itemContext
-        name: fieldContext?.name || '', // Use optional chaining for fieldContext
-        formItemId: itemContext?.id ? `${itemContext.id}-form-item` : 'form-item', // More precise ternary
-        formDescriptionId: itemContext?.id ? `${itemContext.id}-form-item-description` : 'form-item-description', // More precise ternary
-        formMessageId: itemContext?.id ? `${itemContext.id}-form-item-message` : 'form-item-message', // More precise ternary
-        invalid: false,
-        isDirty: false,
-        isTouched: false,
-        isValidating: false,
-        error: undefined,
-     };
+    console.warn(
+      "useFormField used outside of a FormProvider or before form initialization.",
+    );
+    // Return default values or throw a more specific error
+    return {
+      // Explicitly returning an object
+      id: itemContext?.id || "", // Use optional chaining for itemContext
+      name: fieldContext?.name || "", // Use optional chaining for fieldContext
+      formItemId: itemContext?.id ? `${itemContext.id}-form-item` : "form-item", // More precise ternary
+      formDescriptionId: itemContext?.id
+        ? `${itemContext.id}-form-item-description`
+        : "form-item-description", // More precise ternary
+      formMessageId: itemContext?.id
+        ? `${itemContext.id}-form-item-message`
+        : "form-item-message", // More precise ternary
+      invalid: false,
+      isDirty: false,
+      isTouched: false,
+      isValidating: false,
+      error: undefined,
+    };
   }
   // At this point, we assume formState exists
 
-  const fieldState = getFieldState(fieldContext.name, formState)
+  const fieldState = getFieldState(fieldContext.name, formState);
 
   if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>")
+    throw new Error("useFormField should be used within <FormField>");
   }
-   if (!itemContext) {
-     // This might happen if FormItem context is somehow lost, though less likely
-     console.warn('FormItem context not found within useFormField.');
-     // Provide default IDs based only on field name if necessary
-     const baseId = fieldContext.name.replace(/[\.\[\]]/g, '-'); // Simple ID generation
-     return { // Explicitly returning an object
-         id: baseId,
-         name: fieldContext.name,
-         formItemId: `${baseId}-form-item`,
-         formDescriptionId: `${baseId}-form-item-description`,
-         formMessageId: `${baseId}-form-item-message`,
-         ...fieldState, // Spread the fieldState properties
-     };
-   }
-   // At this point, we assume both contexts exist
+  if (!itemContext) {
+    // This might happen if FormItem context is somehow lost, though less likely
+    console.warn("FormItem context not found within useFormField.");
+    // Provide default IDs based only on field name if necessary
+    const baseId = fieldContext.name.replace(/[\.\[\]]/g, "-"); // Simple ID generation
+    return {
+      // Explicitly returning an object
+      id: baseId,
+      name: fieldContext.name,
+      formItemId: `${baseId}-form-item`,
+      formDescriptionId: `${baseId}-form-item-description`,
+      formMessageId: `${baseId}-form-item-message`,
+      ...fieldState, // Spread the fieldState properties
+    };
+  }
+  // At this point, we assume both contexts exist
 
-  const { id } = itemContext
+  const { id } = itemContext;
 
   return {
     id,
@@ -97,30 +106,30 @@ const useFormField = () => {
     formDescriptionId: `${id}-form-item-description`,
     formMessageId: `${id}-form-item-message`,
     ...fieldState,
-  }
-}
+  };
+};
 // Define the type for FormItemContextValue
 type FormItemContextValue = {
-  id: string
-}
+  id: string;
+};
 
 const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-)
+  {} as FormItemContextValue,
+);
 
 const FormItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
-  const id = React.useId()
+  const id = React.useId();
 
   return (
     <FormItemContext.Provider value={{ id }}>
       <div ref={ref} className={cn("space-y-2", className)} {...props} />
     </FormItemContext.Provider>
   ); // Explicitly returning JSX
-})
-FormItem.displayName = "FormItem"
+});
+FormItem.displayName = "FormItem";
 
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
@@ -136,14 +145,15 @@ const FormLabel = React.forwardRef<
       {...props}
     />
   ); // Explicitly returning JSX
-})
-FormLabel.displayName = "FormLabel"
+});
+FormLabel.displayName = "FormLabel";
 
 const FormControl = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>
 >(({ ...props }, ref) => {
-  const { error, formItemId, formDescriptionId, formMessageId } = useFormField(); // Destructuring hook result
+  const { error, formItemId, formDescriptionId, formMessageId } =
+    useFormField(); // Destructuring hook result
 
   return (
     <Slot
@@ -158,8 +168,8 @@ const FormControl = React.forwardRef<
       {...props}
     />
   ); // Explicitly returning JSX
-})
-FormControl.displayName = "FormControl"
+});
+FormControl.displayName = "FormControl";
 
 const FormDescription = React.forwardRef<
   HTMLParagraphElement,
@@ -175,18 +185,19 @@ const FormDescription = React.forwardRef<
       {...props}
     />
   ); // Explicitly returning JSX
-})
-FormDescription.displayName = "FormDescription"
+});
+FormDescription.displayName = "FormDescription";
 
 const FormMessage = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
->(( { className, children, ...props }, ref) => { // Destructuring props
+>(({ className, children, ...props }, ref) => {
+  // Destructuring props
   const { error, formMessageId } = useFormField(); // Destructuring hook result
-  const body = error ? String(error?.message ?? "") : children
+  const body = error ? String(error?.message ?? "") : children;
 
   if (!body) {
-    return null
+    return null;
   }
 
   return (
@@ -199,8 +210,8 @@ const FormMessage = React.forwardRef<
       {body}
     </p>
   ); // Explicitly returning JSX
-})
-FormMessage.displayName = "FormMessage"
+});
+FormMessage.displayName = "FormMessage";
 
 export {
   useFormField, // Export the hook
@@ -211,4 +222,4 @@ export {
   FormDescription,
   FormMessage,
   FormField,
-}
+};

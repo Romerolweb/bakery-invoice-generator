@@ -1,5 +1,5 @@
 // src/lib/services/pdfGeneratorInterface.ts
-import type { Receipt } from '@/lib/types';
+import type { Receipt } from "@/lib/types";
 
 export interface PdfGenerationResult {
   success: boolean;

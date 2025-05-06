@@ -1,43 +1,47 @@
 // src/lib/actions/customers.ts
-'use server';
+"use server";
 
-import { z } from 'zod';
-import { Customer } from '@/lib/types';
-import * as CustomerDataAccess from '@/lib/data-access/customers';
-import { logger } from '@/lib/services/logging';
+import { z } from "zod";
+import { Customer } from "@/lib/types";
+import * as CustomerDataAccess from "@/lib/data-access/customers";
+import { logger } from "@/lib/services/logging";
 
-const ACTION_LOG_PREFIX = 'CustomerActions';
+const ACTION_LOG_PREFIX = "CustomerActions";
 
 // --- Schemas for Validation ---
 const abnRegex = /^\d{2}\s?\d{3}\s?\d{3}\s?\d{3}$/;
 
 const baseCustomerSchema = z.object({
   id: z.string().uuid().optional(), // Optional for creation, required for update/delete
-  email: z.string().email('Invalid email format').optional().or(z.literal('')),
+  email: z.string().email("Invalid email format").optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
 });
 
 const individualCustomerSchema = baseCustomerSchema.extend({
-  customer_type: z.literal('individual'),
-  first_name: z.string().min(1, 'First name is required'),
+  customer_type: z.literal("individual"),
+  first_name: z.string().min(1, "First name is required"),
   last_name: z.string().optional(),
-  business_name: z.string().optional().nullable().or(z.literal('')),
-  abn: z.string().optional().nullable().or(z.literal('')),
+  business_name: z.string().optional().nullable().or(z.literal("")),
+  abn: z.string().optional().nullable().or(z.literal("")),
 });
 
 const businessCustomerSchema = baseCustomerSchema.extend({
-  customer_type: z.literal('business'),
+  customer_type: z.literal("business"),
   first_name: z.string().optional(),
   last_name: z.string().optional(),
-  business_name: z.string().min(1, 'Business name is required'),
-  abn: z.string().optional().refine((val) => !val || abnRegex.test(val), {
-    message: 'Invalid ABN format (e.g., 11 111 111 111)'
-  }).or(z.literal('')),
+  business_name: z.string().min(1, "Business name is required"),
+  abn: z
+    .string()
+    .optional()
+    .refine((val) => !val || abnRegex.test(val), {
+      message: "Invalid ABN format (e.g., 11 111 111 111)",
+    })
+    .or(z.literal("")),
 });
 
 // Full schema including ID, used for updates or getting data
-const customerSchema = z.discriminatedUnion('customer_type', [
+const customerSchema = z.discriminatedUnion("customer_type", [
   individualCustomerSchema,
   businessCustomerSchema,
 ]);
@@ -47,11 +51,10 @@ const addIndividualCustomerSchema = individualCustomerSchema.omit({ id: true });
 const addBusinessCustomerSchema = businessCustomerSchema.omit({ id: true });
 
 // Discriminated union schema specifically for adding a customer
-const addCustomerSchema = z.discriminatedUnion('customer_type', [
+const addCustomerSchema = z.discriminatedUnion("customer_type", [
   addIndividualCustomerSchema,
   addBusinessCustomerSchema,
 ]);
-
 
 type AddCustomerFormData = z.infer<typeof addCustomerSchema>;
 type UpdateCustomerFormData = z.infer<typeof customerSchema>; // For updates, ID might be needed
@@ -60,7 +63,11 @@ type UpdateCustomerFormData = z.infer<typeof customerSchema>; // For updates, ID
 interface ActionResult<T = null> {
   success: boolean;
   message?: string;
-  customer?: T extends Customer ? Customer : (T extends Customer[] ? Customer[] : null);
+  customer?: T extends Customer
+    ? Customer
+    : T extends Customer[]
+      ? Customer[]
+      : null;
   errors?: Record<string, string[]>; // For validation errors
 }
 
@@ -68,118 +75,171 @@ interface ActionResult<T = null> {
 
 export async function getCustomers(): Promise<Customer[]> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:getCustomers`;
-  await logger.debug(funcPrefix, 'Executing getCustomers server action.');
+  await logger.debug(funcPrefix, "Executing getCustomers server action.");
   try {
     const customers = await CustomerDataAccess.getAllCustomers();
     await logger.info(funcPrefix, `Retrieved ${customers.length} customers.`);
     return customers;
   } catch (error) {
-    await logger.error(funcPrefix, 'Error fetching customers', error);
+    await logger.error(funcPrefix, "Error fetching customers", error);
     return []; // Return empty array on error as per previous logic
   }
 }
 
-export async function addCustomer(formData: AddCustomerFormData): Promise<ActionResult<Customer>> {
+export async function addCustomer(
+  formData: AddCustomerFormData,
+): Promise<ActionResult<Customer>> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:addCustomer`;
-  await logger.debug(funcPrefix, 'Executing addCustomer server action.');
+  await logger.debug(funcPrefix, "Executing addCustomer server action.");
 
   const validationResult = addCustomerSchema.safeParse(formData);
 
   if (!validationResult.success) {
     const errors = validationResult.error.flatten().fieldErrors;
-    await logger.warn(funcPrefix, 'Validation failed.', errors);
-    return { success: false, message: 'Validation failed. Please check the fields.', errors };
+    await logger.warn(funcPrefix, "Validation failed.", errors);
+    return {
+      success: false,
+      message: "Validation failed. Please check the fields.",
+      errors,
+    };
   }
 
-  await logger.debug(funcPrefix, 'Validation successful. Proceeding to create customer.');
+  await logger.debug(
+    funcPrefix,
+    "Validation successful. Proceeding to create customer.",
+  );
   try {
     // Ensure ABN/Business Name are null/undefined if individual
-    const dataToSave = validationResult.data.customer_type === 'individual'
-      ? { ...validationResult.data, business_name: undefined, abn: undefined }
-      : validationResult.data;
+    const dataToSave =
+      validationResult.data.customer_type === "individual"
+        ? { ...validationResult.data, business_name: undefined, abn: undefined }
+        : validationResult.data;
 
     const newCustomer = await CustomerDataAccess.createCustomer(dataToSave);
 
     if (newCustomer) {
-      await logger.info(funcPrefix, `Customer added successfully: ${newCustomer.id}`);
+      await logger.info(
+        funcPrefix,
+        `Customer added successfully: ${newCustomer.id}`,
+      );
       return { success: true, customer: newCustomer };
     } else {
-      await logger.error(funcPrefix, 'Data access layer failed to create customer.');
-      return { success: false, message: 'Failed to save customer data.' };
+      await logger.error(
+        funcPrefix,
+        "Data access layer failed to create customer.",
+      );
+      return { success: false, message: "Failed to save customer data." };
     }
   } catch (error) {
-    await logger.error(funcPrefix, 'Unexpected error during customer creation', error);
-    return { success: false, message: 'An unexpected error occurred.' };
+    await logger.error(
+      funcPrefix,
+      "Unexpected error during customer creation",
+      error,
+    );
+    return { success: false, message: "An unexpected error occurred." };
   }
 }
 
-export async function updateCustomer(id: string, formData: UpdateCustomerFormData): Promise<ActionResult<Customer>> {
-   const funcPrefix = `${ACTION_LOG_PREFIX}:updateCustomer:${id}`;
-   await logger.debug(funcPrefix, 'Executing updateCustomer server action.');
+export async function updateCustomer(
+  id: string,
+  formData: UpdateCustomerFormData,
+): Promise<ActionResult<Customer>> {
+  const funcPrefix = `${ACTION_LOG_PREFIX}:updateCustomer:${id}`;
+  await logger.debug(funcPrefix, "Executing updateCustomer server action.");
 
-   // Ensure the ID from the path matches the ID in the form data if present
-   if (formData.id && formData.id !== id) {
-       await logger.error(funcPrefix, 'Mismatched ID in path and form data.');
-       return { success: false, message: 'Customer ID mismatch.' };
-   }
+  // Ensure the ID from the path matches the ID in the form data if present
+  if (formData.id && formData.id !== id) {
+    await logger.error(funcPrefix, "Mismatched ID in path and form data.");
+    return { success: false, message: "Customer ID mismatch." };
+  }
 
-   // Validate the full schema (including ID if provided, though we use the path `id`)
-   const validationResult = customerSchema.safeParse({ ...formData, id }); // Ensure id is part of validation context
+  // Validate the full schema (including ID if provided, though we use the path `id`)
+  const validationResult = customerSchema.safeParse({ ...formData, id }); // Ensure id is part of validation context
 
-   if (!validationResult.success) {
-       const errors = validationResult.error.flatten().fieldErrors;
-       await logger.warn(funcPrefix, 'Validation failed.', errors);
-       return { success: false, message: 'Validation failed. Please check the fields.', errors };
-   }
+  if (!validationResult.success) {
+    const errors = validationResult.error.flatten().fieldErrors;
+    await logger.warn(funcPrefix, "Validation failed.", errors);
+    return {
+      success: false,
+      message: "Validation failed. Please check the fields.",
+      errors,
+    };
+  }
 
-    await logger.debug(funcPrefix, 'Validation successful. Proceeding to update customer.');
-   try {
-     // Prepare data for update (remove ID from the data payload itself)
-     const { id: _id, ...dataToUpdate } = validationResult.data;
+  await logger.debug(
+    funcPrefix,
+    "Validation successful. Proceeding to update customer.",
+  );
+  try {
+    // Prepare data for update (remove ID from the data payload itself)
+    const { id: _id, ...dataToUpdate } = validationResult.data;
 
-      // Ensure ABN/Business Name are null/undefined if individual
-     const finalDataToUpdate = dataToUpdate.customer_type === 'individual'
-       ? { ...dataToUpdate, business_name: undefined, abn: undefined }
-       : dataToUpdate;
+    // Ensure ABN/Business Name are null/undefined if individual
+    const finalDataToUpdate =
+      dataToUpdate.customer_type === "individual"
+        ? { ...dataToUpdate, business_name: undefined, abn: undefined }
+        : dataToUpdate;
 
+    const updatedCustomer = await CustomerDataAccess.updateCustomer(
+      id,
+      finalDataToUpdate,
+    );
 
-     const updatedCustomer = await CustomerDataAccess.updateCustomer(id, finalDataToUpdate);
-
-     if (updatedCustomer) {
-        await logger.info(funcPrefix, 'Customer updated successfully.');
-        return { success: true, customer: updatedCustomer };
-     } else {
-        await logger.warn(funcPrefix, 'Data access layer failed to update customer (possibly not found).');
-        return { success: false, message: 'Failed to update customer data. Customer may not exist.' };
-     }
-   } catch (error) {
-      await logger.error(funcPrefix, 'Unexpected error during customer update', error);
-      return { success: false, message: 'An unexpected error occurred.' };
-   }
+    if (updatedCustomer) {
+      await logger.info(funcPrefix, "Customer updated successfully.");
+      return { success: true, customer: updatedCustomer };
+    } else {
+      await logger.warn(
+        funcPrefix,
+        "Data access layer failed to update customer (possibly not found).",
+      );
+      return {
+        success: false,
+        message: "Failed to update customer data. Customer may not exist.",
+      };
+    }
+  } catch (error) {
+    await logger.error(
+      funcPrefix,
+      "Unexpected error during customer update",
+      error,
+    );
+    return { success: false, message: "An unexpected error occurred." };
+  }
 }
 
-
 export async function deleteCustomer(id: string): Promise<ActionResult> {
-   const funcPrefix = `${ACTION_LOG_PREFIX}:deleteCustomer:${id}`;
-   await logger.debug(funcPrefix, 'Executing deleteCustomer server action.');
-   // Basic validation for ID format can be added here if needed
-   if (!id || typeof id !== 'string' || id.length < 5) { // Simple check
-        await logger.warn(funcPrefix, 'Invalid ID provided for deletion.');
-        return { success: false, message: 'Invalid Customer ID.' };
-   }
+  const funcPrefix = `${ACTION_LOG_PREFIX}:deleteCustomer:${id}`;
+  await logger.debug(funcPrefix, "Executing deleteCustomer server action.");
+  // Basic validation for ID format can be added here if needed
+  if (!id || typeof id !== "string" || id.length < 5) {
+    // Simple check
+    await logger.warn(funcPrefix, "Invalid ID provided for deletion.");
+    return { success: false, message: "Invalid Customer ID." };
+  }
 
   try {
     const deleted = await CustomerDataAccess.deleteCustomer(id);
     if (deleted) {
-      await logger.info(funcPrefix, 'Customer deleted successfully.');
+      await logger.info(funcPrefix, "Customer deleted successfully.");
       return { success: true };
     } else {
-      await logger.warn(funcPrefix, 'Data access layer failed to delete customer (possibly not found).');
-      return { success: false, message: 'Failed to delete customer. Customer may not exist.' };
+      await logger.warn(
+        funcPrefix,
+        "Data access layer failed to delete customer (possibly not found).",
+      );
+      return {
+        success: false,
+        message: "Failed to delete customer. Customer may not exist.",
+      };
     }
   } catch (error) {
-     await logger.error(funcPrefix, 'Unexpected error during customer deletion', error);
-     return { success: false, message: 'An unexpected error occurred.' };
+    await logger.error(
+      funcPrefix,
+      "Unexpected error during customer deletion",
+      error,
+    );
+    return { success: false, message: "An unexpected error occurred." };
   }
 }
 
@@ -187,24 +247,32 @@ export async function deleteCustomer(id: string): Promise<ActionResult> {
 
 /** @deprecated Use getCustomers instead */
 export async function getAllCustomers(): Promise<Customer[]> {
-  await logger.warn(`${ACTION_LOG_PREFIX}:getAllCustomers`, 'Deprecated function called. Use getCustomers() instead.');
+  await logger.warn(
+    `${ACTION_LOG_PREFIX}:getAllCustomers`,
+    "Deprecated function called. Use getCustomers() instead.",
+  );
   return getCustomers();
 }
 
 /** @deprecated Fetch customer within your component or use getCustomers */
-export async function getCustomerById(customerId: string): Promise<Customer | null> {
+export async function getCustomerById(
+  customerId: string,
+): Promise<Customer | null> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:getCustomerById:${customerId}`;
-  await logger.warn(funcPrefix, 'Deprecated function called.');
+  await logger.warn(funcPrefix, "Deprecated function called.");
   try {
     const customer = await CustomerDataAccess.getCustomerById(customerId);
-    if(customer) {
-        await logger.info(funcPrefix, `Retrieved customer by ID.`);
+    if (customer) {
+      await logger.info(funcPrefix, `Retrieved customer by ID.`);
     } else {
-         await logger.info(funcPrefix, `Customer with ID ${customerId} not found.`);
+      await logger.info(
+        funcPrefix,
+        `Customer with ID ${customerId} not found.`,
+      );
     }
     return customer;
   } catch (error) {
-    await logger.error(funcPrefix, 'Error fetching customer by ID', error);
+    await logger.error(funcPrefix, "Error fetching customer by ID", error);
     return null;
   }
 }

@@ -1,23 +1,30 @@
 // src/lib/services/logging.ts
-import { format } from 'date-fns';
+import { format } from "date-fns";
 // Removed direct import: import fs from 'fs';
-import path from 'path';
+import path from "path";
 
-type LogData = Record<string, any> | string | number | boolean | Error | undefined;
+type LogData =
+  | Record<string, any>
+  | string
+  | number
+  | boolean
+  | Error
+  | undefined;
 
 // Define log levels
 enum LogLevel {
-  INFO = 'INFO',
-  WARN = 'WARN',
-  ERROR = 'ERROR',
-  DEBUG = 'DEBUG',
+  INFO = "INFO",
+  WARN = "WARN",
+  ERROR = "ERROR",
+  DEBUG = "DEBUG",
 }
 
 // Logger configuration
 const config = {
-  logLevel: process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.INFO,
+  logLevel:
+    process.env.NODE_ENV === "development" ? LogLevel.DEBUG : LogLevel.INFO,
   logToFile: true, // Enable file logging (server-side only)
-  logFilePath: path.join(process.cwd(), 'logs', 'app.log'), // Path to the log file
+  logFilePath: path.join(process.cwd(), "logs", "app.log"), // Path to the log file
   logLevelsToFile: [LogLevel.ERROR, LogLevel.WARN], // Log only errors and warnings to file by default
 };
 
@@ -26,93 +33,107 @@ const logDirectory = path.dirname(config.logFilePath);
 // Ensure log directory exists synchronously on first log attempt if needed (server-side only)
 let logDirectoryEnsured = false;
 async function ensureLogDirectoryExists() {
-    if (logDirectoryEnsured || typeof window !== 'undefined') return; // Only run on server
+  if (logDirectoryEnsured || typeof window !== "undefined") return; // Only run on server
 
-    try {
-        // Dynamically import 'fs' only when needed on the server
-        const fs = await import('fs');
-        if (!fs.existsSync(logDirectory)) {
-            fs.mkdirSync(logDirectory, { recursive: true });
-            console.log(`[Logger] Created log directory: ${logDirectory}`);
-        }
-        logDirectoryEnsured = true;
-    } catch (error) {
-        console.error('[Logger] FATAL: Error creating log directory', error);
-        config.logToFile = false; // Disable file logging if directory creation fails
-        logDirectoryEnsured = true; // Prevent further attempts
+  try {
+    // Dynamically import 'fs' only when needed on the server
+    const fs = await import("fs");
+    if (!fs.existsSync(logDirectory)) {
+      fs.mkdirSync(logDirectory, { recursive: true });
+      console.log(`[Logger] Created log directory: ${logDirectory}`);
     }
+    logDirectoryEnsured = true;
+  } catch (error) {
+    console.error("[Logger] FATAL: Error creating log directory", error);
+    config.logToFile = false; // Disable file logging if directory creation fails
+    logDirectoryEnsured = true; // Prevent further attempts
+  }
 }
-
 
 // Check if a level is enabled based on config
 function isLevelEnabled(level: LogLevel): boolean {
-    const levels = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR];
-    const currentLevelIndex = levels.indexOf(config.logLevel);
-    const messageLevelIndex = levels.indexOf(level);
-    return messageLevelIndex >= currentLevelIndex;
+  const levels = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR];
+  const currentLevelIndex = levels.indexOf(config.logLevel);
+  const messageLevelIndex = levels.indexOf(level);
+  return messageLevelIndex >= currentLevelIndex;
 }
 
 // The core logging function
-async function log(level: LogLevel, prefix: string, message: string, data?: LogData): Promise<void> {
-    if (!isLevelEnabled(level)) {
-        return;
+async function log(
+  level: LogLevel,
+  prefix: string,
+  message: string,
+  data?: LogData,
+): Promise<void> {
+  if (!isLevelEnabled(level)) {
+    return;
+  }
+
+  const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss.SSS");
+  const logPrefix = `[${timestamp}] [${level}]${prefix ? ` [${prefix}]` : ""}:`;
+
+  // --- Console Logging (works on server and client) ---
+  const consoleLogMethod =
+    level === LogLevel.ERROR
+      ? console.error
+      : level === LogLevel.WARN
+        ? console.warn
+        : console.log; // INFO and DEBUG use console.log
+
+  let dataStringForConsole = "";
+  if (data) {
+    if (data instanceof Error) {
+      dataStringForConsole = `\nError: ${data.stack || data.message}`;
+    } else {
+      try {
+        dataStringForConsole = `\nData: ${typeof data === "object" ? JSON.stringify(data, null, 2) : data}`;
+      } catch (e) {
+        dataStringForConsole = "\nData: [Could not stringify data]";
+      }
     }
+  }
+  consoleLogMethod(`${logPrefix} ${message}${dataStringForConsole}`);
 
-    const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS');
-    const logPrefix = `[${timestamp}] [${level}]${prefix ? ` [${prefix}]` : ''}:`;
+  // --- File Logging (Server-Side Only) ---
+  if (
+    typeof window === "undefined" &&
+    config.logToFile &&
+    config.logLevelsToFile.includes(level)
+  ) {
+    await ensureLogDirectoryExists();
+    if (!config.logToFile) return; // Check again in case ensure failed
 
-    // --- Console Logging (works on server and client) ---
-    const consoleLogMethod = level === LogLevel.ERROR ? console.error
-                           : level === LogLevel.WARN ? console.warn
-                           : console.log; // INFO and DEBUG use console.log
-
-    let dataStringForConsole = '';
+    let dataStringForFile = "";
     if (data) {
-        if (data instanceof Error) {
-            dataStringForConsole = `\nError: ${data.stack || data.message}`;
-        } else {
-            try {
-                dataStringForConsole = `\nData: ${typeof data === 'object' ? JSON.stringify(data, null, 2) : data}`;
-            } catch (e) {
-                dataStringForConsole = '\nData: [Could not stringify data]';
-            }
-        }
-    }
-    consoleLogMethod(`${logPrefix} ${message}${dataStringForConsole}`);
-
-    // --- File Logging (Server-Side Only) ---
-    if (typeof window === 'undefined' && config.logToFile && config.logLevelsToFile.includes(level)) {
-        await ensureLogDirectoryExists();
-        if (!config.logToFile) return; // Check again in case ensure failed
-
-        let dataStringForFile = '';
-         if (data) {
-            if (data instanceof Error) {
-                dataStringForFile = `\nError: ${data.stack || data.message}`;
-            } else {
-                 try {
-                    dataStringForFile = ` | Data: ${typeof data === 'object' ? JSON.stringify(data) : data}`;
-                 } catch (e) {
-                     dataStringForFile = ' | Data: [Could not stringify data]';
-                 }
-            }
-        }
-
-        const fileLogMessage = `${logPrefix} ${message}${dataStringForFile}\n`;
-
+      if (data instanceof Error) {
+        dataStringForFile = `\nError: ${data.stack || data.message}`;
+      } else {
         try {
-             // Dynamically import 'fs' for server-side use
-             const fs = await import('fs');
-             fs.appendFile(config.logFilePath, fileLogMessage, (err) => {
-                 if (err) {
-                     console.error('[Logger] Error writing to log file:', err);
-                 }
-             });
-        } catch(fsError) {
-             console.error('[Logger] Error importing or using fs for file logging:', fsError);
-             config.logToFile = false; // Disable further file logging attempts if fs fails
+          dataStringForFile = ` | Data: ${typeof data === "object" ? JSON.stringify(data) : data}`;
+        } catch (e) {
+          dataStringForFile = " | Data: [Could not stringify data]";
         }
+      }
     }
+
+    const fileLogMessage = `${logPrefix} ${message}${dataStringForFile}\n`;
+
+    try {
+      // Dynamically import 'fs' for server-side use
+      const fs = await import("fs");
+      fs.appendFile(config.logFilePath, fileLogMessage, (err) => {
+        if (err) {
+          console.error("[Logger] Error writing to log file:", err);
+        }
+      });
+    } catch (fsError) {
+      console.error(
+        "[Logger] Error importing or using fs for file logging:",
+        fsError,
+      );
+      config.logToFile = false; // Disable further file logging attempts if fs fails
+    }
+  }
 }
 
 // Exported logger functions interface remains the same
@@ -125,6 +146,7 @@ export const logger: {
 } = {
   info: (prefix, message, data) => log(LogLevel.INFO, prefix, message, data),
   warn: (prefix, message, data) => log(LogLevel.WARN, prefix, message, data),
-  error: (prefix, message, error) => log(LogLevel.ERROR, prefix, message, error),
+  error: (prefix, message, error) =>
+    log(LogLevel.ERROR, prefix, message, error),
   debug: (prefix, message, data) => log(LogLevel.DEBUG, prefix, message, data),
 };
