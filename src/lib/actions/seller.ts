@@ -40,45 +40,45 @@ interface ActionResult<T = null> {
 
 export async function getSellerProfile(): Promise<SellerProfile | null> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:getSellerProfile`;
-  logger.debug(funcPrefix, 'Executing getSellerProfile server action.');
+  await logger.debug(funcPrefix, 'Executing getSellerProfile server action.');
   try {
     const profile = await SellerDataAccess.getSellerProfile();
     if (profile) {
-        logger.info(funcPrefix, 'Seller profile retrieved successfully.');
+        await logger.info(funcPrefix, 'Seller profile retrieved successfully.');
     } else {
-         logger.info(funcPrefix, 'No seller profile found.');
+         await logger.info(funcPrefix, 'No seller profile found.');
     }
     return profile;
   } catch (error) {
-    logger.error(funcPrefix, 'Error getting seller profile', error);
-    return null; // Return null on error
+    await logger.error(funcPrefix, 'Error getting seller profile', error);
+    return null;
   }
 }
 
 export async function updateSellerProfile(formData: SellerProfileFormData): Promise<ActionResult<SellerProfile>> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:updateSellerProfile`;
-  logger.debug(funcPrefix, 'Executing updateSellerProfile server action.');
+  await logger.debug(funcPrefix, 'Executing updateSellerProfile server action.');
 
   const validationResult = sellerProfileSchema.safeParse(formData);
 
   if (!validationResult.success) {
     const errors = validationResult.error.flatten().fieldErrors;
-    logger.warn(funcPrefix, 'Validation failed.', errors);
+    await logger.warn(funcPrefix, 'Validation failed.', errors);
     return { success: false, message: 'Validation failed. Please check the fields.', errors };
   }
 
-  logger.debug(funcPrefix, 'Validation successful. Proceeding to update seller profile.');
+  await logger.debug(funcPrefix, 'Validation successful. Proceeding to update seller profile.');
   try {
     const success = await SellerDataAccess.updateSellerProfile(validationResult.data);
     if (success) {
-      logger.info(funcPrefix, 'Seller profile updated successfully.');
+      await logger.info(funcPrefix, 'Seller profile updated successfully.');
       return { success: true, profile: validationResult.data };
     } else {
-      logger.error(funcPrefix, 'Data access layer failed to update seller profile.');
+      await logger.error(funcPrefix, 'Data access layer failed to update seller profile.');
       return { success: false, message: 'Failed to save seller profile data.' };
     }
   } catch (error) {
-    logger.error(funcPrefix, 'Unexpected error during seller profile update', error);
+    await logger.error(funcPrefix, 'Unexpected error during seller profile update', error);
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }

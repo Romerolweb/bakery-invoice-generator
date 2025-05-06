@@ -68,30 +68,30 @@ interface ActionResult<T = null> {
 
 export async function getCustomers(): Promise<Customer[]> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:getCustomers`;
-  logger.debug(funcPrefix, 'Executing getCustomers server action.');
+  await logger.debug(funcPrefix, 'Executing getCustomers server action.');
   try {
     const customers = await CustomerDataAccess.getAllCustomers();
-    logger.info(funcPrefix, `Retrieved ${customers.length} customers.`);
+    await logger.info(funcPrefix, `Retrieved ${customers.length} customers.`);
     return customers;
   } catch (error) {
-    logger.error(funcPrefix, 'Error fetching customers', error);
+    await logger.error(funcPrefix, 'Error fetching customers', error);
     return []; // Return empty array on error as per previous logic
   }
 }
 
 export async function addCustomer(formData: AddCustomerFormData): Promise<ActionResult<Customer>> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:addCustomer`;
-  logger.debug(funcPrefix, 'Executing addCustomer server action.');
+  await logger.debug(funcPrefix, 'Executing addCustomer server action.');
 
   const validationResult = addCustomerSchema.safeParse(formData);
 
   if (!validationResult.success) {
     const errors = validationResult.error.flatten().fieldErrors;
-    logger.warn(funcPrefix, 'Validation failed.', errors);
+    await logger.warn(funcPrefix, 'Validation failed.', errors);
     return { success: false, message: 'Validation failed. Please check the fields.', errors };
   }
 
-  logger.debug(funcPrefix, 'Validation successful. Proceeding to create customer.');
+  await logger.debug(funcPrefix, 'Validation successful. Proceeding to create customer.');
   try {
     // Ensure ABN/Business Name are null/undefined if individual
     const dataToSave = validationResult.data.customer_type === 'individual'
@@ -101,25 +101,25 @@ export async function addCustomer(formData: AddCustomerFormData): Promise<Action
     const newCustomer = await CustomerDataAccess.createCustomer(dataToSave);
 
     if (newCustomer) {
-      logger.info(funcPrefix, `Customer added successfully: ${newCustomer.id}`);
+      await logger.info(funcPrefix, `Customer added successfully: ${newCustomer.id}`);
       return { success: true, customer: newCustomer };
     } else {
-      logger.error(funcPrefix, 'Data access layer failed to create customer.');
+      await logger.error(funcPrefix, 'Data access layer failed to create customer.');
       return { success: false, message: 'Failed to save customer data.' };
     }
   } catch (error) {
-    logger.error(funcPrefix, 'Unexpected error during customer creation', error);
+    await logger.error(funcPrefix, 'Unexpected error during customer creation', error);
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }
 
 export async function updateCustomer(id: string, formData: UpdateCustomerFormData): Promise<ActionResult<Customer>> {
    const funcPrefix = `${ACTION_LOG_PREFIX}:updateCustomer:${id}`;
-   logger.debug(funcPrefix, 'Executing updateCustomer server action.');
+   await logger.debug(funcPrefix, 'Executing updateCustomer server action.');
 
    // Ensure the ID from the path matches the ID in the form data if present
    if (formData.id && formData.id !== id) {
-       logger.error(funcPrefix, 'Mismatched ID in path and form data.');
+       await logger.error(funcPrefix, 'Mismatched ID in path and form data.');
        return { success: false, message: 'Customer ID mismatch.' };
    }
 
@@ -128,11 +128,11 @@ export async function updateCustomer(id: string, formData: UpdateCustomerFormDat
 
    if (!validationResult.success) {
        const errors = validationResult.error.flatten().fieldErrors;
-       logger.warn(funcPrefix, 'Validation failed.', errors);
+       await logger.warn(funcPrefix, 'Validation failed.', errors);
        return { success: false, message: 'Validation failed. Please check the fields.', errors };
    }
 
-    logger.debug(funcPrefix, 'Validation successful. Proceeding to update customer.');
+    await logger.debug(funcPrefix, 'Validation successful. Proceeding to update customer.');
    try {
      // Prepare data for update (remove ID from the data payload itself)
      const { id: _id, ...dataToUpdate } = validationResult.data;
@@ -146,14 +146,14 @@ export async function updateCustomer(id: string, formData: UpdateCustomerFormDat
      const updatedCustomer = await CustomerDataAccess.updateCustomer(id, finalDataToUpdate);
 
      if (updatedCustomer) {
-        logger.info(funcPrefix, 'Customer updated successfully.');
+        await logger.info(funcPrefix, 'Customer updated successfully.');
         return { success: true, customer: updatedCustomer };
      } else {
-        logger.warn(funcPrefix, 'Data access layer failed to update customer (possibly not found).');
+        await logger.warn(funcPrefix, 'Data access layer failed to update customer (possibly not found).');
         return { success: false, message: 'Failed to update customer data. Customer may not exist.' };
      }
    } catch (error) {
-      logger.error(funcPrefix, 'Unexpected error during customer update', error);
+      await logger.error(funcPrefix, 'Unexpected error during customer update', error);
       return { success: false, message: 'An unexpected error occurred.' };
    }
 }
@@ -161,24 +161,24 @@ export async function updateCustomer(id: string, formData: UpdateCustomerFormDat
 
 export async function deleteCustomer(id: string): Promise<ActionResult> {
    const funcPrefix = `${ACTION_LOG_PREFIX}:deleteCustomer:${id}`;
-   logger.debug(funcPrefix, 'Executing deleteCustomer server action.');
+   await logger.debug(funcPrefix, 'Executing deleteCustomer server action.');
    // Basic validation for ID format can be added here if needed
    if (!id || typeof id !== 'string' || id.length < 5) { // Simple check
-        logger.warn(funcPrefix, 'Invalid ID provided for deletion.');
+        await logger.warn(funcPrefix, 'Invalid ID provided for deletion.');
         return { success: false, message: 'Invalid Customer ID.' };
    }
 
   try {
     const deleted = await CustomerDataAccess.deleteCustomer(id);
     if (deleted) {
-      logger.info(funcPrefix, 'Customer deleted successfully.');
+      await logger.info(funcPrefix, 'Customer deleted successfully.');
       return { success: true };
     } else {
-      logger.warn(funcPrefix, 'Data access layer failed to delete customer (possibly not found).');
+      await logger.warn(funcPrefix, 'Data access layer failed to delete customer (possibly not found).');
       return { success: false, message: 'Failed to delete customer. Customer may not exist.' };
     }
   } catch (error) {
-     logger.error(funcPrefix, 'Unexpected error during customer deletion', error);
+     await logger.error(funcPrefix, 'Unexpected error during customer deletion', error);
      return { success: false, message: 'An unexpected error occurred.' };
   }
 }
@@ -187,24 +187,24 @@ export async function deleteCustomer(id: string): Promise<ActionResult> {
 
 /** @deprecated Use getCustomers instead */
 export async function getAllCustomers(): Promise<Customer[]> {
-  logger.warn(`${ACTION_LOG_PREFIX}:getAllCustomers`, 'Deprecated function called. Use getCustomers() instead.');
+  await logger.warn(`${ACTION_LOG_PREFIX}:getAllCustomers`, 'Deprecated function called. Use getCustomers() instead.');
   return getCustomers();
 }
 
 /** @deprecated Fetch customer within your component or use getCustomers */
 export async function getCustomerById(customerId: string): Promise<Customer | null> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:getCustomerById:${customerId}`;
-  logger.warn(funcPrefix, 'Deprecated function called.');
+  await logger.warn(funcPrefix, 'Deprecated function called.');
   try {
     const customer = await CustomerDataAccess.getCustomerById(customerId);
     if(customer) {
-        logger.info(funcPrefix, `Retrieved customer by ID.`);
+        await logger.info(funcPrefix, `Retrieved customer by ID.`);
     } else {
-         logger.info(funcPrefix, `Customer with ID ${customerId} not found.`);
+         await logger.info(funcPrefix, `Customer with ID ${customerId} not found.`);
     }
     return customer;
   } catch (error) {
-    logger.error(funcPrefix, 'Error fetching customer by ID', error);
+    await logger.error(funcPrefix, 'Error fetching customer by ID', error);
     return null;
   }
 }

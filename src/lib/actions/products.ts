@@ -40,13 +40,13 @@ interface ActionResult<T = null> {
 
 export async function getProducts(): Promise<Product[]> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:getProducts`;
-  logger.debug(funcPrefix, 'Executing getProducts server action.');
+  await logger.debug(funcPrefix, 'Executing getProducts server action.');
   try {
     const products = await ProductDataAccess.getAllProducts();
-    logger.info(funcPrefix, `Retrieved ${products.length} products.`);
+    await logger.info(funcPrefix, `Retrieved ${products.length} products.`);
     return products;
   } catch (error) {
-    logger.error(funcPrefix, 'Error fetching products', error);
+    await logger.error(funcPrefix, 'Error fetching products', error);
     return []; // Return empty array on error
   }
 }
@@ -54,17 +54,17 @@ export async function getProducts(): Promise<Product[]> {
 
 export async function addProduct(formData: AddProductFormData): Promise<ActionResult<Product>> {
   const funcPrefix = `${ACTION_LOG_PREFIX}:addProduct`;
-  logger.debug(funcPrefix, 'Executing addProduct server action.');
+  await logger.debug(funcPrefix, 'Executing addProduct server action.');
 
   const validationResult = addProductSchema.safeParse(formData);
 
   if (!validationResult.success) {
     const errors = validationResult.error.flatten().fieldErrors;
-    logger.warn(funcPrefix, 'Validation failed.', errors);
+    await logger.warn(funcPrefix, 'Validation failed.', errors);
     return { success: false, message: 'Validation failed. Please check the fields.', errors };
   }
 
-   logger.debug(funcPrefix, 'Validation successful. Proceeding to create product.');
+   await logger.debug(funcPrefix, 'Validation successful. Proceeding to create product.');
   try {
     const newProductData: Product = {
         ...validationResult.data,
@@ -73,24 +73,24 @@ export async function addProduct(formData: AddProductFormData): Promise<ActionRe
     const createdProduct = await ProductDataAccess.createProduct(newProductData); // Use createProduct
 
     if (createdProduct) {
-      logger.info(funcPrefix, `Product added successfully: ${createdProduct.id}`);
+      await logger.info(funcPrefix, `Product added successfully: ${createdProduct.id}`);
       return { success: true, product: createdProduct };
     } else {
-      logger.error(funcPrefix, 'Data access layer failed to create product.');
+      await logger.error(funcPrefix, 'Data access layer failed to create product.');
       return { success: false, message: 'Failed to save product data.' };
     }
   } catch (error) {
-    logger.error(funcPrefix, 'Unexpected error during product creation', error);
+    await logger.error(funcPrefix, 'Unexpected error during product creation', error);
     return { success: false, message: 'An unexpected error occurred.' };
   }
 }
 
 export async function updateProduct(id: string, formData: UpdateProductFormData): Promise<ActionResult<Product>> {
    const funcPrefix = `${ACTION_LOG_PREFIX}:updateProduct:${id}`;
-   logger.debug(funcPrefix, 'Executing updateProduct server action.');
+   await logger.debug(funcPrefix, 'Executing updateProduct server action.');
 
    if (formData.id && formData.id !== id) {
-       logger.error(funcPrefix, 'Mismatched ID in path and form data.');
+       await logger.error(funcPrefix, 'Mismatched ID in path and form data.');
        return { success: false, message: 'Product ID mismatch.' };
    }
 
@@ -98,11 +98,11 @@ export async function updateProduct(id: string, formData: UpdateProductFormData)
 
    if (!validationResult.success) {
        const errors = validationResult.error.flatten().fieldErrors;
-       logger.warn(funcPrefix, 'Validation failed.', errors);
+       await logger.warn(funcPrefix, 'Validation failed.', errors);
        return { success: false, message: 'Validation failed. Please check the fields.', errors };
    }
 
-   logger.debug(funcPrefix, 'Validation successful. Proceeding to update product.');
+   await logger.debug(funcPrefix, 'Validation successful. Proceeding to update product.');
    try {
      // Prepare data for update (remove ID from the payload)
      const { id: _id, ...dataToUpdate } = validationResult.data;
@@ -110,37 +110,37 @@ export async function updateProduct(id: string, formData: UpdateProductFormData)
      const updatedProduct = await ProductDataAccess.updateProduct(id, dataToUpdate); // Pass only update data
 
      if (updatedProduct) {
-        logger.info(funcPrefix, 'Product updated successfully.');
+        await logger.info(funcPrefix, 'Product updated successfully.');
         return { success: true, product: updatedProduct };
      } else {
-        logger.warn(funcPrefix, 'Data access layer failed to update product (possibly not found).');
+        await logger.warn(funcPrefix, 'Data access layer failed to update product (possibly not found).');
         return { success: false, message: 'Failed to update product data. Product may not exist.' };
      }
    } catch (error) {
-      logger.error(funcPrefix, 'Unexpected error during product update', error);
+      await logger.error(funcPrefix, 'Unexpected error during product update', error);
       return { success: false, message: 'An unexpected error occurred.' };
    }
 }
 
 export async function deleteProduct(id: string): Promise<ActionResult> {
    const funcPrefix = `${ACTION_LOG_PREFIX}:deleteProduct:${id}`;
-   logger.debug(funcPrefix, 'Executing deleteProduct server action.');
+   await logger.debug(funcPrefix, 'Executing deleteProduct server action.');
     if (!id || typeof id !== 'string' || id.length < 5) { // Simple check
-        logger.warn(funcPrefix, 'Invalid ID provided for deletion.');
+        await logger.warn(funcPrefix, 'Invalid ID provided for deletion.');
         return { success: false, message: 'Invalid Product ID.' };
    }
 
   try {
     const deleted = await ProductDataAccess.deleteProduct(id);
     if (deleted) {
-      logger.info(funcPrefix, 'Product deleted successfully.');
+      await logger.info(funcPrefix, 'Product deleted successfully.');
       return { success: true };
     } else {
-      logger.warn(funcPrefix, 'Data access layer failed to delete product (possibly not found).');
+      await logger.warn(funcPrefix, 'Data access layer failed to delete product (possibly not found).');
       return { success: false, message: 'Failed to delete product. Product may not exist.' };
     }
   } catch (error) {
-     logger.error(funcPrefix, 'Unexpected error during product deletion', error);
+     await logger.error(funcPrefix, 'Unexpected error during product deletion', error);
      return { success: false, message: 'An unexpected error occurred.' };
   }
 }
@@ -150,20 +150,20 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
 
 /** @deprecated Use getProducts instead */
 export async function getAllProducts(): Promise<Product[]> {
-  logger.warn(`${ACTION_LOG_PREFIX}:getAllProducts`, 'Deprecated function called. Use getProducts() instead.');
+  await logger.warn(`${ACTION_LOG_PREFIX}:getAllProducts`, 'Deprecated function called. Use getProducts() instead.');
   return getProducts();
 }
 
 /** @deprecated Fetch product within your component or use getProducts */
 export async function getProductById(productId: string): Promise<Product | null> {
    const funcPrefix = `${ACTION_LOG_PREFIX}:getProductById:${productId}`;
-   logger.warn(funcPrefix, 'Deprecated function called.');
+   await logger.warn(funcPrefix, 'Deprecated function called.');
   try {
     const product = await ProductDataAccess.getProductById(productId);
-    logger.info(funcPrefix, `Retrieved product by ID.`);
+    await logger.info(funcPrefix, `Retrieved product by ID.`);
     return product;
   } catch (error) {
-    logger.error(funcPrefix, 'Error fetching product by ID', error);
-    return null; // Return null on error
+    await logger.error(funcPrefix, 'Error fetching product by ID', error);
+    return null;
   }
 }

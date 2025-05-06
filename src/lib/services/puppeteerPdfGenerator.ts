@@ -4,45 +4,39 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { format, parseISO } from 'date-fns';
 import { Receipt, LineItem, Customer, SellerProfile } from '@/lib/types';
+import { IPdfGenerator, PdfGenerationResult } from './pdfGeneratorInterface';
 import { logger } from '@/lib/services/logging';
 
 const DATA_DIR = path.join(process.cwd(), 'src', 'lib', 'data');
 const PDF_DIR = path.join(DATA_DIR, 'receipt-pdfs'); // Directory to store generated PDFs
 
-// Result structure for the PDF generation process
-interface PdfGenerationResult {
-    success: boolean;
-    message?: string;
-    filePath?: string;
-}
-
-export class PuppeteerPdfGenerator {
-    private logPrefix: string = '';
-    private filePath: string = '';
-    private operationId: string = '';
+export class PuppeteerPdfGenerator implements IPdfGenerator {
+    private _logPrefix: string = '';
+    private _filePath: string = '';
+    private _operationId: string = '';
 
     // Ensure the PDF directory exists
-    private async ensurePdfDirectoryExists(): Promise<void> {
-        const funcPrefix = `${this.logPrefix}:ensurePdfDirectoryExists`;
+    private async _ensurePdfDirectoryExists(): Promise<void> {
+        const funcPrefix = `${this._logPrefix}:_ensurePdfDirectoryExists`;
         try {
             await fsPromises.mkdir(PDF_DIR, { recursive: true });
-            logger.debug(funcPrefix, `PDF directory ensured: ${PDF_DIR}`);
+            await logger.debug(funcPrefix, `PDF directory ensured: ${PDF_DIR}`);
         } catch (error) {
-            logger.error(funcPrefix, 'FATAL: Error creating PDF directory', error);
+            await logger.error(funcPrefix, 'FATAL: Error creating PDF directory', error);
             throw new Error(`Failed to ensure PDF directory exists: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
-    private initialize(receiptId: string, operationId: string): void {
-        this.operationId = operationId;
-        this.logPrefix = `[${operationId} PuppeteerPDF ${receiptId}]`;
-        this.filePath = path.join(PDF_DIR, `${receiptId}.pdf`);
-        logger.info(this.logPrefix, `Initializing Puppeteer PDF generation for path: ${this.filePath}`);
+    private _initialize(receiptId: string, operationId: string): void {
+        this._operationId = operationId;
+        this._logPrefix = `[${operationId} PuppeteerPDF ${receiptId}]`;
+        this._filePath = path.join(PDF_DIR, `${receiptId}.pdf`);
+        logger.info(this._logPrefix, `Initializing Puppeteer PDF generation for path: ${this._filePath}`);
     }
 
     // Generates the HTML content for the invoice
-    private generateInvoiceHtml(receipt: Receipt): string {
-        const funcPrefix = `${this.logPrefix}:generateInvoiceHtml`;
+    private _generateInvoiceHtml(receipt: Receipt): string {
+        const funcPrefix = `${this._logPrefix}:_generateInvoiceHtml`;
         logger.debug(funcPrefix, 'Generating HTML content for invoice.');
 
         const formatDate = (dateString: string): string => {
@@ -180,26 +174,26 @@ export class PuppeteerPdfGenerator {
         `;
     }
 
-    private async cleanupFailedPdf(): Promise<void> {
-        const funcPrefix = `${this.logPrefix}:cleanupFailedPdf`;
-        if (!this.filePath) {
-             logger.debug(funcPrefix, "Cleanup called without a file path.");
+    private async _cleanupFailedPdf(): Promise<void> {
+        const funcPrefix = `${this._logPrefix}:_cleanupFailedPdf`;
+        if (!this._filePath) {
+             await logger.debug(funcPrefix, "Cleanup called without a file path.");
              return;
         }
-        logger.warn(funcPrefix, `Attempting cleanup for potentially failed Puppeteer PDF: ${this.filePath}`);
+        await logger.warn(funcPrefix, `Attempting cleanup for potentially failed Puppeteer PDF: ${this._filePath}`);
         try {
-            await fsPromises.access(this.filePath);
-            logger.warn(funcPrefix, `Deleting incomplete/corrupted PDF: ${this.filePath}`);
-            await fsPromises.unlink(this.filePath);
-            logger.info(funcPrefix, `Deleted incomplete PDF: ${this.filePath}`);
+            await fsPromises.access(this._filePath);
+            await logger.warn(funcPrefix, `Deleting incomplete/corrupted PDF: ${this._filePath}`);
+            await fsPromises.unlink(this._filePath);
+            await logger.info(funcPrefix, `Deleted incomplete PDF: ${this._filePath}`);
         } catch (error: any) {
             if (error.code === 'ENOENT') {
-                logger.info(funcPrefix, `Incomplete PDF ${this.filePath} did not exist, no need to delete.`);
+                await logger.info(funcPrefix, `Incomplete PDF ${this._filePath} did not exist, no need to delete.`);
             } else {
-                logger.error(funcPrefix, 'Error during PDF file cleanup', error);
+                await logger.error(funcPrefix, 'Error during PDF file cleanup', error);
             }
         } finally {
-             this.filePath = ''; // Reset path to prevent repeated attempts
+             this._filePath = ''; // Reset path to prevent repeated attempts
         }
     }
 
@@ -207,12 +201,12 @@ export class PuppeteerPdfGenerator {
         let browser: Browser | null = null;
         let page: Page | null = null;
         try {
-            this.initialize(receipt.receipt_id, operationId);
-            await this.ensurePdfDirectoryExists();
+            this._initialize(receipt.receipt_id, operationId);
+            await this._ensurePdfDirectoryExists();
 
-            const htmlContent = this.generateInvoiceHtml(receipt);
+            const htmlContent = this._generateInvoiceHtml(receipt);
 
-            logger.debug(this.logPrefix, 'Launching Puppeteer browser...');
+            await logger.debug(this._logPrefix, 'Launching Puppeteer browser...');
              browser = await puppeteer.launch({
                  headless: true,
                  args: [
@@ -225,48 +219,43 @@ export class PuppeteerPdfGenerator {
                      '--disable-gpu'
                  ]
              });
-            logger.debug(this.logPrefix, 'Puppeteer browser launched.');
+            await logger.debug(this._logPrefix, 'Puppeteer browser launched.');
 
             page = await browser.newPage();
-            logger.debug(this.logPrefix, 'Puppeteer page created.');
+            await logger.debug(this._logPrefix, 'Puppeteer page created.');
 
             await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-            logger.debug(this.logPrefix, 'HTML content set on page.');
+            await logger.debug(this._logPrefix, 'HTML content set on page.');
 
             await page.pdf({
-                path: this.filePath,
+                path: this._filePath,
                 format: 'A4',
                 printBackground: true,
                 margin: { top: '50px', right: '50px', bottom: '50px', left: '50px' },
             });
-            logger.info(this.logPrefix, 'PDF file generated successfully.');
+            await logger.info(this._logPrefix, 'PDF file generated successfully.');
 
-            const finalFilePath = this.filePath;
+            const finalFilePath = this._filePath;
 
-             await page.close(); page = null; logger.debug(this.logPrefix, 'Puppeteer page closed.');
-             await browser.close(); browser = null; logger.debug(this.logPrefix, 'Puppeteer browser closed.');
+             await page.close(); page = null; await logger.debug(this._logPrefix, 'Puppeteer page closed.');
+             await browser.close(); browser = null; await logger.debug(this._logPrefix, 'Puppeteer browser closed.');
 
-             this.filePath = ''; this.logPrefix = ''; this.operationId = ''; // Reset state
+             this._filePath = ''; this._logPrefix = ''; this._operationId = ''; // Reset state
 
             return { success: true, filePath: finalFilePath };
 
         } catch (error: any) {
-            logger.error(this.logPrefix, 'ERROR during Puppeteer PDF generation orchestration', error);
-            await this.cleanupFailedPdf();
+            await logger.error(this._logPrefix, 'ERROR during Puppeteer PDF generation orchestration', error);
+            await this._cleanupFailedPdf();
 
             return { success: false, message: `Failed to generate PDF using Puppeteer: ${error.message || 'Unknown error'}` };
         } finally {
             if (page) {
-                 try { await page.close(); logger.debug(this.logPrefix, 'Puppeteer page closed in finally block.'); } catch (e) { logger.warn(this.logPrefix, 'Error closing page in finally block', e); }
+                 try { await page.close(); await logger.debug(this._logPrefix, 'Puppeteer page closed in finally block.'); } catch (e) { await logger.warn(this._logPrefix, 'Error closing page in finally block', e); }
              }
             if (browser) {
-                 try { await browser.close(); logger.debug(this.logPrefix, 'Puppeteer browser closed in finally block.'); } catch (e) { logger.warn(this.logPrefix, 'Error closing browser in finally block', e); }
+                 try { await browser.close(); await logger.debug(this._logPrefix, 'Puppeteer browser closed in finally block.'); } catch (e) { await logger.warn(this._logPrefix, 'Error closing browser in finally block', e); }
             }
         }
     }
-}
-
-// Factory function to create an instance (optional, but can be useful)
-export async function createPuppeteerPdfGenerator(): Promise<PuppeteerPdfGenerator> {
-    return new PuppeteerPdfGenerator();
 }

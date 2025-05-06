@@ -14,8 +14,7 @@ import { Badge } from '@/components/ui/badge'; // To show Tax Invoice status
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Download, PlusCircle, AlertCircle } from 'lucide-react'; // Keep PlusCircle if needed elsewhere, or import inline
 import Link from 'next/link'; // For linking back to create new
-import { logger } from '@/lib/services/logging'; // Import logger
-
+// Removed logger import: import { logger } from '@/lib/services/logging';
 
 const CLIENT_LOG_PREFIX = 'ReceiptsHistoryPage';
 
@@ -26,18 +25,16 @@ export default function ReceiptsHistoryPage() {
   const [checkingPdfId, setCheckingPdfId] = useState<string | null>(null); // Track which PDF is being checked
 
   const fetchReceipts = async () => {
-    logger.info(CLIENT_LOG_PREFIX, 'Starting fetchReceipts...');
+    console.info(CLIENT_LOG_PREFIX, 'Starting fetchReceipts...'); // Use console.info
     setIsLoading(true);
     try {
-      logger.debug(CLIENT_LOG_PREFIX, 'Calling getAllReceipts action...');
+      console.debug(CLIENT_LOG_PREFIX, 'Calling getAllReceipts action...'); // Use console.debug
       const data = await getAllReceipts(); // Use getAllReceipts action here
-      logger.info(CLIENT_LOG_PREFIX, `Fetched ${data.length} receipts.`);
-      // Ensure receipts are sorted by date descending (most recent first)
-      // Sorting is now handled in the server action, but redundant client-side sort doesn't hurt
-      const sortedData = data.sort((a, b) => new Date(b.date_of_purchase).getTime() - new Date(a.date_of_purchase).getTime());
-      setReceipts(sortedData);
+      console.info(CLIENT_LOG_PREFIX, `Fetched ${data.length} receipts.`); // Use console.info
+      // Sorting is now handled in the server action
+      setReceipts(data);
     } catch (error) {
-      logger.error(CLIENT_LOG_PREFIX, 'Failed to fetch receipts', error);
+      console.error(CLIENT_LOG_PREFIX, 'Failed to fetch receipts', error); // Use console.error
        toast({
             title: "Error Loading History",
             description: "Could not load invoice history. Please try again later.", // Updated text
@@ -46,7 +43,7 @@ export default function ReceiptsHistoryPage() {
         });
     } finally {
       setIsLoading(false);
-      logger.info(CLIENT_LOG_PREFIX, 'Finished fetchReceipts.');
+      console.info(CLIENT_LOG_PREFIX, 'Finished fetchReceipts.'); // Use console.info
     }
   };
 
@@ -57,37 +54,34 @@ export default function ReceiptsHistoryPage() {
 
   const checkPdfStatus = async (receiptId: string) => {
     const funcPrefix = `${CLIENT_LOG_PREFIX}:checkPdfStatus:${receiptId.substring(0,8)}`;
-    logger.info(funcPrefix, `Checking PDF status...`);
+    console.info(funcPrefix, `Checking PDF status...`); // Use console.info
     setCheckingPdfId(receiptId); // Indicate checking started
     try {
       const response = await fetch(`/api/pdf-status?id=${receiptId}`);
       if (!response.ok) {
-           // Handle non-2xx responses from the API route itself
            const errorText = await response.text();
            throw new Error(`API error ${response.status}: ${errorText || response.statusText}`);
       }
       const data = await response.json();
 
       if (data.status === 'ready') {
-        logger.info(funcPrefix, `PDF is ready, initiating download.`);
+        console.info(funcPrefix, `PDF is ready, initiating download.`); // Use console.info
         toast({ title: "PDF Ready", description: `Downloading PDF for ${receiptId.substring(0, 8)}...`, duration: 3000 });
-        // Directly trigger download now that we know it's ready
         window.open(`/api/download-pdf?id=${receiptId}`, '_blank');
       } else if (data.status === 'not_found') {
-        logger.warn(funcPrefix, `PDF not found. It might be generating or failed.`);
+        console.warn(funcPrefix, `PDF not found. It might be generating or failed.`); // Use console.warn
         toast({
             title: "PDF Not Ready",
             description: "PDF is not available yet. It might still be generating, or an error occurred during creation. Please wait a moment and try again, or regenerate if the issue persists.",
-            variant: "default", // Use default variant as it's informational
-            duration: 9000, // Longer duration
+            variant: "default",
+            duration: 9000,
          });
       } else {
-         // Handle unexpected status values from the API
-         logger.warn(funcPrefix, `Unknown PDF status received: ${data.status}`);
+         console.warn(funcPrefix, `Unknown PDF status received: ${data.status}`); // Use console.warn
          toast({ title: "Unknown Status", description: "Could not determine PDF status.", variant: "destructive", duration: 5000 });
       }
     } catch (error) {
-      logger.error(funcPrefix, "Error checking PDF status via API", error);
+      console.error(funcPrefix, "Error checking PDF status via API", error); // Use console.error
       toast({ title: "Error Checking Status", description: `Could not check PDF status: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive", duration: 7000 });
     } finally {
         setCheckingPdfId(null); // Indicate checking finished regardless of outcome
@@ -96,8 +90,7 @@ export default function ReceiptsHistoryPage() {
 
    const handleDownloadPdf = (receiptId: string) => {
         const funcPrefix = `${CLIENT_LOG_PREFIX}:handleDownloadPdf:${receiptId.substring(0,8)}`;
-        logger.info(funcPrefix, `Initiating PDF status check for download.`);
-        // Show initial toast that checking has started
+        console.info(funcPrefix, `Initiating PDF status check for download.`); // Use console.info
         toast({ title: "Checking PDF...", description: `Checking availability for ${receiptId.substring(0, 8)}...`, duration: 2500 });
         checkPdfStatus(receiptId); // Check status first, which will trigger download if ready
   };

@@ -107,10 +107,10 @@ describe('PdfGenerator', () => {
 
 
           // Mock logger functions
-          vi.mocked(logger.info).mockImplementation(() => {});
-          vi.mocked(logger.debug).mockImplementation(() => {});
-          vi.mocked(logger.warn).mockImplementation(() => {});
-          vi.mocked(logger.error).mockImplementation(() => {});
+          vi.mocked(logger.info).mockImplementation(async () => {});
+          vi.mocked(logger.debug).mockImplementation(async () => {});
+          vi.mocked(logger.warn).mockImplementation(async () => {});
+          vi.mocked(logger.error).mockImplementation(async () => {});
     });
 
     it('should ensure PDF directory exists', async () => {
