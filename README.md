@@ -20,8 +20,22 @@ The project is designed with a focus on modern practices, including TypeScript f
 ## Project Structure
 
 The project is structured to promote separation of concerns and modularity:
-<!-- Add your project structure details here -->
+
+*   `src/lib/actions/`: Server actions for handling data operations.
+*   `src/lib/data-access/`: Modules for interacting with data storage (e.g., JSON files).
+*   `src/lib/services/`: Business logic and external service integrations (like PDF generation).
+*   `src/components/ui/`: Re-usable UI components (Shadcn UI).
+*   `src/app/`: Next.js application routes.
+
 ## Running with Docker Compose
+
+You can easily run this project locally using Docker Compose. This will build the necessary Docker image and start the application container.
+
+1.  **Ensure Docker is installed:** Make sure you have Docker and Docker Compose installed on your system.
+
+2.  **Clone the repository:**
+
+
 
 You can easily run this project locally using Docker Compose. This will build the necessary Docker image and start the application container.
 
