@@ -120,14 +120,52 @@ The `PuppeteerPdfGenerator` service uses Puppeteer to control a headless Chromiu
 *   **Pros**: High-fidelity rendering by converting HTML and CSS directly to PDF. Excellent for complex layouts.
 *   **Cons**: Heavier, requires a full browser instance and significant system dependencies. Slower than `pdfkit`.
 
-**System Dependencies for Puppeteer:**
+**Crucial: System Dependencies for Puppeteer**
 
-When using Puppeteer (`PDF_GENERATOR=puppeteer`), especially in Docker containers or CI/CD environments, you **must** ensure that all necessary system libraries for Chromium are installed. Missing dependencies will typically result in errors like "Failed to launch the browser process" or "error while loading shared libraries" (e.g., `libgobject-2.0.so.0`, `libnss3.so`).
+When using Puppeteer (`PDF_GENERATOR=puppeteer`), especially in Docker containers or CI/CD environments, you **MUST** ensure that all necessary system libraries for Chromium are installed. Missing dependencies will typically result in errors like:
+*   `Failed to launch the browser process!`
+*   `error while loading shared libraries: libgobject-2.0.so.0: cannot open shared object file: No such file or directory` (or similar missing `.so` files like `libnss3.so`, `libatk-1.0.so.0`, etc.)
 
-A common set of libraries for Debian-based systems (like Ubuntu) includes:
-`apt-get install -y libgobject-2.0-0 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdbus-1-3 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation lsb-release xdg-utils wget`
+**If you encounter such errors, it is almost certainly due to missing system dependencies in the environment where the Next.js application is running.**
 
-Refer to the official [Puppeteer troubleshooting guide](https://pptr.dev/troubleshooting) for the most up-to-date list of dependencies for your specific environment. **It is strongly recommended to consult this guide if you encounter launch errors with Puppeteer.**
+A common set of libraries required by Puppeteer on Debian-based systems (like Ubuntu) includes:
+```bash
+apt-get update && apt-get install -y \
+  libgobject-2.0-0 \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdbus-1-3 \
+  libdrm2 \
+  libgbm1 \
+  libgtk-3-0 \
+  libnspr4 \
+  libnss3 \
+  libpango-1.0-0 \
+  libx11-6 \
+  libx11-xcb1 \
+  libxcb1 \
+  libxcomposite1 \
+  libxcursor1 \
+  libxdamage1 \
+  libxext6 \
+  libxfixes3 \
+  libxi6 \
+  libxrandr2 \
+  libxrender1 \
+  libxss1 \
+  libxtst6 \
+  ca-certificates \
+  fonts-liberation \
+  lsb-release \
+  xdg-utils \
+  wget
+```
+
+**It is STRONGLY recommended to consult the official Puppeteer troubleshooting guide for the most up-to-date and environment-specific list of dependencies:**
+[https://pptr.dev/troubleshooting](https://pptr.dev/troubleshooting)
+
+If you are deploying to a platform like Vercel or Netlify, you may need to configure your build process or serverless function environment to include these dependencies.
 
 By default, the application uses `pdfkit` which has fewer system-level dependencies.
 

@@ -87,6 +87,7 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
     // Simplified CSS relying on browser defaults more
     const css = `
             body {
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
                 font-size: 10pt; margin: 50px; color: #333; line-height: 1.4;
             }
             h1 { text-align: center; font-size: 16pt; margin-bottom: 30px; color: #111; font-weight: bold; }
@@ -281,12 +282,18 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
 
       const finalFilePath = this._filePath;
 
-      await page.close();
-      page = null;
-      await logger.debug(this._logPrefix, "Puppeteer page closed.");
-      await browser.close();
-      browser = null;
-      await logger.debug(this._logPrefix, "Puppeteer browser closed.");
+      // Ensure page is closed before browser
+      if (page) {
+          await page.close();
+          page = null;
+          await logger.debug(this._logPrefix, "Puppeteer page closed.");
+      }
+      if (browser) {
+        await browser.close();
+        browser = null;
+        await logger.debug(this._logPrefix, "Puppeteer browser closed.");
+      }
+
 
       this._filePath = ""; // Reset for next potential use
       this._logPrefix = "";
@@ -305,9 +312,10 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
       if (
         error.message &&
         (error.message.includes("Failed to launch the browser process") ||
-          error.message.includes("loading shared libraries"))
+          error.message.toLowerCase().includes("loading shared libraries") ||
+          error.message.toLowerCase().includes("cannot open shared object file"))
       ) {
-        detailedMessage += `\nThis often indicates missing system dependencies for Puppeteer/Chromium. Please ensure all necessary libraries (e.g., libgobject-2.0-0, libatk-1.0-0, etc.) are installed in your environment. Refer to Puppeteer's troubleshooting guide for a list of required dependencies: https://pptr.dev/troubleshooting`;
+        detailedMessage += ` TROUBLESHOOTING: https://pptr.dev/troubleshooting This often indicates missing system dependencies for Puppeteer/Chromium. Please ensure all necessary libraries (e.g., libgobject-2.0-0, libatk-1.0-0, etc.) are installed in your environment. Refer to Puppeteer's troubleshooting guide for a list of required dependencies: https://pptr.dev/troubleshooting`;
       }
 
       return {
