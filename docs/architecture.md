@@ -27,9 +27,12 @@ graph TD
     subgraph "Server-Side (Next.js)"
         B -- Calls --> C{Business Logic / Services};
         C -- Uses --> D[Data Access Layer];
-        C -- Uses --> F[PDF Generation Service];
+        C -- Uses --> F[PDF Generation Service Abstraction];
         E -- Uses --> D;
-        F -- Writes PDF --> G[Data Storage];
+        F -- Chooses Implementation --> F1[PDFKit Generator];
+        F -- Chooses Implementation --> F2[Puppeteer Generator];
+        F1 -- Writes PDF --> G[Data Storage];
+        F2 -- Writes PDF --> G;
         D -- Reads/Writes --> G;
 
     end
@@ -44,7 +47,9 @@ graph TD
     C -- Calls --> I;
     D -- Calls --> I;
     E -- Calls --> I;
-    F -- Calls --> I;
+    F1 -- Calls --> I;
+    F2 -- Calls --> I;
+
 
     classDef client fill:#f9f,stroke:#333,stroke-width:2px;
     classDef server fill:#ccf,stroke:#333,stroke-width:2px;
@@ -52,7 +57,7 @@ graph TD
     classDef service fill:#fec,stroke:#333,stroke-width:1px;
 
     class A client;
-    class B,C,D,E,F,I server;
+    class B,C,D,E,F,F1,F2,I server;
     class G data;
     class H,I service;
 
@@ -76,8 +81,8 @@ graph TD
 3.  **Services (`src/lib/services/*.ts`)**:
     *   Encapsulate specific functionalities or interactions with external systems/libraries.
     *   **`PdfGeneratorInterface.ts`**: Defines the contract (`IPdfGenerator`) for any PDF generation strategy.
-    *   **`pdfGenerator.ts` (PDFKit)**: Implements `IPdfGenerator` using the `pdfkit` library.
-    *   **`puppeteerPdfGenerator.ts`**: Implements `IPdfGenerator` using the `puppeteer` library.
+    *   **`pdfGenerator.ts` (PDFKit)**: Implements `IPdfGenerator` using the `pdfkit` library. Handles direct PDF stream manipulation. Uses standard fonts by default, minimizing external dependencies.
+    *   **`puppeteerPdfGenerator.ts`**: Implements `IPdfGenerator` using the `puppeteer` library. Renders an HTML template to PDF, offering high fidelity but requiring a Chromium instance and its system dependencies.
     *   **`logging.ts`**: Provides a centralized logging mechanism (`logger`) used across different layers to record information, warnings, and errors to the console and optionally to a file (`logs/app.log`).
     *   **`recordChanges.ts`**: A specific utility used internally by the development assistant to log file modifications made during development (`changes.log`).
 
@@ -100,10 +105,31 @@ graph TD
 
 The PDF generation logic is abstracted using the `IPdfGenerator` interface.
 
-*   The `createReceipt` Server Action determines which generator implementation (`PdfGenerator` or `PuppeteerPdfGenerator`) to use based on the `PDF_GENERATOR` environment variable.
-*   It instantiates the chosen generator and calls its `generate` method, passing the `Receipt` data.
+*   The `createReceipt` Server Action determines which generator implementation (`PdfGenerator` or `PuppeteerPdfGenerator`) to use based on the `PDF_GENERATOR` environment variable (defaults to `pdfkit`).
+*   It instantiates the chosen generator and calls its `generate` method, passing the `Receipt` data and an `operationId` for logging correlation.
 *   Both generator implementations adhere to the `IPdfGenerator` interface, ensuring they accept the same input and return a `PdfGenerationResult`.
 *   This allows swapping the PDF generation library by changing the environment variable and potentially adding new implementations without altering the `createReceipt` action significantly.
+
+### PDF Generation with PDFKit (Default)
+The `PdfGenerator` service uses the `pdfkit` library.
+*   **Pros**: Lightweight, fewer system dependencies, generally faster for simple PDFs.
+*   **Cons**: Layout and styling are done programmatically, which can be more complex for sophisticated designs. Font handling requires ensuring font files (like `.afm` files for standard fonts if not embedded) are accessible.
+
+### PDF Generation with Puppeteer
+The `PuppeteerPdfGenerator` service uses Puppeteer to control a headless Chromium browser.
+*   **Pros**: High-fidelity rendering by converting HTML and CSS directly to PDF. Excellent for complex layouts.
+*   **Cons**: Heavier, requires a full browser instance and significant system dependencies. Slower than `pdfkit`.
+
+**System Dependencies for Puppeteer:**
+
+When using Puppeteer (`PDF_GENERATOR=puppeteer`), especially in Docker containers or CI/CD environments, you **must** ensure that all necessary system libraries for Chromium are installed. Missing dependencies will typically result in errors like "Failed to launch the browser process" or "error while loading shared libraries" (e.g., `libgobject-2.0.so.0`, `libnss3.so`).
+
+A common set of libraries for Debian-based systems (like Ubuntu) includes:
+`apt-get install -y libgobject-2.0-0 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdbus-1-3 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation lsb-release xdg-utils wget`
+
+Refer to the official [Puppeteer troubleshooting guide](https://pptr.dev/troubleshooting) for the most up-to-date list of dependencies for your specific environment. **It is strongly recommended to consult this guide if you encounter launch errors with Puppeteer.**
+
+By default, the application uses `pdfkit` which has fewer system-level dependencies.
 
 ## Logging and Change Tracking
 
@@ -118,8 +144,8 @@ The PDF generation logic is abstracted using the `IPdfGenerator` interface.
 4.  `createReceipt` performs validation, fetches necessary data (products, seller, customer) via the Data Access Layer.
 5.  `createReceipt` calculates totals and constructs the `Receipt` object.
 6.  `createReceipt` calls `createReceiptData` in the Data Access Layer (`src/lib/data-access/receipts.ts`) to save the receipt JSON data.
-7.  `createReceipt` determines the PDF generator type (e.g., PDFKit).
-8.  `createReceipt` instantiates the chosen `IPdfGenerator` implementation (e.g., `PdfGenerator`).
+7.  `createReceipt` determines the PDF generator type (e.g., PDFKit or Puppeteer) based on `process.env.PDF_GENERATOR`.
+8.  `createReceipt` instantiates the chosen `IPdfGenerator` implementation.
 9.  `createReceipt` calls the `generator.generate(receipt, operationId)` method.
 10. The specific generator (`PdfGenerator` or `PuppeteerPdfGenerator`) creates the PDF content, interacts with the file system (via `fs`) to save the PDF to `src/lib/data/receipt-pdfs/`, and uses the `logger` for internal steps.
 11. The `generate` method returns a `PdfGenerationResult` (success/failure, path, message).

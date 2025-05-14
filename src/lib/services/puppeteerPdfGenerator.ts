@@ -52,13 +52,13 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
       try {
         const dateObject = parseISO(dateString);
         if (isNaN(dateObject.getTime())) {
-          throw new Error("Invalid date");
+          throw new Error("Invalid date object after parsing");
         }
         return format(dateObject, "dd/MM/yyyy");
       } catch (e) {
         logger.warn(
           funcPrefix,
-          `Could not parse date: ${dateString}. Using original string.`,
+          `Could not parse or format date for PDF: ${dateString}. Using original string.`,
           e,
         );
         return dateString;
@@ -87,18 +87,17 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
     // Simplified CSS relying on browser defaults more
     const css = `
             body {
-                /* font-family: Arial, sans-serif; -- REMOVED to use browser default */
                 font-size: 10pt; margin: 50px; color: #333; line-height: 1.4;
             }
             h1 { text-align: center; font-size: 16pt; margin-bottom: 30px; color: #111; font-weight: bold; }
-            .info-section { display: flex; justify-content: space-between; margin-bottom: 25px; width: 100%; flex-wrap: wrap; } /* Added wrap */
-            .info-block { width: 48%; margin-bottom: 10px; } /* Added bottom margin */
+            .info-section { display: flex; justify-content: space-between; margin-bottom: 25px; width: 100%; flex-wrap: wrap; }
+            .info-block { width: 48%; margin-bottom: 10px; }
             .info-block h2 { font-size: 11pt; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 4px; color: #444; font-weight: bold;}
             .info-block p { margin: 3px 0; }
             .invoice-details { margin-bottom: 25px; text-align: right;}
             .invoice-details p { margin: 4px 0; font-size: 9pt; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; word-wrap: break-word; } /* Added word-wrap */
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; word-wrap: break-word; }
             th { background-color: #f8f8f8; font-weight: bold; }
             .text-right { text-align: right; }
             .text-center { text-align: center; }
@@ -254,11 +253,11 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
+          "--disable-dev-shm-usage", // Overcomes limited resource problems
           "--disable-accelerated-2d-canvas",
           "--no-first-run",
           "--no-zygote",
-          "--disable-gpu",
+          "--disable-gpu", // Fully disable GPU
         ],
       });
       await logger.debug(this._logPrefix, "Puppeteer browser launched.");
@@ -275,7 +274,10 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
         printBackground: true,
         margin: { top: "50px", right: "50px", bottom: "50px", left: "50px" },
       });
-      await logger.info(this._logPrefix, "PDF file generated successfully.");
+      await logger.info(
+        this._logPrefix,
+        `PDF generated successfully at: ${this._filePath}`,
+      );
 
       const finalFilePath = this._filePath;
 
@@ -286,9 +288,9 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
       browser = null;
       await logger.debug(this._logPrefix, "Puppeteer browser closed.");
 
-      this._filePath = "";
+      this._filePath = ""; // Reset for next potential use
       this._logPrefix = "";
-      this._operationId = ""; // Reset state
+      this._operationId = "";
 
       return { success: true, filePath: finalFilePath };
     } catch (error: any) {
@@ -299,11 +301,21 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
       );
       await this._cleanupFailedPdf();
 
+      let detailedMessage = `Failed to generate PDF using Puppeteer: ${error.message || "Unknown error"}`;
+      if (
+        error.message &&
+        (error.message.includes("Failed to launch the browser process") ||
+          error.message.includes("loading shared libraries"))
+      ) {
+        detailedMessage += `\nThis often indicates missing system dependencies for Puppeteer/Chromium. Please ensure all necessary libraries (e.g., libgobject-2.0-0, libatk-1.0-0, etc.) are installed in your environment. Refer to Puppeteer's troubleshooting guide for a list of required dependencies: https://pptr.dev/troubleshooting`;
+      }
+
       return {
         success: false,
-        message: `Failed to generate PDF using Puppeteer: ${error.message || "Unknown error"}`,
+        message: detailedMessage,
       };
     } finally {
+      // Ensure browser and page are closed even if errors occur mid-process
       if (page) {
         try {
           await page.close();
@@ -334,6 +346,10 @@ export class PuppeteerPdfGenerator implements IPdfGenerator {
           );
         }
       }
+      // Reset state variables
+      this._filePath = "";
+      this._logPrefix = "";
+      this._operationId = "";
     }
   }
 }
