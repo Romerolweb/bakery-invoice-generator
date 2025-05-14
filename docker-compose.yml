@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+ apply_prune_diff: false
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PDF_GENERATOR: ${PDF_GENERATOR:-pdfkit}
+      # Add other environment variables here, e.g.:
+      # DATABASE_URL: ${DATABASE_URL}
+    env_file:
+      - .env.dev
+    volumes:
+      - .:/app # Mount the host directory to the container for live updates in dev
+      - /app/node_modules # Exclude node_modules from the mount
+
+profiles:
+  - dev
+
+---
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000" # Fixed port for production
+    environment:
+      NODE_ENV: production
+      PDF_GENERATOR: ${PDF_GENERATOR:-pdfkit}
+      # Add other environment variables here, e.g.:
+      # DATABASE_URL: ${DATABASE_URL}
+    env_file:
+      - .env.prod
+    # No volume mount for code in production
+
+profiles:
+  - prod

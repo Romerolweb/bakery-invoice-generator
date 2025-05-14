@@ -21,6 +21,13 @@ The project is designed with a focus on modern practices, including TypeScript f
 
 The project is structured to promote separation of concerns and modularity:
 
+## Running with Docker Compose
+
+You can easily run this project locally using Docker Compose. This will build the necessary Docker image and start the application container.
+
+1.  **Ensure Docker is installed:** Make sure you have Docker and Docker Compose installed on your system.
+2.  **Clone the repository:**
+
 
 
 1.  **Clone the repository:**
