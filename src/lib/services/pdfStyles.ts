@@ -11,6 +11,7 @@ export const BODY_FONT_SIZE = 10;
 export const TABLE_FONT_SIZE = 10;
 export const TOTALS_FONT_SIZE = 10;
 export const TOTALS_TOTAL_FONT_SIZE = 12;
+export const FOOTER_FONT_SIZE = 8;
 
 export const COLOR_BLACK = "#000000";
 export const COLOR_GREY_LIGHT = "#cccccc";

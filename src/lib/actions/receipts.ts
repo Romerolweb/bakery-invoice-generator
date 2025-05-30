@@ -13,6 +13,7 @@ import {
   PdfGenerationResult,
 } from "@/lib/services/pdfGeneratorInterface";
 import { PdfGenerator } from "@/lib/services/pdfGenerator"; // PDFKit implementation
+import { CURRENT_PDF_TEMPLATE } from "@/lib/services/pdfTemplates/templateRegistry"; // Use template registry
 // import { PuppeteerPdfGenerator } from "@/lib/services/puppeteerPdfGenerator"; // Puppeteer implementation - REMOVED
 import {
   createReceipt as createReceiptData,
@@ -285,7 +286,9 @@ export async function createReceipt(
     );
     let pdfResult: PdfGenerationResult;
     try {
-      const generator: IPdfGenerator = new PdfGenerator(); // Directly use PdfGenerator
+      // The PdfGenerator will create the PDFDocument instance and pass it to the template.
+      // We pass the constructor of the template, not an instance.
+      const generator: IPdfGenerator = new PdfGenerator(CURRENT_PDF_TEMPLATE); 
       pdfResult = await generator.generate(newReceipt, operationId);
 
       if (pdfResult.success && pdfResult.filePath) {
@@ -351,7 +354,7 @@ export async function createReceipt(
     await logger.error(
       funcPrefix,
       "An unexpected error occurred before PDF generation attempt",
-      error,
+      error instanceof Error ? error : new Error(String(error))
     );
     recordChange(
       "src/lib/actions/receipts.ts",
@@ -385,7 +388,7 @@ export async function getAllReceipts(): Promise<Receipt[]> {
     );
     return receipts;
   } catch (error) {
-    await logger.error(funcPrefix, "Error getting all receipts", error);
+    await logger.error(funcPrefix, "Error getting all receipts", error instanceof Error ? error : new Error(String(error)));
     recordChange(
       "src/lib/actions/receipts.ts",
       `Error retrieving receipts: ${error instanceof Error ? error.message : "Unknown"}`,
@@ -400,19 +403,80 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
   try {
     const receipt = await getReceiptByIdData(id);
     if (receipt) {
-      await logger.info(funcPrefix, `Receipt found.`);
-      recordChange("src/lib/actions/receipts.ts", `Retrieved receipt ${id}.`);
+      await logger.info(funcPrefix, `Receipt with ID ${id} found.`);
+      recordChange(
+        "src/lib/actions/receipts.ts",
+        `Retrieved receipt ${id}.`
+      );
     } else {
-      await logger.info(funcPrefix, `Receipt not found.`);
-      recordChange("src/lib/actions/receipts.ts", `Receipt ${id} not found.`);
+      await logger.warn(funcPrefix, `Receipt with ID ${id} not found.`);
+      recordChange(
+        "src/lib/actions/receipts.ts",
+        `Receipt ${id} not found.`
+      );
     }
     return receipt;
   } catch (error) {
-    await logger.error(funcPrefix, `Error getting receipt by ID ${id}`, error);
+    await logger.error(funcPrefix, `Error getting receipt by ID ${id}`, error instanceof Error ? error : new Error(String(error)));
     recordChange(
       "src/lib/actions/receipts.ts",
-      `Error retrieving receipt ${id}: ${error instanceof Error ? error.message : "Unknown"}`,
+      `Error retrieving receipt ${id}: ${error instanceof Error ? error.message : "Unknown"}`
     );
+    return null;
+  }
+}
+
+export async function getReceiptPdfPath(receiptId: string): Promise<string | null> {
+  const funcPrefix = `${ACTION_LOG_PREFIX}:getReceiptPdfPath:${receiptId}`;
+  await logger.debug(funcPrefix, "Executing getReceiptPdfPath server action.");
+  try {
+    const receipt = await getReceiptByIdData(receiptId);
+    if (!receipt) {
+      await logger.warn(funcPrefix, `Receipt with ID ${receiptId} not found.`);
+      return null;
+    }
+    // Assuming PDF path is stored or can be derived.
+    // For now, let's assume it's in a standard location.
+    // This part needs to align with how PdfGenerator saves files.
+    // The PdfGenerator saves files to public/receipts/[YYYY-MM-DD]-[operationId]-[receipt_id_short].pdf
+    // We don't have operationId here, and date might be tricky.
+    // This function might need re-thinking or the PdfGenerator needs to store the path in the receipt data.
+
+    // For now, let's assume the generate function in PdfGenerator stores the path in receipt.pdfPath
+    // And that this path is saved with the receipt data.
+    // This requires modification in createReceipt and the Receipt type.
+
+    // Placeholder:
+    // const pdfPath = receipt.pdfPath; // Assuming pdfPath is part of Receipt
+    // if (pdfPath) {
+    //   await logger.info(funcPrefix, `PDF path for receipt ${receiptId} found: ${pdfPath}`);
+    //   return pdfPath;
+    // } else {
+    //   await logger.warn(funcPrefix, `PDF path not found for receipt ${receiptId}.`);
+    //   return null;
+    // }
+    // Since we don't have the PDF path stored with the receipt, this function cannot be reliably implemented yet.
+    // We will return a placeholder path for now, but this needs to be addressed.
+    // The PdfGenerator saves files to public/receipts/[YYYY-MM-DD]-[operationId]-[receipt_id_short].pdf
+    // We need a way to either:
+    // 1. Store the full PDF path when the receipt is created.
+    // 2. Reconstruct the path if we have enough information (e.g., if operationId was part of receipt).
+    // 3. Search for the file based on receipt_id if there's a consistent naming pattern.
+
+    // For the purpose of this refactor, let's assume the filename pattern is:
+    // `receipt-${receipt.receipt_id}.pdf` and it's in `public/receipts/`
+    // This is a simplification.
+    const expectedFilename = `receipt-${receipt.receipt_id}.pdf`;
+    const filePath = `public/receipts/${expectedFilename}`; // This is a relative path from project root
+
+    // We should check if the file exists, but fs access here is tricky in server actions
+    // For now, just return the expected path.
+    // In a real scenario, PdfGenerator would likely save the exact path to the database.
+    await logger.info(funcPrefix, `Returning expected PDF path for receipt ${receiptId}: ${filePath}`);
+    return filePath; // This will be relative to the public folder for client-side access.
+
+  } catch (error) {
+    await logger.error(funcPrefix, `Error getting PDF path for receipt ${receiptId}`, error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

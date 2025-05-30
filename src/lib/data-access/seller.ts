@@ -30,9 +30,9 @@ async function readSellerProfileFile(): Promise<SellerProfile | null> {
     await logger.error(
       funcPrefix,
       `Error reading seller profile file: ${sellerProfileFilePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)), // Ensure Error object
     );
-    throw new Error(`Failed to read seller profile data: ${error.message}`); // Re-throw other errors
+    throw new Error(`Failed to read seller profile data: ${(error instanceof Error ? error.message : String(error))}`);
   }
 }
 
@@ -50,9 +50,35 @@ async function writeSellerProfileFile(profile: SellerProfile): Promise<void> {
     await logger.error(
       funcPrefix,
       `Error writing seller profile file: ${sellerProfileFilePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)), // Ensure Error object
     );
-    throw new Error(`Failed to write seller profile data: ${error.message}`); // Re-throw error
+    throw new Error(`Failed to write seller profile data: ${(error instanceof Error ? error.message : String(error))}`);
+  }
+}
+
+// Deletes the seller profile data file
+async function deleteSellerProfileFile(): Promise<void> {
+  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:deleteSellerProfileFile`;
+  try {
+    await fs.unlink(sellerProfileFilePath);
+    await logger.debug(
+      funcPrefix,
+      `Successfully deleted seller profile file: ${sellerProfileFilePath}`,
+    );
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      await logger.warn(
+        funcPrefix,
+        `Seller profile file not found at ${sellerProfileFilePath}, no action taken.`,
+      );
+      return; // File doesn't exist, consider it a success for deletion
+    }
+    await logger.error(
+      funcPrefix,
+      `Error deleting seller profile file: ${sellerProfileFilePath}`,
+      error instanceof Error ? error : new Error(String(error)), // Ensure Error object
+    );
+    throw new Error(`Failed to delete seller profile data: ${(error instanceof Error ? error.message : String(error))}`);
   }
 }
 
@@ -62,7 +88,7 @@ export async function getSellerProfile(): Promise<SellerProfile | null> {
   try {
     return await readSellerProfileFile();
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving seller profile", error);
+    await logger.error(funcPrefix, "Error retrieving seller profile", error instanceof Error ? error : new Error(String(error))); // Ensure Error object
     return null;
   }
 }
@@ -77,7 +103,20 @@ export async function updateSellerProfile(
     await logger.info(funcPrefix, "Seller profile updated successfully.");
     return true;
   } catch (error) {
-    await logger.error(funcPrefix, "Error updating seller profile", error);
+    await logger.error(funcPrefix, "Error updating seller profile", error instanceof Error ? error : new Error(String(error))); // Ensure Error object
+    return false;
+  }
+}
+
+export async function deleteSellerProfile(): Promise<boolean> {
+  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:deleteSellerProfile`;
+  await logger.debug(funcPrefix, "Attempting to delete seller profile.");
+  try {
+    await deleteSellerProfileFile();
+    await logger.info(funcPrefix, "Seller profile deleted successfully.");
+    return true;
+  } catch (error) {
+    await logger.error(funcPrefix, "Error deleting seller profile", error instanceof Error ? error : new Error(String(error))); // Ensure Error object
     return false;
   }
 }

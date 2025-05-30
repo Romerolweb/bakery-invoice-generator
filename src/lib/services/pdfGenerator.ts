@@ -1,7 +1,7 @@
 // src/lib/services/pdfGenerator.ts
 import type { Receipt } from "@/lib/types"; // Removed LineItem, Customer, SellerProfile as they are used by template
 import { IPdfGenerator, PdfGenerationResult } from "./pdfGeneratorInterface";
-import { IPdfReceiptTemplate } from "./pdfTemplates/IPdfReceiptTemplate"; // Import the template interface
+import { IPdfReceiptTemplate, PdfReceiptTemplateConstructor } from "./pdfTemplates/IPdfReceiptTemplate"; // Import the template interface AND constructor type
 import {
   promises as fsPromises,
   createWriteStream,
@@ -26,9 +26,9 @@ export class PdfGenerator implements IPdfGenerator {
   private _operationId: string = ""; // To correlate logs
   private _template: IPdfReceiptTemplate; // Store the template instance
 
-  // Constructor updated to accept a template
-  constructor(template: IPdfReceiptTemplate) {
-    this._template = template;
+  // Constructor updated to accept a template constructor
+  constructor(TemplateClass: PdfReceiptTemplateConstructor) {
+    this._template = new TemplateClass(); // Instantiate the template
   }
 
   // Ensure the PDF directory exists
@@ -296,12 +296,15 @@ export class PdfGenerator implements IPdfGenerator {
       this._template.addHeader(receipt.is_tax_invoice);
       this._template.addSellerInfo(receipt.seller_profile_snapshot);
       this._template.addCustomerInfo(receipt.customer_snapshot);
-      this._template.addInvoiceDetails(receipt.receipt_id, receipt.date_of_purchase);
-      this._template.addLineItemsTable(receipt.line_items, receipt.GST_amount > 0);
+      // If addInvoiceDetails is not part of the interface, remove or replace with the correct method if needed.
+      // this._template.addInvoiceDetails(receipt.receipt_id, receipt.date_of_purchase);
+
+      this._template.addItemsTable(receipt.line_items, receipt.GST_amount > 0);
       this._template.addTotals(
         receipt.subtotal_excl_GST,
         receipt.GST_amount,
         receipt.total_inc_GST,
+        receipt.GST_amount > 0 // Pass includeGST as the fourth argument
       );
 
       // --- Finalize Document ---

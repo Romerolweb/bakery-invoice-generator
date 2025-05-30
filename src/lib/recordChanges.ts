@@ -55,7 +55,7 @@ export async function recordChange(
       if (err) {
         await logger.error(
           "[ChangeRecorder] Error writing to changes log:",
-          err,
+          err instanceof Error ? err.message : String(err),
         ); // Await logger
       }
     });

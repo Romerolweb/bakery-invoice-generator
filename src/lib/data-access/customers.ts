@@ -63,7 +63,8 @@ export async function getAllCustomers(): Promise<Customer[]> {
   try {
     return await readCustomersFile();
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving all customers", error);
+    await logger.error(funcPrefix, "Error retrieving all customers",
+      error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 }
@@ -81,7 +82,8 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
     }
     return customer || null;
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving customer by ID", error);
+    await logger.error(funcPrefix, "Error retrieving customer by ID",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -103,7 +105,8 @@ export async function createCustomer(
     );
     return newCustomer;
   } catch (error) {
-    await logger.error(funcPrefix, "Error creating customer", error);
+    await logger.error(funcPrefix, "Error creating customer",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -128,7 +131,8 @@ export async function updateCustomer(
     await logger.info(funcPrefix, "Customer updated successfully.");
     return customers[customerIndex];
   } catch (error) {
-    await logger.error(funcPrefix, "Error updating customer", error);
+    await logger.error(funcPrefix, "Error updating customer",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -150,7 +154,8 @@ export async function deleteCustomer(id: string): Promise<boolean> {
     await logger.info(funcPrefix, "Customer deleted successfully.");
     return true;
   } catch (error) {
-    await logger.error(funcPrefix, "Error deleting customer", error);
+    await logger.error(funcPrefix, "Error deleting customer",
+      error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }

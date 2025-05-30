@@ -1,22 +1,21 @@
 import type { Receipt, LineItem, Customer, SellerProfile } from "@/lib/types";
-import type PDFDocument from "pdfkit"; // This is the class
+import type PDFKit from "pdfkit"; // Correct import for PDFKit types
 import { IPdfReceiptTemplate } from "./IPdfReceiptTemplate";
 import * as pdfStyles from "../pdfStyles";
 import { logger } from "@/lib/services/logging";
 import { format, parseISO } from "date-fns";
 
 export class DefaultReceiptTemplate implements IPdfReceiptTemplate {
-  doc: PDFKit.PDFDocument; // This is the type for an instance
+  doc!: PDFKit.PDFDocument; // Use PDFKit.PDFDocument and definite assignment
   logPrefix: string = "[DefaultReceiptTemplate]"; // Default log prefix
 
-  constructor(doc: PDFKit.PDFDocument, logPrefix?: string) { // Use the class instance type
-    this.doc = doc;
+  constructor(logPrefix?: string) { // Constructor no longer takes doc
     if (logPrefix) {
       this.logPrefix = logPrefix;
     }
+    // doc will be initialized by setDocument
   }
-
-  setDocument(doc: PDFKit.PDFDocument): void { // Use the class instance type
+  setDocument(doc: PDFKit.PDFDocument): void { // Use PDFKit.PDFDocument for parameter type
     this.doc = doc;
   }
 
@@ -82,11 +81,11 @@ export class DefaultReceiptTemplate implements IPdfReceiptTemplate {
     this.doc.moveDown();
   }
 
-  addInvoiceDetails(invoiceId: string, dateIsoString: string): void {
-    const funcPrefix = `${this.logPrefix}:addInvoiceDetails`;
+  addInvoiceInfo(invoiceId: string, dateIsoString: string): void {
+    const funcPrefix = `${this.logPrefix}:addInvoiceInfo`;
     logger.debug(
       funcPrefix,
-      `Adding invoice details ID: ${invoiceId}, Date: ${dateIsoString}`,
+      `Adding invoice info ID: ${invoiceId}, Date: ${dateIsoString}`,
     );
     this.doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.BODY_FONT_SIZE);
     this.doc.text(`Invoice ID: ${invoiceId}`);
@@ -109,57 +108,8 @@ export class DefaultReceiptTemplate implements IPdfReceiptTemplate {
     this.doc.moveDown(1.5);
   }
 
-  private _drawTableHeader(includeGstColumn: boolean, y: number): void {
-    const funcPrefix = `${this.logPrefix}:_drawTableHeader`;
-    logger.debug(funcPrefix, `Drawing table header at Y=${y}`);
-    const startX = this.doc.page.margins.left;
-    const endX = this.doc.page.width - this.doc.page.margins.right;
-
-    const itemCol = startX + pdfStyles.ITEM_COL_X_OFFSET;
-    const gstCol = startX + pdfStyles.GST_COL_X_OFFSET;
-    const qtyCol = startX + pdfStyles.QTY_COL_X_OFFSET;
-    const priceCol = startX + pdfStyles.PRICE_COL_X_OFFSET;
-    const totalCol = startX + pdfStyles.TOTAL_COL_X_OFFSET;
-
-    const effectiveQtyCol = includeGstColumn ? qtyCol : gstCol;
-    const effectivePriceCol = includeGstColumn ? priceCol : qtyCol;
-    const effectiveTotalCol = includeGstColumn ? totalCol : priceCol;
-
-    const itemWidth = (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10;
-    const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
-    const qtyWidth = effectivePriceCol - effectiveQtyCol - 10;
-    const priceWidth = effectiveTotalCol - effectivePriceCol - 10;
-    const totalWidth = endX - effectiveTotalCol;
-
-    this.doc.font(pdfStyles.FONT_BOLD).fontSize(pdfStyles.TABLE_FONT_SIZE);
-    this.doc.text("Item", itemCol, y, { width: itemWidth, underline: true });
-    if (includeGstColumn)
-      this.doc.text("GST?", gstCol, y, {
-        width: gstWidth,
-        underline: true,
-        align: "center",
-      });
-    this.doc.text("Qty", effectiveQtyCol, y, {
-      width: qtyWidth,
-      underline: true,
-      align: "right",
-    });
-    this.doc.text("Unit Price", effectivePriceCol, y, {
-      width: priceWidth,
-      underline: true,
-      align: "right",
-    });
-    this.doc.text("Line Total", effectiveTotalCol, y, {
-      width: totalWidth,
-      underline: true,
-      align: "right",
-    });
-    this.doc.moveDown(0.5);
-    this.doc.font(pdfStyles.FONT_REGULAR);
-  }
-
-  addLineItemsTable(lineItems: LineItem[], includeGstColumn: boolean): void {
-    const funcPrefix = `${this.logPrefix}:addLineItemsTable`;
+  addItemsTable(lineItems: LineItem[], includeGstColumn: boolean): void {
+    const funcPrefix = `${this.logPrefix}:addItemsTable`;
     logger.debug(
       funcPrefix,
       `Adding ${lineItems.length} line items. Include GST Col: ${includeGstColumn}`,
@@ -262,11 +212,11 @@ export class DefaultReceiptTemplate implements IPdfReceiptTemplate {
     this.doc.moveDown(0.5);
   }
 
-  addTotals(subtotal: number, gstAmount: number, total: number): void {
+  addTotals(subtotal: number, gstAmount: number, total: number, includeGST: boolean): void {
     const funcPrefix = `${this.logPrefix}:addTotals`;
     logger.debug(
       funcPrefix,
-      `Adding totals: Sub=${subtotal}, GST=${gstAmount}, Total=${total}`,
+      `Adding totals: Sub=${subtotal}, GST=${gstAmount}, Total=${total}, IncludeGST=${includeGST}`,
     );
     const totalsX = this.doc.page.width - this.doc.page.margins.right - 150;
     const labelX = this.doc.page.margins.left;
@@ -298,7 +248,7 @@ export class DefaultReceiptTemplate implements IPdfReceiptTemplate {
     });
     totalsY = this.doc.y + 2;
 
-    if (gstAmount > 0) {
+    if (includeGST && gstAmount > 0) {
       this.doc.text(`GST Amount (10%):`, labelX, totalsY, {
         align: "left",
       });
@@ -332,5 +282,87 @@ export class DefaultReceiptTemplate implements IPdfReceiptTemplate {
     this.doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.BODY_FONT_SIZE);
     this.doc.y = totalsY;
     this.doc.moveDown();
+  }
+
+  addFooter(notes?: string): void {
+    const funcPrefix = `${this.logPrefix}:addFooter`;
+    logger.debug(funcPrefix, `Adding footer. Notes: ${notes ? notes.substring(0, 50) + "..." : "None"}`);
+    const pageBottom = this.doc.page.height - this.doc.page.margins.bottom;
+    const footerStartY = pageBottom - 50;
+
+    if (this.doc.y > footerStartY - 20) {
+      logger.debug(funcPrefix, "Content too close to bottom, adding new page for footer.");
+      this.doc.addPage();
+      this.doc.y = this.doc.page.margins.top;
+    }
+
+    this.doc.y = Math.max(this.doc.y, footerStartY - pdfStyles.BODY_FONT_SIZE * 3); 
+
+    this.doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.FOOTER_FONT_SIZE);
+
+    if (notes) {
+      this.doc.text(notes, this.doc.page.margins.left, this.doc.y, {
+        align: "center",
+        width: this.doc.page.width - this.doc.page.margins.left - this.doc.page.margins.right,
+      });
+      this.doc.moveDown(0.5);
+    }
+
+    const currentDate = format(new Date(), "dd/MM/yyyy HH:mm");
+    this.doc.text(`Generated on: ${currentDate}`, this.doc.page.margins.left, this.doc.y, {
+      align: "center",
+      width: this.doc.page.width - this.doc.page.margins.left - this.doc.page.margins.right,
+    });
+
+    logger.debug(funcPrefix, "Footer added.");
+  }
+
+  private _drawTableHeader(includeGstColumn: boolean, y: number): void {
+    const funcPrefix = `${this.logPrefix}:_drawTableHeader`;
+    logger.debug(funcPrefix, `Drawing table header at Y=${y}`);
+    const startX = this.doc.page.margins.left;
+    const endX = this.doc.page.width - this.doc.page.margins.right;
+
+    const itemCol = startX + pdfStyles.ITEM_COL_X_OFFSET;
+    const gstCol = startX + pdfStyles.GST_COL_X_OFFSET;
+    const qtyCol = startX + pdfStyles.QTY_COL_X_OFFSET;
+    const priceCol = startX + pdfStyles.PRICE_COL_X_OFFSET;
+    const totalCol = startX + pdfStyles.TOTAL_COL_X_OFFSET;
+
+    const effectiveQtyCol = includeGstColumn ? qtyCol : gstCol;
+    const effectivePriceCol = includeGstColumn ? priceCol : qtyCol;
+    const effectiveTotalCol = includeGstColumn ? totalCol : priceCol;
+
+    const itemWidth = (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10;
+    const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
+    const qtyWidth = effectivePriceCol - effectiveQtyCol - 10;
+    const priceWidth = effectiveTotalCol - effectivePriceCol - 10;
+    const totalWidth = endX - effectiveTotalCol;
+
+    this.doc.font(pdfStyles.FONT_BOLD).fontSize(pdfStyles.TABLE_FONT_SIZE);
+    this.doc.text("Item", itemCol, y, { width: itemWidth, underline: true });
+    if (includeGstColumn)
+      this.doc.text("GST?", gstCol, y, {
+        width: gstWidth,
+        underline: true,
+        align: "center",
+      });
+    this.doc.text("Qty", effectiveQtyCol, y, {
+      width: qtyWidth,
+      underline: true,
+      align: "right",
+    });
+    this.doc.text("Unit Price", effectivePriceCol, y, {
+      width: priceWidth,
+      underline: true,
+      align: "right",
+    });
+    this.doc.text("Line Total", effectiveTotalCol, y, {
+      width: totalWidth,
+      underline: true,
+      align: "right",
+    });
+    this.doc.moveDown(0.5);
+    this.doc.font(pdfStyles.FONT_REGULAR);
   }
 }

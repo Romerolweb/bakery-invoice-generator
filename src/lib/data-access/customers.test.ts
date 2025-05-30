@@ -12,7 +12,7 @@ import { Customer } from "../types";
 
 vi.mock("path");
 vi.mock("fs/promises", () => {
-  const mockFs = {
+  return {
     readFile: vi.fn(() => Promise.resolve("[]")), // Default to empty array
     writeFile: vi.fn(),
   };

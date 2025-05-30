@@ -103,15 +103,19 @@ describe("PdfGenerator", () => {
       addHeader: vi.fn(),
       addSellerInfo: vi.fn(),
       addCustomerInfo: vi.fn(),
-      addInvoiceDetails: vi.fn(),
-      addLineItemsTable: vi.fn(),
+      addInvoiceInfo: vi.fn(),
+      addItemsTable: vi.fn(),
       addTotals: vi.fn(),
+      addFooter: vi.fn(),
       doc: undefined as any, // Will be set by setDocument, can be initially undefined or a basic mock
       logPrefix: "",       // Will be set by setLogPrefix
     } as Mocked<IPdfReceiptTemplate>; // Cast the object to Mocked<IPdfReceiptTemplate>
 
-    // Instantiate PdfGenerator with the mocked template
-    pdfGenerator = new PdfGenerator(mockTemplate);
+    // Create a mock constructor for the template
+    const MockTemplateConstructor = vi.fn().mockImplementation(() => mockTemplate);
+    
+    // Instantiate PdfGenerator with the mocked template constructor
+    pdfGenerator = new PdfGenerator(MockTemplateConstructor);
 
     // Mock path.join specifically for PDF directory
     vi.mocked(path.join).mockImplementation((...args) => {
@@ -363,8 +367,8 @@ describe("PdfGenerator", () => {
     expect(mockTemplate.addHeader).toHaveBeenCalledWith(mockReceiptData.is_tax_invoice);
     expect(mockTemplate.addSellerInfo).toHaveBeenCalledWith(mockReceiptData.seller_profile_snapshot);
     expect(mockTemplate.addCustomerInfo).toHaveBeenCalledWith(mockReceiptData.customer_snapshot);
-    expect(mockTemplate.addInvoiceDetails).toHaveBeenCalledWith(mockReceiptData.receipt_id, mockReceiptData.date_of_purchase);
-    expect(mockTemplate.addLineItemsTable).toHaveBeenCalledWith(mockReceiptData.line_items, mockReceiptData.GST_amount > 0);
+    expect(mockTemplate.addInvoiceInfo).toHaveBeenCalledWith(mockReceiptData.receipt_id, mockReceiptData.date_of_purchase);
+    expect(mockTemplate.addItemsTable).toHaveBeenCalledWith(mockReceiptData.line_items, mockReceiptData.GST_amount > 0);
     expect(mockTemplate.addTotals).toHaveBeenCalledWith(
       mockReceiptData.subtotal_excl_GST,
       mockReceiptData.GST_amount,

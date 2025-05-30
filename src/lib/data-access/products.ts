@@ -62,7 +62,8 @@ export async function getAllProducts(): Promise<Product[]> {
   try {
     return await readProductsFile();
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving all products", error);
+    await logger.error(funcPrefix, "Error retrieving all products",
+      error instanceof Error ? error : new Error(String(error)));
     return []; // Return empty array on error
   }
 }
@@ -80,7 +81,8 @@ export async function getProductById(id: string): Promise<Product | null> {
     }
     return product || null;
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving product by ID", error);
+    await logger.error(funcPrefix, "Error retrieving product by ID",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -97,7 +99,8 @@ export async function saveAllProducts(products: Product[]): Promise<boolean> {
     await logger.info(funcPrefix, "Products saved successfully.");
     return true;
   } catch (error) {
-    await logger.error(funcPrefix, "Error saving products", error);
+    await logger.error(funcPrefix, "Error saving products",
+      error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }
@@ -127,7 +130,8 @@ export async function createProduct(product: Product): Promise<Product | null> {
     );
     return product;
   } catch (error) {
-    await logger.error(funcPrefix, "Error creating product", error);
+    await logger.error(funcPrefix, "Error creating product",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -152,7 +156,8 @@ export async function updateProduct(
     await logger.info(funcPrefix, "Product updated successfully.");
     return products[index];
   } catch (error) {
-    await logger.error(funcPrefix, "Error updating product", error);
+    await logger.error(funcPrefix, "Error updating product",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -174,7 +179,8 @@ export async function deleteProduct(id: string): Promise<boolean> {
     await logger.info(funcPrefix, "Product deleted successfully.");
     return true;
   } catch (error) {
-    await logger.error(funcPrefix, "Error deleting product", error);
+    await logger.error(funcPrefix, "Error deleting product",
+      error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }

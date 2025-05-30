@@ -75,7 +75,8 @@ export async function getAllReceipts(): Promise<Receipt[]> {
   try {
     return await readReceiptsFile();
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving all receipts", error);
+    await logger.error(funcPrefix, "Error retrieving all receipts",
+      error instanceof Error ? error : new Error(String(error)));
     return []; // Return empty array on error
   }
 }
@@ -93,7 +94,8 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
     }
     return receipt || null;
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving receipt by ID", error);
+    await logger.error(funcPrefix, "Error retrieving receipt by ID",
+      error instanceof Error ? error : new Error(String(error)));
     return null; // Return null on error
   }
 }
@@ -125,7 +127,8 @@ export async function createReceipt(
     );
     return newReceipt;
   } catch (error) {
-    await logger.error(funcPrefix, "Error creating new receipt", error);
+    await logger.error(funcPrefix, "Error creating new receipt",
+      error instanceof Error ? error : new Error(String(error)));
     return null; // Return null on error
   }
 }
