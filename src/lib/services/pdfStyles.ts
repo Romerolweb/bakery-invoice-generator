@@ -1,7 +1,8 @@
 // PDF Styling and Constants
 
-export const FONT_REGULAR = "Helvetica";
-export const FONT_BOLD = "Helvetica-Bold";
+// Use built-in PDFKit fonts that are more universally available
+export const FONT_REGULAR = "Courier";
+export const FONT_BOLD = "Courier-Bold";
 
 export const PAGE_MARGIN = 50;
 

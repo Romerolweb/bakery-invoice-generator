@@ -59,11 +59,24 @@ export class PdfGenerator implements IPdfGenerator {
       `Initializing PDF generation for path: ${this._filePath}`
     );
     try {
+      // Initialize PDFDocument without specifying a default font to avoid font loading issues
       this._doc = new PDFDocument({
         margin: pdfStyles.PAGE_MARGIN,
         bufferPages: true,
-        font: pdfStyles.FONT_REGULAR,
+        // Remove the font specification from initialization
+        // font: pdfStyles.FONT_REGULAR,
       });
+      
+      // Set font after document creation to handle it properly
+      try {
+        this._doc.font(pdfStyles.FONT_REGULAR);
+        logger.debug(this._logPrefix, `Font ${pdfStyles.FONT_REGULAR} set successfully`);
+      } catch (fontError) {
+        // Fallback to a basic font if the specified font fails
+        logger.warn(this._logPrefix, `Font ${pdfStyles.FONT_REGULAR} failed, falling back to Courier`);
+        this._doc.font('Courier');
+      }
+      
       // Pass the document and logPrefix to the template
       this._template.setDocument(this._doc);
       this._template.setLogPrefix(this._logPrefix);
@@ -72,7 +85,7 @@ export class PdfGenerator implements IPdfGenerator {
       const errorMessage = instantiationError instanceof Error ? instantiationError : new Error(String(instantiationError));
       logger.error(
         this._logPrefix,
-        `FATAL: Error instantiating PDFDocument`,
+        `ERROR during PDF initialization`,
         errorMessage,
       );
       throw new Error(
