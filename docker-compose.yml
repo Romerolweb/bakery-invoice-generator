@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-9002}:9002"
     environment:
       NODE_ENV: development
       PDF_GENERATOR: ${PDF_GENERATOR:-pdfkit}
@@ -22,6 +20,31 @@ services:
     working_dir: /app
     # Create PDF directory if it doesn't exist (relative to working_dir) and start dev server
     command: sh -c "mkdir -p src/lib/data/receipt-pdfs && npm run dev"
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules/
+        - action: sync
+          path: ./public
+          target: /app/public
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: package.json
+        - action: rebuild
+          path: package-lock.json # Add if you use npm and have this file
+        # Add pnpm-lock.yaml or yarn.lock if you use pnpm or yarn respectively
+        # - action: rebuild
+        #   path: pnpm-lock.yaml
+        # - action: rebuild
+        #   path: yarn.lock
+        - action: rebuild
+          path: next.config.ts
+        - action: rebuild
+          path: tsconfig.json
 
 volumes:
   pdf_data: # Defines the named volume for storing generated PDFs
