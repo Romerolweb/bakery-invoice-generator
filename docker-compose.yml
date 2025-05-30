@@ -8,45 +8,21 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: development
       PDF_GENERATOR: ${PDF_GENERATOR:-pdfkit}
-      # Add other environment variables here, e.g.:
-      # DATABASE_URL: ${DATABASE_URL}
+      # For example: DATABASE_URL: ${DATABASE_URL}
     env_file:
       - .env.dev
     volumes:
       - .:/app # Mount the host directory to the container for live updates in dev
-      - /app/node_modules # Exclude node_modules from the mount
-    command: sh -c "mkdir -p /app/src/lib/data/receipt-pdfs && chmod -R 777 /app/src/lib/data && npm run dev"
+      - /app/node_modules # Exclude node_modules from the mount to use container's version
+      - pdf_data:/app/src/lib/data/receipt-pdfs # Named volume for persistent PDF storage
+    # Run as 'node' user (UID 1000 typically). Ensure host's ./src/lib/data is writable by this UID for mkdir.
+    user: "node"
+    working_dir: /app
+    # Create PDF directory if it doesn't exist (relative to working_dir) and start dev server
+    command: sh -c "mkdir -p src/lib/data/receipt-pdfs && npm run dev"
 
-profiles:
-  - dev
+volumes:
+  pdf_data: # Defines the named volume for storing generated PDFs
 
----
-
-version: '3.8'
-
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000" # Fixed port for production
-    environment:
-      NODE_ENV: production
-      PDF_GENERATOR: ${PDF_GENERATOR:-pdfkit}
-      # Add other environment variables here, e.g.:
-      # DATABASE_URL: ${DATABASE_URL}
-    env_file:
-      - .env.prod
-    # No volume mount for code in production for this profile,
-    # but PDF_DIR still needs to be writable if used.
-    # Assuming Dockerfile copies src/lib/data and sets it up,
-    # or if it's an external volume, it needs to be writable by the container user.
-    # For consistency with the request to ensure writability and for cases where
-    # src/lib/data might be part of the image build, we ensure it's writable.
-    command: sh -c "mkdir -p /app/src/lib/data/receipt-pdfs && chmod -R 777 /app/src/lib/data && npm run start"
-
-profiles:
-  - prod
