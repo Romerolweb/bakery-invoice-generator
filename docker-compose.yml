@@ -18,7 +18,7 @@ services:
     # Run as 'node' user (UID 1000 typically). Ensure host's ./src/lib/data is writable by this UID for mkdir.
     user: "node"
     working_dir: /app
-    # Create PDF directory if it doesn't exist (relative to working_dir) and start dev server
+    # Create PDF directory and start dev server
     command: sh -c "mkdir -p src/lib/data/receipt-pdfs && npm run dev"
     develop:
       watch:
@@ -36,11 +36,6 @@ services:
           path: package.json
         - action: rebuild
           path: package-lock.json # Add if you use npm and have this file
-        # Add pnpm-lock.yaml or yarn.lock if you use pnpm or yarn respectively
-        # - action: rebuild
-        #   path: pnpm-lock.yaml
-        # - action: rebuild
-        #   path: yarn.lock
         - action: rebuild
           path: next.config.ts
         - action: rebuild

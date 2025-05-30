@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, Mocked } from "vitest";
 import { PdfGenerator } from "@/lib/services/pdfGenerator";
+import { DefaultReceiptTemplate } from "./pdfTemplates/DefaultReceiptTemplate";
+import { IPdfReceiptTemplate } from "./pdfTemplates/IPdfReceiptTemplate";
 import {
   promises as fsPromises,
   createWriteStream,
@@ -43,10 +45,17 @@ vi.mock("path");
 vi.mock("pdfkit");
 vi.mock("date-fns");
 vi.mock("@/lib/services/logging");
+vi.mock("./pdfTemplates/DefaultReceiptTemplate");
+
+// Get correctly typed mocks for classes
+const MockedPDFDocument = vi.mocked(PDFDocument, true);
+const MockedDefaultReceiptTemplate = vi.mocked(DefaultReceiptTemplate, true);
 
 describe("PdfGenerator", () => {
   let pdfGenerator: PdfGenerator;
-  const mockReceiptId = "test-receipt";
+  let mockTemplate: Mocked<IPdfReceiptTemplate>; // Use Mocked<Interface>
+
+  const mockReceiptId = "test-receipt-123";
   const mockOperationId = "test-operation";
   const mockFilePath = "/mock/path/to/test-receipt.pdf";
   const mockPdfDir = "/mock/path/to/pdf-dir";
@@ -82,12 +91,27 @@ describe("PdfGenerator", () => {
     on: vi.fn(), // Mock the 'on' method
     once: vi.fn(), // Mock the 'once' method
   };
-  // Explicitly type the mocked constructor return value
-  const MockPDFDocument = PDFDocument as vi.MockedClass<typeof PDFDocument>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    pdfGenerator = new PdfGenerator();
+
+    // Create a fresh mock for the template for each test
+    // Ensure all methods of IPdfReceiptTemplate are mocked
+    mockTemplate = {
+      setDocument: vi.fn(),
+      setLogPrefix: vi.fn(),
+      addHeader: vi.fn(),
+      addSellerInfo: vi.fn(),
+      addCustomerInfo: vi.fn(),
+      addInvoiceDetails: vi.fn(),
+      addLineItemsTable: vi.fn(),
+      addTotals: vi.fn(),
+      doc: undefined as any, // Will be set by setDocument, can be initially undefined or a basic mock
+      logPrefix: "",       // Will be set by setLogPrefix
+    } as Mocked<IPdfReceiptTemplate>; // Cast the object to Mocked<IPdfReceiptTemplate>
+
+    // Instantiate PdfGenerator with the mocked template
+    pdfGenerator = new PdfGenerator(mockTemplate);
 
     // Mock path.join specifically for PDF directory
     vi.mocked(path.join).mockImplementation((...args) => {
@@ -107,14 +131,14 @@ describe("PdfGenerator", () => {
       return path.posix.join(...args); // Default posix join
     });
 
-    // Setup mock for PDFDocument constructor
-    MockPDFDocument.mockClear(); // Clear previous mock constructor calls
-    MockPDFDocument.mockImplementation(() => mockPDFDocumentInstance as any);
+    // Setup mock for PDFDocument constructor using the correctly typed mock
+    MockedPDFDocument.mockClear(); 
+    MockedPDFDocument.mockImplementation(() => mockPDFDocumentInstance as any);
 
     // Reset mocks on the instance itself
     Object.values(mockPDFDocumentInstance).forEach((mockFn) => {
       if (typeof mockFn === "function" && "mockClear" in mockFn) {
-        (mockFn as vi.Mock).mockClear();
+        (mockFn as Mocked<typeof mockFn>).mockClear(); // Use Mocked<typeof Function>
       }
     });
     mockPDFDocumentInstance.y = 50; // Reset mock y position
@@ -127,6 +151,7 @@ describe("PdfGenerator", () => {
   });
 
   it("should ensure PDF directory exists", async () => {
+    // Access private properties/methods via 'as any'
     (pdfGenerator as any)._logPrefix = "[test]"; // Set log prefix for the test
     await (pdfGenerator as any)._ensurePdfDirectoryExists();
     expect(mockedMkdir).toHaveBeenCalledWith(
@@ -135,282 +160,17 @@ describe("PdfGenerator", () => {
     );
   });
 
-  it("should initialize PDF document", () => {
+  it("should initialize PDF document and pass it to the template", () => {
     (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    expect(MockPDFDocument).toHaveBeenCalled();
-    expect((pdfGenerator as any)._doc).toBeDefined(); // Check if _doc is set
+    expect(MockedPDFDocument).toHaveBeenCalled(); // Check the typed mock
+    const docInstance = (pdfGenerator as any)._doc;
+    expect(docInstance).toBeDefined();
     expect((pdfGenerator as any)._filePath).toContain(`${mockReceiptId}.pdf`);
+    expect(mockTemplate.setDocument).toHaveBeenCalledWith(docInstance);
+    expect(mockTemplate.setLogPrefix).toHaveBeenCalledWith(expect.stringContaining(mockReceiptId));
   });
 
-  it("should add header", () => {
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    (pdfGenerator as any)._addHeader(true); // Test with Tax Invoice
-    expect(mockPDFDocumentInstance.font).toHaveBeenCalledWith("Helvetica-Bold");
-    expect(mockPDFDocumentInstance.fontSize).toHaveBeenCalledWith(20);
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("TAX INVOICE", {
-      align: "center",
-    });
-    expect(mockPDFDocumentInstance.font).toHaveBeenCalledWith("Helvetica"); // Revert font
-    expect(mockPDFDocumentInstance.fontSize).toHaveBeenCalledWith(10);
-  });
-
-  it("should add seller info", () => {
-    const mockSeller: SellerProfile = {
-      name: "Test Seller",
-      business_address: "123 Test St",
-      ABN_or_ACN: "123",
-      contact_email: "test@test.com",
-    };
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    (pdfGenerator as any)._addSellerInfo(mockSeller);
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("Test Seller");
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("123 Test St");
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("ABN/ACN: 123");
-    // ... check other fields
-  });
-
-  it("should add customer info (business)", () => {
-    const mockCustomer: Omit<Customer, "id"> = {
-      customer_type: "business",
-      first_name: "Test",
-      last_name: "Contact",
-      business_name: "Test Biz",
-      abn: "456",
-      email: "biz@test.com",
-      phone: "123",
-      address: "1 Business Ave",
-    };
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    (pdfGenerator as any)._addCustomerInfo(mockCustomer);
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("Test Biz");
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("ABN: 456");
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "Contact: Test Contact",
-    );
-    // ... check other fields
-  });
-
-  it("should add customer info (individual)", () => {
-    const mockCustomer: Omit<Customer, "id"> = {
-      customer_type: "individual",
-      first_name: "Indy",
-      last_name: "Vid",
-      email: "indy@test.com",
-      phone: "456",
-      address: "2 Person Ln",
-    };
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    (pdfGenerator as any)._addCustomerInfo(mockCustomer);
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("Indy Vid");
-    // ... check other fields
-  });
-
-  it("should add invoice details", () => {
-    const mockDate = "2024-01-01T10:00:00.000Z"; // Use ISO string
-    vi.mocked(parseISO).mockReturnValue(new Date(mockDate)); // Mock parseISO
-    vi.mocked(format).mockReturnValue("01/01/2024"); // Mock format
-
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    (pdfGenerator as any)._addInvoiceDetails(mockReceiptId, mockDate);
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `Invoice ID: ${mockReceiptId}`,
-    );
-    expect(parseISO).toHaveBeenCalledWith(mockDate);
-    expect(format).toHaveBeenCalledWith(expect.any(Date), "dd/MM/yyyy"); // Ensure format is called with a Date
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `Date: 01/01/2024`,
-    );
-  });
-
-  it("should add line items table (with GST)", () => {
-    const mockLineItems: LineItem[] = [
-      {
-        product_id: "p1",
-        description: "Desc 1",
-        quantity: 2,
-        unit_price: 10,
-        line_total: 20,
-        product_name: "Test Product 1",
-        GST_applicable: true,
-      },
-    ];
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    mockPDFDocumentInstance.y = 150; // Simulate starting position
-    (pdfGenerator as any)._addLineItemsTable(mockLineItems, true); // includeGstColumn = true
-
-    // Check header drawing
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "Item",
-      expect.any(Number),
-      expect.any(Number),
-      expect.objectContaining({ underline: true }),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "GST?",
-      expect.any(Number),
-      expect.any(Number),
-      expect.objectContaining({ underline: true, align: "center" }),
-    );
-    // ... check other header columns
-
-    // Check row drawing
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "Test Product 1",
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "Yes",
-      expect.any(Number),
-      expect.any(Number),
-      expect.objectContaining({ align: "center" }),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "2",
-      expect.any(Number),
-      expect.any(Number),
-      expect.objectContaining({ align: "right" }),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "$10.00",
-      expect.any(Number),
-      expect.any(Number),
-      expect.objectContaining({ align: "right" }),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "$20.00",
-      expect.any(Number),
-      expect.any(Number),
-      expect.objectContaining({ align: "right" }),
-    );
-  });
-
-  it("should add line items table (without GST)", () => {
-    const mockLineItems: LineItem[] = [
-      {
-        product_id: "p1",
-        description: "Desc 1",
-        quantity: 2,
-        unit_price: 10,
-        line_total: 20,
-        product_name: "Test Product 1",
-        GST_applicable: false,
-      },
-    ];
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    mockPDFDocumentInstance.y = 150; // Simulate starting position
-    (pdfGenerator as any)._addLineItemsTable(mockLineItems, false); // includeGstColumn = false
-
-    // Check header drawing - GST? column should be missing
-    expect(mockPDFDocumentInstance.text).not.toHaveBeenCalledWith(
-      "GST?",
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-
-    // Check row drawing - GST? column should be missing
-    expect(mockPDFDocumentInstance.text).not.toHaveBeenCalledWith(
-      "Yes",
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).not.toHaveBeenCalledWith(
-      "No",
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-  });
-
-  it("should add totals (with GST)", () => {
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    mockPDFDocumentInstance.y = 200; // Simulate position after table
-    (pdfGenerator as any)._addTotals(100, 10, 110);
-
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `Subtotal (ex GST):`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `$100.00`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `GST Amount (10%):`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `$10.00`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `Total Amount:`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `$110.00`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-  });
-
-  it("should add totals (without GST)", () => {
-    (pdfGenerator as any)._initialize(mockReceiptId, mockOperationId);
-    mockPDFDocumentInstance.y = 200; // Simulate position after table
-    (pdfGenerator as any)._addTotals(100, 0, 100); // GST is 0
-
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `Subtotal (ex GST):`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `$100.00`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-
-    // GST Amount should NOT be displayed
-    expect(mockPDFDocumentInstance.text).not.toHaveBeenCalledWith(
-      `GST Amount (10%):`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `Total Amount:`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      `$100.00`,
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-  });
-
-  it("should use default Helvetica fonts", async () => {
+  it("should use default Helvetica fonts (indirectly via PDFDocument options)", async () => {
     const mockLineItems: LineItem[] = [
       {
         product_id: "p1",
@@ -444,7 +204,7 @@ describe("PdfGenerator", () => {
       total_inc_GST: 110,
       is_tax_invoice: true,
       seller_profile_snapshot: mockSeller,
-      customer_snapshot: mockCustomer as Customer,
+      customer_snapshot: mockCustomer as Customer, 
     };
 
     // Mock the stream to emit 'finish'
@@ -454,9 +214,10 @@ describe("PdfGenerator", () => {
 
     await pdfGenerator.generate(mockReceipt, mockOperationId);
 
-    // Assert that font is called with the default fonts
-    expect(mockPDFDocumentInstance.font).toHaveBeenCalledWith("Helvetica-Bold");
-    expect(mockPDFDocumentInstance.font).toHaveBeenCalledWith("Helvetica");
+    // Check that PDFDocument was instantiated with default font (indirect assertion)
+    expect(MockedPDFDocument).toHaveBeenCalledWith(expect.objectContaining({
+      font: "Helvetica"
+    }));
   });
 
   it("should finalize PDF", async () => {
@@ -534,41 +295,54 @@ describe("PdfGenerator", () => {
     );
   });
 
-  it("should generate PDF successfully", async () => {
+  it("should generate PDF successfully by calling template methods", async () => {
     const mockLineItems: LineItem[] = [
       {
         product_id: "p1",
-        description: "Desc",
+        description: "Delicious Croissant",
+        quantity: 2,
+        unit_price: 3.50,
+        line_total: 7.00,
+        product_name: "Croissant",
+        GST_applicable: true,
+      },
+      {
+        product_id: "p2",
+        description: "Fresh Baguette",
         quantity: 1,
-        unit_price: 10,
-        line_total: 10,
-        product_name: "Test Product",
-        GST_applicable: false,
+        unit_price: 4.00,
+        line_total: 4.00,
+        product_name: "Baguette",
+        GST_applicable: false, // Example of non-GST item
       },
     ];
-    const mockCustomer: Omit<Customer, "id"> = {
+    const mockCustomerSnapshot: Customer = {
+      id: "cust-001",
       customer_type: "individual",
-      first_name: "Test",
-      last_name: "Cust",
-      email: "t@e.st",
+      first_name: "John",
+      last_name: "Doe",
+      email: "john.doe@example.com",
+      phone: "0400123456",
+      address: "123 Main St, Anytown",
     };
-    const mockSeller: SellerProfile = {
-      name: "Seller",
-      business_address: "Addr",
-      ABN_or_ACN: "123",
-      contact_email: "s@e.st",
+    const mockSellerProfileSnapshot: SellerProfile = {
+      name: "The Bakehouse",
+      business_address: "456 High St, Anytown",
+      ABN_or_ACN: "12 345 678 901",
+      contact_email: "sales@thebakehouse.com",
+      phone: "0398765432",
     };
-    const mockReceipt: Receipt = {
-      receipt_id: mockReceiptId,
-      customer_id: "test-customer",
-      date_of_purchase: "2024-01-01T00:00:00.000Z",
+    const mockReceiptData: Receipt = {
+      receipt_id: "receipt-abc-123",
+      customer_id: "cust-001",
+      date_of_purchase: "2024-05-15T10:30:00.000Z",
       line_items: mockLineItems,
-      subtotal_excl_GST: 100,
-      GST_amount: 10,
-      total_inc_GST: 110,
+      subtotal_excl_GST: 11.00, 
+      GST_amount: 0.70, 
+      total_inc_GST: 11.70,
       is_tax_invoice: true,
-      seller_profile_snapshot: mockSeller,
-      customer_snapshot: mockCustomer as Customer, // Cast needed here
+      seller_profile_snapshot: mockSellerProfileSnapshot,
+      customer_snapshot: mockCustomerSnapshot,
     };
 
     // Mock the stream to emit 'finish'
@@ -576,80 +350,54 @@ describe("PdfGenerator", () => {
     mockedCreateWriteStream.mockReturnValue(mockStream as any);
     setTimeout(() => mockStream.emit("finish"), 10); // Emit finish event
 
-    const result = await pdfGenerator.generate(mockReceipt, mockOperationId);
+    const result = await pdfGenerator.generate(mockReceiptData, mockOperationId);
 
     expect(result.success).toBe(true);
-    expect(result.filePath).toContain(`${mockReceiptId}.pdf`);
-    expect(mockPDFDocumentInstance.pipe).toHaveBeenCalledWith(mockStream); // Ensure pipe was called
-    expect(mockPDFDocumentInstance.end).toHaveBeenCalled(); // Ensure end was called
-    expect(MockPDFDocument).toHaveBeenCalledTimes(1); // Ensure constructor called once
+    expect(result.filePath).toContain(`${mockReceiptData.receipt_id}.pdf`);
+    expect(mockPDFDocumentInstance.pipe).toHaveBeenCalledWith(mockStream);
+    expect(mockPDFDocumentInstance.end).toHaveBeenCalled();
+    expect(MockedPDFDocument).toHaveBeenCalledTimes(1); // Check typed mock
     expect(mockedMkdir).toHaveBeenCalled();
-    // Add more checks for specific content additions if needed
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "TAX INVOICE",
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("Seller");
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith("Test Cust"); // Corrected to match mock data
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "Test Product",
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
-    );
-    expect(mockPDFDocumentInstance.text).toHaveBeenCalledWith(
-      "$110.00",
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(Object),
+
+    // Verify template methods were called with correct data
+    expect(mockTemplate.addHeader).toHaveBeenCalledWith(mockReceiptData.is_tax_invoice);
+    expect(mockTemplate.addSellerInfo).toHaveBeenCalledWith(mockReceiptData.seller_profile_snapshot);
+    expect(mockTemplate.addCustomerInfo).toHaveBeenCalledWith(mockReceiptData.customer_snapshot);
+    expect(mockTemplate.addInvoiceDetails).toHaveBeenCalledWith(mockReceiptData.receipt_id, mockReceiptData.date_of_purchase);
+    expect(mockTemplate.addLineItemsTable).toHaveBeenCalledWith(mockReceiptData.line_items, mockReceiptData.GST_amount > 0);
+    expect(mockTemplate.addTotals).toHaveBeenCalledWith(
+      mockReceiptData.subtotal_excl_GST,
+      mockReceiptData.GST_amount,
+      mockReceiptData.total_inc_GST,
     );
   });
 
-  it("should handle error during generation and cleanup", async () => {
-    const mockLineItems: LineItem[] = [
-      {
-        product_id: "p1",
-        description: "Desc",
+  it("should handle error during template processing and cleanup", async () => {
+    const mockReceiptData: Receipt = {
+      receipt_id: "err-receipt-456",
+      customer_id: "cust-002",
+      date_of_purchase: "2024-05-16T11:00:00.000Z",
+      line_items: [{
+        product_id: "p3",
+        description: "Coffee",
         quantity: 1,
-        unit_price: 10,
-        line_total: 10,
-        product_name: "Prod",
-        GST_applicable: false,
-      },
-    ];
-    const mockCustomer: Omit<Customer, "id"> = {
-      customer_type: "individual",
-      first_name: "T",
-      last_name: "C",
-      email: "e@m",
-    };
-    const mockSeller: SellerProfile = {
-      name: "S",
-      business_address: "A",
-      ABN_or_ACN: "1",
-      contact_email: "e@m",
-    };
-    const mockReceipt: Receipt = {
-      receipt_id: mockReceiptId,
-      customer_id: "cust1",
-      date_of_purchase: "2024-01-01T00:00:00.000Z",
-      line_items: mockLineItems,
-      subtotal_excl_GST: 100,
-      GST_amount: 10,
-      total_inc_GST: 110,
+        unit_price: 5.00,
+        line_total: 5.00,
+        product_name: "Coffee",
+        GST_applicable: true,
+      }],
+      subtotal_excl_GST: 5.00,
+      GST_amount: 0.50,
+      total_inc_GST: 5.50,
       is_tax_invoice: true,
-      seller_profile_snapshot: mockSeller,
-      customer_snapshot: mockCustomer as Customer, // Cast needed
+      seller_profile_snapshot: { name: "S", business_address: "A", ABN_or_ACN: "1", contact_email: "e@m" },
+      customer_snapshot: { id: "c1", customer_type: "individual", first_name: "F", last_name: "L" } as Customer,
     };
 
-    // Simulate an error during PDF content addition (e.g., in _addTotals)
-    const testError = new Error("Simulated content error");
-    mockPDFDocumentInstance.text.mockImplementation((text: string) => {
-      if (text.startsWith("$110.00")) {
-        // Simulate error when adding total
-        throw testError;
-      }
-      return mockPDFDocumentInstance; // Return this for chaining
+    // Simulate an error during one of the template methods
+    const templateError = new Error("Simulated template error during addTotals");
+    mockTemplate.addTotals.mockImplementation(() => {
+      throw templateError;
     });
 
     // Mock stream and accessSync for cleanup check
@@ -657,23 +405,21 @@ describe("PdfGenerator", () => {
     mockedCreateWriteStream.mockReturnValue(mockStream as any);
     mockedAccessSync.mockReturnValue(undefined); // Assume file exists for cleanup
 
-    const result = await pdfGenerator.generate(mockReceipt, mockOperationId);
+    const result = await pdfGenerator.generate(mockReceiptData, mockOperationId);
 
     expect(result.success).toBe(false);
-    expect(result.message).toContain(
-      "Failed to generate PDF: Simulated content error",
-    );
+    // The message might be wrapped by PdfGenerator's own error handling
+    expect(result.message).toContain("Simulated template error during addTotals"); 
     expect(mockedUnlinkSync).toHaveBeenCalledWith(
-      expect.stringContaining(`${mockReceiptId}.pdf`),
-    ); // Check cleanup happened
-    expect((pdfGenerator as any)._doc).toBeNull(); // Check state reset
+      expect.stringContaining(`${mockReceiptData.receipt_id}.pdf`),
+    ); 
+    expect((pdfGenerator as any)._doc).toBeNull(); 
     expect((pdfGenerator as any)._stream).toBeNull();
   });
 
   it("should handle initialization error", async () => {
-    // Simulate error during PDFDocument instantiation
     const initError = new Error("PDF Instantiation Failed");
-    MockPDFDocument.mockImplementation(() => {
+    MockedPDFDocument.mockImplementation(() => { // Check typed mock
       throw initError;
     });
     const mockReceipt: Receipt = {
@@ -683,8 +429,8 @@ describe("PdfGenerator", () => {
     const result = await pdfGenerator.generate(mockReceipt, mockOperationId);
 
     expect(result.success).toBe(false);
-    expect(result.message).toContain("PDF initialization failed.");
-    expect(mockedCreateWriteStream).not.toHaveBeenCalled(); // Stream setup shouldn't happen
-    expect(mockedUnlinkSync).not.toHaveBeenCalled(); // Cleanup shouldn't happen if init fails badly
+    expect(result.message).toContain("PDF initialization failed."); // This is the generic message from PdfGenerator
+    expect(mockedCreateWriteStream).not.toHaveBeenCalled();
+    expect(mockedUnlinkSync).not.toHaveBeenCalled();
   });
 });

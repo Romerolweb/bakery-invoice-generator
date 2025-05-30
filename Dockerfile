@@ -11,6 +11,9 @@ RUN npm ci
 
 # Copy application code
 COPY . .
+# Ensure public directory exists, COPY . . should handle it if present
+# but this can help if it's gitignored or empty locally during build
+RUN mkdir -p /app/public 
 
 # Build the Next.js application
 RUN npm run build
