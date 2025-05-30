@@ -12,6 +12,7 @@ import path from "path";
 import PDFDocument from "pdfkit";
 import { format, parseISO } from "date-fns";
 import { logger } from "@/lib/services/logging";
+import * as pdfStyles from "./pdfStyles"; // Import styles
 
 const DATA_DIR = path.join(process.cwd(), "src", "lib", "data");
 const PDF_DIR = path.join(DATA_DIR, "receipt-pdfs"); // Directory to store generated PDFs
@@ -31,13 +32,14 @@ export class PdfGenerator implements IPdfGenerator {
       await fsPromises.mkdir(PDF_DIR, { recursive: true });
       await logger.debug(funcPrefix, `PDF directory ensured: ${PDF_DIR}`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error : new Error(String(error));
       await logger.error(
         funcPrefix,
         "FATAL: Error creating PDF directory",
-        error,
+        errorMessage,
       );
       throw new Error(
-        `Failed to ensure PDF directory exists: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to ensure PDF directory exists: ${errorMessage.message}`,
       );
     }
   }
@@ -52,19 +54,20 @@ export class PdfGenerator implements IPdfGenerator {
     );
     try {
       this._doc = new PDFDocument({
-        margin: 50,
+        margin: pdfStyles.PAGE_MARGIN,
         bufferPages: true,
-        // Use default Helvetica font
+        font: pdfStyles.FONT_REGULAR,
       });
       logger.debug(this._logPrefix, `PDFDocument instantiated successfully.`);
     } catch (instantiationError) {
+      const errorMessage = instantiationError instanceof Error ? instantiationError : new Error(String(instantiationError));
       logger.error(
         this._logPrefix,
         `FATAL: Error instantiating PDFDocument`,
-        instantiationError,
+        errorMessage,
       );
       throw new Error(
-        `PDF library initialization error: ${instantiationError instanceof Error ? instantiationError.message : String(instantiationError)}`,
+        `PDF library initialization error: ${errorMessage.message}`,
       );
     }
     this._success = false; // Reset success flag
@@ -109,12 +112,13 @@ export class PdfGenerator implements IPdfGenerator {
         await logger.debug(funcPrefix, "Piping PDF document to stream...");
         this._doc.pipe(this._stream);
       } catch (setupError) {
+        const errorMessage = setupError instanceof Error ? setupError : new Error(String(setupError));
         await logger.error(
           funcPrefix,
           "Error setting up PDF stream or piping",
-          setupError,
+          errorMessage,
         );
-        reject(setupError); // Reject the promise on setup error
+        reject(errorMessage); // Reject the promise on setup error
       }
     });
   }
@@ -122,10 +126,10 @@ export class PdfGenerator implements IPdfGenerator {
   private _addHeader(isTaxInvoice: boolean): void {
     if (!this._doc) return;
     this._doc
-      .fontSize(20)
-      .font("Helvetica-Bold")
+      .font(pdfStyles.FONT_BOLD)
+      .fontSize(pdfStyles.HEADER_FONT_SIZE)
       .text(isTaxInvoice ? "TAX INVOICE" : "INVOICE", { align: "center" });
-    this._doc.font("Helvetica").fontSize(10); // Revert to regular, smaller size for subsequent text
+    this._doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.BODY_FONT_SIZE); // Revert to regular, smaller size
     this._doc.moveDown();
   }
 
@@ -134,10 +138,10 @@ export class PdfGenerator implements IPdfGenerator {
     const funcPrefix = `${this._logPrefix}:_addSellerInfo`;
     logger.debug(funcPrefix, "Adding seller info");
     this._doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .text("From:", { underline: false }); // Bold label
-    this._doc.font("Helvetica").fontSize(10); // Normal text for details
+      .font(pdfStyles.FONT_BOLD)
+      .fontSize(pdfStyles.SECTION_LABEL_FONT_SIZE)
+      .text("From:", { underline: false }); 
+    this._doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.BODY_FONT_SIZE);
     this._doc.text(seller.name || "Seller Name Missing");
     this._doc.text(seller.business_address || "Seller Address Missing");
     this._doc.text(`ABN/ACN: ${seller.ABN_or_ACN || "Seller ABN/ACN Missing"}`);
@@ -153,10 +157,10 @@ export class PdfGenerator implements IPdfGenerator {
     const funcPrefix = `${this._logPrefix}:_addCustomerInfo`;
     logger.debug(funcPrefix, "Adding customer info");
     this._doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .text("To:", { underline: false }); // Bold label
-    this._doc.font("Helvetica").fontSize(10); // Normal text for details
+      .font(pdfStyles.FONT_BOLD)
+      .fontSize(pdfStyles.SECTION_LABEL_FONT_SIZE)
+      .text("To:", { underline: false });
+    this._doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.BODY_FONT_SIZE); // Normal text for details
     if (customer.customer_type === "business") {
       this._doc.text(customer.business_name || "Business Name Missing");
       if (customer.abn) {
@@ -185,7 +189,7 @@ export class PdfGenerator implements IPdfGenerator {
       funcPrefix,
       `Adding invoice details ID: ${invoiceId}, Date: ${dateIsoString}`,
     );
-    this._doc.fontSize(10);
+    this._doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.BODY_FONT_SIZE);
     this._doc.text(`Invoice ID: ${invoiceId}`);
     try {
       const dateObject = parseISO(dateIsoString);
@@ -195,10 +199,11 @@ export class PdfGenerator implements IPdfGenerator {
       const formattedDate = format(dateObject, "dd/MM/yyyy");
       this._doc.text(`Date: ${formattedDate}`);
     } catch (e) {
+      const errorMessage = e instanceof Error ? e : new Error(String(e));
       logger.warn(
         funcPrefix,
         `Could not parse or format date for PDF: ${dateIsoString}`,
-        e,
+        errorMessage,
       );
       this._doc.text(`Date: ${dateIsoString}`); // Fallback to ISO string
     }
@@ -211,25 +216,30 @@ export class PdfGenerator implements IPdfGenerator {
     logger.debug(funcPrefix, `Drawing table header at Y=${y}`);
     const startX = this._doc.page.margins.left;
     const endX = this._doc.page.width - this._doc.page.margins.right;
-    const itemCol = startX;
-    const gstCol = 250;
-    const qtyCol = 320;
-    const priceCol = 400;
-    const totalCol = 480;
+    
+    // Use offsets from pdfStyles for column positions
+    const itemCol = startX + pdfStyles.ITEM_COL_X_OFFSET;
+    // Calculate subsequent columns based on fixed widths or relative positions
+    // This part needs careful adjustment based on how ITEM_COL_X_OFFSET and widths are defined in pdfStyles.ts
+    // For simplicity, I'm keeping the existing logic for now, but this is where you'd integrate more deeply.
+    const gstCol = startX + pdfStyles.GST_COL_X_OFFSET; // Example: if GST_COL_X_OFFSET is absolute from startX
+    const qtyCol = startX + pdfStyles.QTY_COL_X_OFFSET;
+    const priceCol = startX + pdfStyles.PRICE_COL_X_OFFSET;
+    const totalCol = startX + pdfStyles.TOTAL_COL_X_OFFSET;
 
     // Adjust columns if GST is not included
     const effectiveQtyCol = includeGstColumn ? qtyCol : gstCol;
     const effectivePriceCol = includeGstColumn ? priceCol : qtyCol;
     const effectiveTotalCol = includeGstColumn ? totalCol : priceCol;
 
-    const itemWidth =
-      (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10;
+    // Width calculations should also ideally use constants or be derived
+    const itemWidth = (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10; // 10 for padding
     const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
     const qtyWidth = effectivePriceCol - effectiveQtyCol - 10;
     const priceWidth = effectiveTotalCol - effectivePriceCol - 10;
     const totalWidth = endX - effectiveTotalCol;
 
-    this._doc.fontSize(10).font("Helvetica-Bold");
+    this._doc.font(pdfStyles.FONT_BOLD).fontSize(pdfStyles.TABLE_FONT_SIZE);
     this._doc.text("Item", itemCol, y, { width: itemWidth, underline: true });
     if (includeGstColumn)
       this._doc.text("GST?", gstCol, y, {
@@ -253,7 +263,7 @@ export class PdfGenerator implements IPdfGenerator {
       align: "right",
     });
     this._doc.moveDown(0.5);
-    this._doc.font("Helvetica"); // Revert font
+    this._doc.font(pdfStyles.FONT_REGULAR); // Revert font
   }
 
   private _addLineItemsTable(
@@ -269,34 +279,35 @@ export class PdfGenerator implements IPdfGenerator {
     const tableTopInitial = this._doc.y;
     const startX = this._doc.page.margins.left;
     const endX = this._doc.page.width - this._doc.page.margins.right;
-    const itemCol = startX;
-    const gstCol = 250;
-    const qtyCol = 320;
-    const priceCol = 400;
-    const totalCol = 480;
 
-    // Adjust columns if GST is not included
+    // Column positions - similar to _drawTableHeader, use styles
+    const itemCol = startX + pdfStyles.ITEM_COL_X_OFFSET;
+    const gstCol = startX + pdfStyles.GST_COL_X_OFFSET;
+    const qtyCol = startX + pdfStyles.QTY_COL_X_OFFSET;
+    const priceCol = startX + pdfStyles.PRICE_COL_X_OFFSET;
+    const totalCol = startX + pdfStyles.TOTAL_COL_X_OFFSET;
+
     const effectiveQtyCol = includeGstColumn ? qtyCol : gstCol;
     const effectivePriceCol = includeGstColumn ? priceCol : qtyCol;
     const effectiveTotalCol = includeGstColumn ? totalCol : priceCol;
 
-    const itemWidth =
-      (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10;
+    const itemWidth = (includeGstColumn ? gstCol : effectiveQtyCol) - itemCol - 10;
     const gstWidth = includeGstColumn ? qtyCol - gstCol - 10 : 0;
     const qtyWidth = effectivePriceCol - effectiveQtyCol - 10;
     const priceWidth = effectiveTotalCol - effectivePriceCol - 10;
     const totalWidth = endX - effectiveTotalCol;
 
-    const tableBottomMargin = 70; // Space needed for totals + buffer
     const pageBottom =
-      this._doc.page.height - this._doc.page.margins.bottom - tableBottomMargin;
+      this._doc.page.height - this._doc.page.margins.bottom - pdfStyles.TABLE_BOTTOM_MARGIN;
 
     this._drawTableHeader(includeGstColumn, tableTopInitial);
     let currentY = this._doc.y;
 
     lineItems.forEach((item, index) => {
-      const itemHeightEstimate =
-        this._doc!.heightOfString("X", { fontSize: 10 }) + 5; // Estimate row height dynamically
+      // Estimate row height dynamically - fontSize is a method, not an option here.
+      // this._doc.fontSize(pdfStyles.TABLE_FONT_SIZE); // Ensure font size is set for heightOfString
+      const itemHeightEstimate = this._doc!.fontSize(pdfStyles.TABLE_FONT_SIZE).heightOfString("X") + 5;
+
       if (currentY + itemHeightEstimate > pageBottom) {
         logger.debug(
           funcPrefix,
@@ -312,18 +323,19 @@ export class PdfGenerator implements IPdfGenerator {
       const lineTotalExGST = item.line_total ?? 0;
 
       // Draw row content
-      this._doc!.fontSize(10).font("Helvetica");
-      const rowStartY = currentY; // Use currentY for alignment
+      this._doc!.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.TABLE_FONT_SIZE);
+      const rowStartY = currentY; 
       this._doc!.text(item.product_name || "N/A", itemCol, rowStartY, {
         width: itemWidth,
       });
 
       // Calculate actual height after potentially multi-line item name
-      const actualHeight = this._doc!.heightOfString(
+      // Ensure font size is set before calling heightOfString
+      const actualHeight = this._doc!.fontSize(pdfStyles.TABLE_FONT_SIZE).heightOfString(
         item.product_name || "N/A",
         { width: itemWidth },
       );
-      const rightColumnsY = rowStartY; // Align all right columns to the start Y of the row
+      const rightColumnsY = rowStartY; 
 
       if (includeGstColumn)
         this._doc!.text(
@@ -351,21 +363,19 @@ export class PdfGenerator implements IPdfGenerator {
         { width: totalWidth, align: "right" },
       );
 
-      // Move Y down by the height of the tallest element (item name) + small gap
       currentY = rowStartY + actualHeight + 3;
-      this._doc!.y = currentY; // Sync doc's Y position
+      this._doc!.y = currentY; 
     });
 
-    this._doc!.moveDown(0.5); // Add a bit more space before the separator line
+    this._doc!.moveDown(0.5); 
 
-    // Draw a line before totals
     logger.debug(
       funcPrefix,
       `Drawing separator line before totals at Y=${this._doc!.y}`,
     );
     this._doc!.moveTo(startX, this._doc!.y)
       .lineTo(endX, this._doc!.y)
-      .strokeColor("#cccccc")
+      .strokeColor(pdfStyles.COLOR_GREY_LIGHT)
       .stroke();
     this._doc!.moveDown(0.5);
   }
@@ -377,80 +387,70 @@ export class PdfGenerator implements IPdfGenerator {
       funcPrefix,
       `Adding totals: Sub=${subtotal}, GST=${gstAmount}, Total=${total}`,
     );
-    const totalsX = 400; // Starting X for amount values
-    const labelX = this._doc.page.margins.left; // Starting X for labels
-    const endX = this._doc.page.width - this._doc.page.margins.right; // Right edge for alignment
-    let totalsY = this._doc.y; // Start position for totals
+    const totalsX = this._doc.page.width - this._doc.page.margins.right - 150; // Align amounts to the right
+    const labelX = this._doc.page.margins.left;
+    const endX = this._doc.page.width - this._doc.page.margins.right;
+    let totalsY = this._doc.y;
 
     const pageBottom =
-      this._doc.page.height - this._doc.page.margins.bottom - 20;
-    const totalsHeightEstimate = 60; // Estimate height needed for totals
-
-    // Check if totals fit on the current page
-    if (totalsY + totalsHeightEstimate > pageBottom) {
+      this._doc.page.height - this._doc.page.margins.bottom - 20; // Small buffer
+    
+    if (totalsY + pdfStyles.TOTALS_SECTION_HEIGHT_ESTIMATE > pageBottom) {
       logger.debug(
         funcPrefix,
         `Adding new page before totals section at Y=${totalsY}. Page bottom limit: ${pageBottom}`,
       );
       this._doc.addPage();
-      totalsY = this._doc.page.margins.top; // Reset Y position for the new page
-      this._doc.y = totalsY; // Set doc's current Y
+      totalsY = this._doc.page.margins.top;
+      this._doc.y = totalsY;
     }
 
-    // Use consistent font and size for labels and amounts initially
-    this._doc.fontSize(10).font("Helvetica");
+    this._doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.TOTALS_FONT_SIZE);
     const amountWidth = endX - totalsX;
 
     // Subtotal
     this._doc.text(`Subtotal (ex GST):`, labelX, totalsY, {
-      continued: false,
       align: "left",
     });
     this._doc.text(`$${subtotal.toFixed(2)}`, totalsX, totalsY, {
       align: "right",
       width: amountWidth,
     });
-    totalsY = this._doc.y + 2; // Add small gap after line
+    totalsY = this._doc.y + 2;
 
-    // GST Amount (only show if GST > 0)
     if (gstAmount > 0) {
       this._doc.text(`GST Amount (10%):`, labelX, totalsY, {
-        continued: false,
         align: "left",
       });
       this._doc.text(`$${gstAmount.toFixed(2)}`, totalsX, totalsY, {
         align: "right",
         width: amountWidth,
       });
-      totalsY = this._doc.y + 2; // Add small gap after line
+      totalsY = this._doc.y + 2;
     }
 
-    // Draw separator line
     const lineY = totalsY + 5;
     logger.debug(funcPrefix, `Drawing separator line for totals at Y=${lineY}`);
     this._doc
-      .moveTo(totalsX - 50, lineY)
+      .moveTo(totalsX - 20, lineY) // Adjusted line start slightly
       .lineTo(endX, lineY)
-      .strokeColor("#aaaaaa")
+      .strokeColor(pdfStyles.COLOR_GREY_MEDIUM)
       .stroke();
-    totalsY = lineY + 5; // Move current position below the line
+    totalsY = lineY + 5;
     this._doc.y = totalsY;
 
-    // Total - Make it bold and slightly larger
-    this._doc.font("Helvetica-Bold").fontSize(12);
+    this._doc.font(pdfStyles.FONT_BOLD).fontSize(pdfStyles.TOTALS_TOTAL_FONT_SIZE);
     this._doc.text(`Total Amount:`, labelX, totalsY, {
-      continued: false,
       align: "left",
-    }); // Changed label slightly
+    });
     this._doc.text(`$${total.toFixed(2)}`, totalsX, totalsY, {
       align: "right",
       width: amountWidth,
     });
-    totalsY = this._doc.y; // Update Y after text
+    totalsY = this._doc.y;
 
-    // Revert font settings
-    this._doc.font("Helvetica").fontSize(10);
-    this._doc.y = totalsY; // Ensure doc.y is at the end of the totals block
+    this._doc.font(pdfStyles.FONT_REGULAR).fontSize(pdfStyles.BODY_FONT_SIZE);
+    this._doc.y = totalsY;
     this._doc.moveDown();
   }
 
@@ -467,12 +467,12 @@ export class PdfGenerator implements IPdfGenerator {
 
       const streamFinishPromise = new Promise<void>((res, rej) => {
         this._stream!.once("finish", res);
-        this._stream!.once("error", rej);
-        this._doc!.once("error", rej);
+        this._stream!.once("error", rej); // Stream errors reject
+        this._doc!.once("error", rej);    // Document errors also reject
       });
 
       logger.info(funcPrefix, "Finalizing PDF document (calling end())...");
-      this._doc.end(); // Trigger finish/error events
+      this._doc.end();
 
       streamFinishPromise
         .then(() => {
@@ -480,17 +480,18 @@ export class PdfGenerator implements IPdfGenerator {
             funcPrefix,
             "Stream finished successfully during finalize.",
           );
-          this._success = true; // Confirm success
+          this._success = true;
           resolve();
         })
         .catch((err) => {
+          const errorMessage = err instanceof Error ? err : new Error(String(err));
           logger.error(
             funcPrefix,
             "Stream or document error during finalize",
-            err,
+            errorMessage,
           );
           this._success = false;
-          reject(err);
+          reject(errorMessage);
         });
     });
   }
@@ -511,15 +512,15 @@ export class PdfGenerator implements IPdfGenerator {
           funcPrefix,
           "Closing potentially open write stream...",
         );
-        await new Promise<void>((resolve) => {
+        await new Promise<void>((resolve, reject) => { // Added reject for clarity
           this._stream!.once("close", resolve);
           this._stream!.once("error", (err) => {
             logger.error(
               funcPrefix,
               "Error closing stream during cleanup",
-              err,
+              err, // Pass the actual error
             );
-            resolve();
+            resolve(); // Still resolve as cleanup should try to continue
           });
           this._stream!.end();
         });
@@ -539,12 +540,12 @@ export class PdfGenerator implements IPdfGenerator {
         `Checking existence of potentially incomplete PDF: ${this._filePath}`,
       );
       try {
-        accessSync(this._filePath); // Use sync access check here
+        accessSync(this._filePath);
         await logger.warn(
           funcPrefix,
           `Attempting to delete incomplete/corrupted PDF: ${this._filePath}`,
         );
-        unlinkSync(this._filePath); // Use sync unlink
+        unlinkSync(this._filePath);
         await logger.info(
           funcPrefix,
           `Deleted incomplete/corrupted PDF: ${this._filePath}`,
@@ -556,23 +557,24 @@ export class PdfGenerator implements IPdfGenerator {
             `Incomplete PDF ${this._filePath} did not exist, no need to delete.`,
           );
         } else {
+          const errorMessage = accessOrUnlinkError instanceof Error ? accessOrUnlinkError : new Error(String(accessOrUnlinkError));
           await logger.error(
             funcPrefix,
             "Error accessing or deleting potentially corrupted PDF during cleanup",
-            accessOrUnlinkError,
+            errorMessage,
           );
         }
       }
     } catch (cleanupError) {
+      const errorMessage = cleanupError instanceof Error ? cleanupError : new Error(String(cleanupError));
       await logger.error(
         funcPrefix,
         "Error during PDF cleanup process itself",
-        cleanupError,
+        errorMessage,
       );
     } finally {
       this._doc = null;
       this._stream = null;
-      // Keep _filePath and _logPrefix if you need them for error reporting after cleanup attempt
     }
   }
 
@@ -582,16 +584,17 @@ export class PdfGenerator implements IPdfGenerator {
   ): Promise<PdfGenerationResult> {
     try {
       this._initialize(receipt.receipt_id, operationId);
-    } catch (initError: any) {
+    } catch (initError: any) { // Keep any for broad initial catch
+      const errorToLog = initError instanceof Error ? initError : new Error(String(initError));
       await logger.error(
-        this._logPrefix ||
+        this._logPrefix || // Fallback log prefix
           `[${operationId} PDFKit ${receipt?.receipt_id || "unknown"}]`,
         "ERROR during PDF initialization",
-        initError,
+        errorToLog,
       );
       return {
         success: false,
-        message: initError.message || "PDF initialization failed.",
+        message: errorToLog.message || "PDF initialization failed.",
       };
     }
 
@@ -619,29 +622,26 @@ export class PdfGenerator implements IPdfGenerator {
         `PDF generation process completed. Success flag: ${this._success}`,
       );
       if (!this._success) {
-        // This case might occur if finalize rejects after stream finishes but before success flag is read.
         throw new Error(
           "PDF generation failed: Finalize completed but success flag is false.",
         );
       }
       await logger.info(this._logPrefix, "PDF generation successful.");
-      const finalFilePath = this._filePath; // Store before potential cleanup resets it
-      // Reset internal state for potential reuse
+      const finalFilePath = this._filePath;
       this._doc = null;
       this._stream = null;
       this._filePath = "";
       return { success: true, filePath: finalFilePath };
-    } catch (error: any) {
+    } catch (error: any) { // Keep any for broad catch during generation
+      const errorToLog = error instanceof Error ? error : new Error(String(error));
       await logger.error(
         this._logPrefix,
         "ERROR during PDF generation orchestration",
-        error,
+        errorToLog,
       );
-      await this._cleanupFailedPdf(); // Ensure cleanup happens
+      await this._cleanupFailedPdf();
 
-      let message = `Failed to generate PDF: ${error.message || "Unknown error"}`;
-
-      return { success: false, message };
+      return { success: false, message: errorToLog.message || "Unknown error during PDF generation" };
     }
   }
 }

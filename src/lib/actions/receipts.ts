@@ -13,7 +13,7 @@ import {
   PdfGenerationResult,
 } from "@/lib/services/pdfGeneratorInterface";
 import { PdfGenerator } from "@/lib/services/pdfGenerator"; // PDFKit implementation
-import { PuppeteerPdfGenerator } from "@/lib/services/puppeteerPdfGenerator"; // Puppeteer implementation
+// import { PuppeteerPdfGenerator } from "@/lib/services/puppeteerPdfGenerator"; // Puppeteer implementation - REMOVED
 import {
   createReceipt as createReceiptData,
   getAllReceipts as getAllReceiptsData,
@@ -29,28 +29,28 @@ import { recordChange } from "@/lib/recordChanges";
 const ACTION_LOG_PREFIX = "ReceiptActions";
 
 // --- Determine which PDF generator to use ---
-const PDF_GENERATOR_TYPE =
-  process.env.PDF_GENERATOR?.toLowerCase() === "puppeteer"
-    ? "puppeteer"
-    : "pdfkit";
-(async () =>
-  await logger.info(
-    ACTION_LOG_PREFIX,
-    `Selected PDF Generator: ${PDF_GENERATOR_TYPE.toUpperCase()}`,
-  ))(); // Self-invoking async for top-level await
-recordChange(
-  "src/lib/actions/receipts.ts",
-  `Selected PDF generator based on env var: ${PDF_GENERATOR_TYPE}`,
-);
+// const PDF_GENERATOR_TYPE =
+//   process.env.PDF_GENERATOR?.toLowerCase() === "puppeteer"
+//     ? "puppeteer"
+//     : "pdfkit";
+// (async () =>
+//   await logger.info(
+//     ACTION_LOG_PREFIX,
+//     `Selected PDF Generator: ${PDF_GENERATOR_TYPE.toUpperCase()}`
+//   ))(); // Self-invoking async for top-level await
+// recordChange(
+//   "src/lib/actions/receipts.ts",
+//   `Selected PDF generator based on env var: ${PDF_GENERATOR_TYPE}`
+// );
 
-// Factory function to get the chosen PDF generator instance
-function getPdfGenerator(): IPdfGenerator {
-  if (PDF_GENERATOR_TYPE === "puppeteer") {
-    return new PuppeteerPdfGenerator();
-  }
-  // Default to PDFKit
-  return new PdfGenerator();
-}
+// Factory function to get the chosen PDF generator instance - REMOVED
+// function getPdfGenerator(): IPdfGenerator {
+//   if (PDF_GENERATOR_TYPE === "puppeteer") {
+//     return new PuppeteerPdfGenerator();
+//   }
+//   // Default to PDFKit
+//   return new PdfGenerator();
+// }
 
 // Result structure for the action
 interface CreateReceiptResult {
@@ -257,7 +257,7 @@ export async function createReceipt(
       );
       recordChange(
         "src/lib/actions/receipts.ts",
-        `Failed to save receipt data ${newReceipt.receipt_id}`,
+        `Failed to save receipt data ${newReceipt.receipt_id}`
       );
       return {
         success: false,
@@ -271,31 +271,31 @@ export async function createReceipt(
     );
     recordChange(
       "src/lib/actions/receipts.ts",
-      `Saved receipt data ${newReceipt.receipt_id}`,
+      `Saved receipt data ${newReceipt.receipt_id}`
     );
 
-    // --- Step 6: Attempt PDF Generation using selected generator ---
+    // --- Step 6: Attempt PDF Generation using PDFKit generator ---
     await logger.info(
       funcPrefix,
-      `Initiating PDF generation using ${PDF_GENERATOR_TYPE.toUpperCase()} for receipt ID: ${newReceipt.receipt_id}`,
+      `Initiating PDF generation using PDFKit for receipt ID: ${newReceipt.receipt_id}`,
     );
     recordChange(
       "src/lib/actions/receipts.ts",
-      `Initiating PDF generation for ${newReceipt.receipt_id} using ${PDF_GENERATOR_TYPE}`,
+      `Initiating PDF generation for ${newReceipt.receipt_id} using PDFKit`,
     );
     let pdfResult: PdfGenerationResult;
     try {
-      const generator = getPdfGenerator(); // Get instance of the chosen generator
+      const generator: IPdfGenerator = new PdfGenerator(); // Directly use PdfGenerator
       pdfResult = await generator.generate(newReceipt, operationId);
 
       if (pdfResult.success && pdfResult.filePath) {
         await logger.info(
           funcPrefix,
-          `PDF generated successfully using ${PDF_GENERATOR_TYPE.toUpperCase()}. Path: ${pdfResult.filePath}`,
+          `PDF generated successfully using PDFKit. Path: ${pdfResult.filePath}`,
         );
         recordChange(
           "src/lib/actions/receipts.ts",
-          `PDF generated successfully for ${newReceipt.receipt_id} at ${pdfResult.filePath}`,
+          `PDF generated successfully for ${newReceipt.receipt_id} at ${pdfResult.filePath}`
         );
         return {
           success: true,
@@ -306,14 +306,14 @@ export async function createReceipt(
       } else {
         const pdfErrorMessage =
           pdfResult.message ||
-          `Unknown ${PDF_GENERATOR_TYPE.toUpperCase()} PDF generation error.`;
+          `Unknown PDFKit PDF generation error.`;
         await logger.error(
           funcPrefix,
-          `PDF generation failed using ${PDF_GENERATOR_TYPE.toUpperCase()}. Reason: ${pdfErrorMessage}`,
+          `PDF generation failed using PDFKit. Reason: ${pdfErrorMessage}`,
         );
         recordChange(
           "src/lib/actions/receipts.ts",
-          `PDF generation failed for ${newReceipt.receipt_id}: ${pdfErrorMessage}`,
+          `PDF generation failed for ${newReceipt.receipt_id}: ${pdfErrorMessage}`
         );
         return {
           success: true, // Data saved, but PDF failed
@@ -325,15 +325,15 @@ export async function createReceipt(
     } catch (pdfGenError: any) {
       const pdfErrorMessage =
         pdfGenError.message ||
-        `Unexpected ${PDF_GENERATOR_TYPE.toUpperCase()} PDF generation error.`;
+        `Unexpected PDFKit PDF generation error.`;
       await logger.error(
         funcPrefix,
-        `Critical error during PDF generation call for ${PDF_GENERATOR_TYPE.toUpperCase()}`,
+        `Critical error during PDF generation call for PDFKit`,
         pdfGenError,
       );
       recordChange(
         "src/lib/actions/receipts.ts",
-        `Critical PDF generation error for ${newReceipt.receipt_id}: ${pdfErrorMessage}`,
+        `Critical PDF generation error for ${newReceipt.receipt_id}: ${pdfErrorMessage}`
       );
       return {
         success: true, // Data saved, but PDF generation threw an unexpected error

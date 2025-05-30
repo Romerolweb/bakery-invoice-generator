@@ -25,7 +25,7 @@ async function ensureChangesLogDirectoryExists() {
   } catch (error) {
     await logger.error(
       "[ChangeRecorder] FATAL: Error creating changes log directory",
-      error,
+      error instanceof Error ? error.message : String(error),
     ); // Await logger
     changesLogDirectoryEnsured = true; // Prevent further attempts
   }
@@ -62,7 +62,7 @@ export async function recordChange(
   } catch (fsError) {
     await logger.error(
       "[ChangeRecorder] Error importing or using fs for change logging:",
-      fsError,
+      fsError instanceof Error ? fsError.message : String(fsError),
     ); // Await logger
   }
 }

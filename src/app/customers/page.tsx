@@ -1,12 +1,10 @@
-// src/app/customers/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react"; // Added useCallback
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useSearchParams, useRouter } from "next/navigation";
-// Assuming types are defined in '@/lib/types'
 import type { Customer } from "@/lib/types";
 import {
   getCustomers,
@@ -14,7 +12,6 @@ import {
   updateCustomer,
   deleteCustomer,
 } from "@/lib/actions/customers";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,17 +42,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
   Form,
   FormControl,
   FormField,
@@ -65,41 +51,28 @@ import {
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Loader2,
-  PlusCircle,
-  Edit,
-  Trash2,
-  Building,
-  User,
-} from "lucide-react";
+import { PlusCircle, Loader2, User, Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Define ABN regex for client-side validation consistency
+// --- Validation Schema ---
 const abnRegex = /^\d{2}\s?\d{3}\s?\d{3}\s?\d{3}$/;
-
-// Base schema for common fields
 const baseCustomerSchema = z.object({
   id: z.string().optional(),
   email: z.string().email("Invalid email format").optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
 });
-
-// Schema for individual customer
 const individualCustomerSchema = baseCustomerSchema.extend({
   customer_type: z.literal("individual"),
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().optional(),
-  business_name: z.string().optional().nullable().or(z.literal("")), // Ensure it can be empty/null
-  abn: z.string().optional().nullable().or(z.literal("")), // Ensure it can be empty/null
+  business_name: z.string().optional().nullable().or(z.literal("")),
+  abn: z.string().optional().nullable().or(z.literal("")),
 });
-
-// Schema for business customer
 const businessCustomerSchema = baseCustomerSchema.extend({
   customer_type: z.literal("business"),
-  first_name: z.string().optional(), // Contact person
-  last_name: z.string().optional(), // Contact person
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
   business_name: z.string().min(1, "Business name is required"),
   abn: z
     .string()
@@ -107,17 +80,13 @@ const businessCustomerSchema = baseCustomerSchema.extend({
     .refine((val) => !val || abnRegex.test(val), {
       message: "Invalid ABN format (e.g., 11 111 111 111)",
     })
-    .or(z.literal("")), // Optional but validated if present
+    .or(z.literal("")),
 });
-
-// Discriminated union schema
 const customerSchema = z.discriminatedUnion("customer_type", [
   individualCustomerSchema,
   businessCustomerSchema,
 ]);
-
 type CustomerFormData = z.infer<typeof customerSchema>;
-
 const defaultValues: CustomerFormData = {
   customer_type: "individual",
   first_name: "",
@@ -129,7 +98,66 @@ const defaultValues: CustomerFormData = {
   address: "",
 };
 
-export default function CustomersPage() {
+// --- OOP: Service for Customer Data ---
+class CustomerService {
+  async fetchAll(): Promise<Customer[]> {
+    return await getCustomers();
+  }
+  async add(data: CustomerFormData) {
+    return await addCustomer(data);
+  }
+  async update(id: string, data: CustomerFormData) {
+    return await updateCustomer(id, data);
+  }
+  async remove(id: string) {
+    return await deleteCustomer(id);
+  }
+}
+
+// --- OOP: Form Manager ---
+class CustomerFormManager {
+  private form: ReturnType<typeof useForm<CustomerFormData>>;
+  constructor(form: ReturnType<typeof useForm<CustomerFormData>>) {
+    this.form = form;
+  }
+  resetForNew() {
+    this.form.reset(defaultValues);
+  }
+  resetForEdit(customer: Customer) {
+    this.form.reset({
+      id: customer.id,
+      customer_type: customer.customer_type,
+      first_name: customer.first_name || "",
+      last_name: customer.last_name || "",
+      business_name: customer.business_name || "",
+      abn: customer.abn || "",
+      email: customer.email || "",
+      phone: customer.phone || "",
+      address: customer.address || "",
+    });
+  }
+  clearErrors() {
+    this.form.clearErrors();
+  }
+  setServerErrors(errors: Record<string, string[] | string>) {
+    Object.entries(errors).forEach(([field, messages]) => {
+      if (Array.isArray(messages) && messages.length > 0) {
+        this.form.setError(field as keyof CustomerFormData, {
+          type: "server",
+          message: messages[0],
+        });
+      } else if (typeof messages === "string") {
+        this.form.setError(field as keyof CustomerFormData, {
+          type: "server",
+          message: messages,
+        });
+      }
+    });
+  }
+}
+
+// --- Main Page Content ---
+function CustomersPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -141,27 +169,30 @@ export default function CustomersPage() {
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
-    defaultValues: defaultValues,
+    defaultValues,
   });
-
+  
+  // Memoize service and manager instances if they don't depend on component state/props
+  // For now, assuming they are stable or their instability is managed.
+  const formManager = new CustomerFormManager(form);
+  const customerService = new CustomerService();
   const customerType = form.watch("customer_type");
 
-  useEffect(() => {
-    // Check for 'new=true' query parameter to open the dialog immediately
-    if (searchParams.get("new") === "true") {
-      handleAddNewCustomer();
-      // Clean the URL - replace state to avoid adding to history
-      router.replace("/customers", undefined);
-    }
-  }, [searchParams, router]); // Re-run if searchParams changes
+  // --- Handlers (Memoized with useCallback) ---
 
-  const fetchCustomers = async () => {
+  const handleAddNewCustomer = useCallback(() => {
+    setEditingCustomer(null);
+    formManager.resetForNew();
+    setIsDialogOpen(true);
+  }, [formManager]);
+
+  const fetchCustomers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getCustomers();
+      const data = await customerService.fetchAll();
       setCustomers(data);
     } catch (error) {
-      console.error("Failed to fetch customers:", error);
+      console.error("Client: Failed to fetch customers:", error);
       toast({
         title: "Error",
         description: "Could not load customers. Please try again later.",
@@ -170,46 +201,39 @@ export default function CustomersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [customerService, toast]);
+
+  // --- Effects ---
+  useEffect(() => {
+    if (searchParams.get("new") === "true") {
+      handleAddNewCustomer();
+      router.replace("/customers", undefined);
+    }
+  }, [searchParams, router, handleAddNewCustomer]);
 
   useEffect(() => {
     fetchCustomers();
-  }, []); // Fetch only once on mount
+  }, [fetchCustomers]);
 
-  const handleAddNewCustomer = () => {
-    setEditingCustomer(null);
-    form.reset(defaultValues); // Reset form for new entry
-    setIsDialogOpen(true);
-  };
 
-  const handleEditCustomer = (customer: Customer) => {
+  const handleEditCustomer = useCallback((customer: Customer) => {
     setEditingCustomer(customer);
-    // Make sure all potential fields are included, setting to '' if undefined/null
-    form.reset({
-      id: customer.id,
-      customer_type: customer.customer_type,
-      first_name: customer.first_name || "",
-      last_name: customer.last_name || "",
-      business_name: customer.business_name || "",
-      abn: customer.abn || "",
-      email: customer.email || "",
-      phone: customer.phone || "",
-      address: customer.address || "",
-    });
+    formManager.resetForEdit(customer);
     setIsDialogOpen(true);
-  };
+  }, [formManager]);
 
-  const handleDeleteCustomer = async (id: string) => {
+  const handleDeleteCustomer = useCallback(async (id: string) => {
+    // Basic client-side ID validation
+    if (!id) {
+      console.error("Client: handleDeleteCustomer called with invalid ID.");
+      toast({ title: "Error", description: "Invalid customer ID.", variant: "destructive" });
+      return;
+    }
     try {
-      const result = await deleteCustomer(id);
+      const result = await customerService.remove(id);
       if (result.success) {
-        toast({
-          title: "Success",
-          description: "Customer deleted successfully.",
-        });
-        // Refresh the customer list optimistically or refetch
+        toast({ title: "Success", description: "Customer deleted successfully." });
         setCustomers((prev) => prev.filter((c) => c.id !== id));
-        // Or await fetchCustomers();
       } else {
         toast({
           title: "Error",
@@ -218,84 +242,62 @@ export default function CustomersPage() {
         });
       }
     } catch (error) {
-      console.error("Failed to delete customer:", error);
+      console.error(`Client: Failed to delete customer ${id}:`, error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: "An unexpected error occurred while deleting.",
         variant: "destructive",
       });
     }
-  };
+  }, [customerService, toast]);
 
-  const onSubmit = async (data: CustomerFormData) => {
+  const onSubmit = useCallback(async (data: CustomerFormData) => {
     setIsSubmitting(true);
-    form.clearErrors(); // Clear previous errors
-
-    // Clear business fields if type is individual before sending
+    formManager.clearErrors();
     const submissionData =
       data.customer_type === "individual"
         ? { ...data, business_name: undefined, abn: undefined }
         : data;
-
     try {
       let result;
+      const actionType = editingCustomer ? "update" : "add";
+
       if (editingCustomer && editingCustomer.id) {
-        // Update existing customer
-        result = await updateCustomer(editingCustomer.id, submissionData);
+        result = await customerService.update(editingCustomer.id, submissionData);
       } else {
-        // Add new customer
-        result = await addCustomer(submissionData);
+        result = await customerService.add(submissionData);
       }
 
       if (result.success && result.customer) {
         toast({
           title: "Success",
-          description: `Customer ${editingCustomer ? "updated" : "added"} successfully.`,
+          description: `Customer ${actionType}d successfully.`,
         });
-        setIsDialogOpen(false); // Close the dialog
-        await fetchCustomers(); // Refetch the list to show changes
+        setIsDialogOpen(false);
+        await fetchCustomers(); // Refetch to show changes
       } else {
-        // Display validation errors from the server action if available
-        if (result.errors) {
-          Object.entries(result.errors).forEach(([field, messages]) => {
-            // Check if messages is an array and has items before accessing [0]
-            if (Array.isArray(messages) && messages.length > 0) {
-              form.setError(field as keyof CustomerFormData, {
-                type: "server",
-                message: messages[0],
-              });
-            } else if (typeof messages === "string") {
-              // Handle cases where errors might be a single string
-              form.setError(field as keyof CustomerFormData, {
-                type: "server",
-                message: messages,
-              });
-            }
-          });
-        }
+        if (result.errors) formManager.setServerErrors(result.errors);
         toast({
           title: "Error",
           description:
             result.message ||
-            `Failed to ${editingCustomer ? "update" : "add"} customer. Check the highlighted fields.`,
+            `Failed to ${actionType} customer. Check the highlighted fields.`,
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error(
-        `Failed to ${editingCustomer ? "update" : "add"} customer:`,
-        error,
-      );
+      console.error(`Client: Failed to ${editingCustomer ? "update" : "add"} customer:`, error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: "An unexpected error occurred during submission.",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [customerService, editingCustomer, fetchCustomers, formManager, toast]);
 
+  // --- Render ---
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -310,8 +312,6 @@ export default function CustomersPage() {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl">
-          {" "}
-          {/* Adjusted width */}
           <DialogHeader>
             <DialogTitle>
               {editingCustomer ? "Edit Customer" : "Add New Customer"}
@@ -336,16 +336,19 @@ export default function CustomersPage() {
                     <FormLabel>Customer Type</FormLabel>
                     <FormControl>
                       <RadioGroup
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          if (value === "individual") {
+                            form.setValue("business_name", "");
+                            form.setValue("abn", "");
+                          }
+                        }}
                         defaultValue={field.value}
                         className="flex space-x-4"
                       >
                         <FormItem className="flex items-center space-x-2 space-y-0">
                           <FormControl>
-                            <RadioGroupItem
-                              value="individual"
-                              id="individual"
-                            />
+                            <RadioGroupItem value="individual" id="individual" />
                           </FormControl>
                           <FormLabel
                             htmlFor="individual"
@@ -362,7 +365,7 @@ export default function CustomersPage() {
                             htmlFor="business"
                             className="font-normal flex items-center gap-1"
                           >
-                            <Building className="h-4 w-4" /> Business
+                            <User className="h-4 w-4" /> Business
                           </FormLabel>
                         </FormItem>
                       </RadioGroup>
@@ -380,13 +383,9 @@ export default function CustomersPage() {
                     name="business_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Business Name *</FormLabel>
+                        <FormLabel>Business Name</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Doe Enterprises Pty Ltd"
-                            {...field}
-                            value={field.value ?? ""}
-                          />
+                          <Input placeholder="Doe Enterprises Pty Ltd" {...field} value={field.value ?? ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -399,28 +398,19 @@ export default function CustomersPage() {
                       <FormItem>
                         <FormLabel>ABN (Optional)</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="e.g., 11 111 111 111"
-                            {...field}
-                            value={field.value ?? ""}
-                          />
+                          <Input placeholder="11 111 111 111" {...field} value={field.value ?? ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <p className="text-sm text-muted-foreground mt-2 -mb-2">
-                    Contact Person (Optional)
-                  </p>
                 </>
               )}
 
               <div
                 className={cn(
                   "grid gap-4",
-                  customerType === "individual"
-                    ? "md:grid-cols-2"
-                    : "md:grid-cols-2",
+                  "md:grid-cols-2"
                 )}
               >
                 <FormField
@@ -428,21 +418,9 @@ export default function CustomersPage() {
                   name="first_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        {customerType === "individual"
-                          ? "First Name *"
-                          : "Contact First Name"}
-                      </FormLabel>
+                      <FormLabel>{customerType === "individual" ? "First Name" : "Contact First Name (Optional)"}</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder={
-                            customerType === "individual"
-                              ? "John"
-                              : "Contact First Name"
-                          }
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder={customerType === "individual" ? "John" : "Alex (Contact)"} {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -453,21 +431,9 @@ export default function CustomersPage() {
                   name="last_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        {customerType === "individual"
-                          ? "Last Name (Optional)"
-                          : "Contact Last Name (Optional)"}
-                      </FormLabel>
+                      <FormLabel>{customerType === "individual" ? "Last Name (Optional)" : "Contact Last Name (Optional)"}</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder={
-                            customerType === "individual"
-                              ? "Doe"
-                              : "Contact Last Name"
-                          }
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder={customerType === "individual" ? "Doe" : "Smith (Contact)"} {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -578,11 +544,10 @@ export default function CustomersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name / Business</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>ABN</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -590,71 +555,29 @@ export default function CustomersPage() {
                 {customers.map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell>
-                      {customer.customer_type === "business" ? (
-                        <>
-                          <div>{customer.business_name}</div>
-                          {(customer.first_name || customer.last_name) && (
-                            <div className="text-xs text-muted-foreground">
-                              Contact: {customer.first_name}{" "}
-                              {customer.last_name}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        `${customer.first_name} ${customer.last_name || ""}`
-                      )}
+                      {customer.customer_type === "individual"
+                        ? `${customer.first_name || ""} ${customer.last_name || ""}`.trim()
+                        : customer.business_name}
                     </TableCell>
-                    <TableCell className="capitalize">
-                      {customer.customer_type}
-                    </TableCell>
+                    <TableCell>{customer.customer_type}</TableCell>
                     <TableCell>{customer.email || "-"}</TableCell>
                     <TableCell>{customer.phone || "-"}</TableCell>
-                    <TableCell>{customer.abn || "-"}</TableCell>
-                    <TableCell className="text-right space-x-2">
+                    <TableCell className="text-right">
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         onClick={() => handleEditCustomer(customer)}
+                        className="mr-2"
                       >
                         <Edit className="h-4 w-4" />
-                        <span className="sr-only">Edit</span>
                       </Button>
-
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Are you absolutely sure?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will
-                              permanently delete the customer record for{" "}
-                              {customer.customer_type === "business"
-                                ? customer.business_name
-                                : `${customer.first_name} ${customer.last_name || ""}`}
-                              .
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteCustomer(customer.id)}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCustomer(customer.id!)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -664,5 +587,13 @@ export default function CustomersPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function CustomersPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /> <p className="ml-4 text-lg">Loading customers...</p></div>}>
+      <CustomersPageContent />
+    </Suspense>
   );
 }
