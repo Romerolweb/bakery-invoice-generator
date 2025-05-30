@@ -1,6 +1,6 @@
 # Dockerfile
 # Base image with Node.js 18
-FROM node:18-slim AS base
+FROM node:22-alpine AS base
 
 # Set working directory
 WORKDIR /app
@@ -19,55 +19,23 @@ RUN mkdir -p /app/public
 RUN npm run build
 
 # --- Production Stage ---
-FROM node:18-slim AS production
+FROM node:22-alpine AS production
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=${PORT:-3000}
 # Set a default for PDF_GENERATOR if not provided
-ENV PDF_GENERATOR=pdfkit
+ENV PDF_GENERATOR=${PDF_GENERATOR:-pdfkit}
 
-# Install Puppeteer dependencies
+# Install Puppeteer dependencies for Alpine
 # Based on https://pptr.dev/troubleshooting#chrome-doesnt-launch-on-linux
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
     ca-certificates \
-    fonts-liberation \
-    libappindicator3-1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libc6 \
-    libcairo2 \
-    libcups2 \
-    libdbus-1-3 \
-    libexpat1 \
-    libfontconfig1 \
-    libgbm1 \
-    libgcc1 \
-    libglib2.0-0 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libstdc++6 \
-    libx11-6 \
-    libx11-xcb1 \
-    libxcb1 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
-    libxrandr2 \
-    libxrender1 \
-    libxss1 \
-    libxtst6 \
-    lsb-release \
-    wget \
-    xdg-utils \
-    --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+    ttf-freefont
 
 WORKDIR /app
 

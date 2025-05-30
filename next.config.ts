@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  env: {
+    PORT: process.env.PORT || '9002',
+    PDF_GENERATOR: process.env.PDF_GENERATOR || 'pdfkit',
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

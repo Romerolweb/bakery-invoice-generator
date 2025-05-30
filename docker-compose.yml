@@ -4,9 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${PORT:-9002}:9002"
+      - "${PORT:-9002}:${PORT:-9002}"
     environment:
       NODE_ENV: development
+      PORT: ${PORT:-9002}
       PDF_GENERATOR: ${PDF_GENERATOR:-pdfkit}
       # For example: DATABASE_URL: ${DATABASE_URL}
     env_file:

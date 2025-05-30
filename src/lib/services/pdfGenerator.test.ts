@@ -147,6 +147,12 @@ describe("PdfGenerator", () => {
     vi.mocked(logger.error).mockImplementation(async () => {});
   });
 
+  // Mock process.cwd() for test environment
+Object.defineProperty(process, 'cwd', {
+  value: vi.fn().mockReturnValue('/mock/project/root'),
+  writable: true
+});
+
   it("should ensure PDF directory exists", async () => {
     // Access private properties/methods via 'as any'
     (pdfGenerator as any)._logPrefix = "[test]"; // Set log prefix for the test
