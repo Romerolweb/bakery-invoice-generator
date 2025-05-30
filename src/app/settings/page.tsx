@@ -80,14 +80,26 @@ export default function SettingsPage() {
       try {
         const profile = await getSellerProfile();
         // Ensure all fields are reset, including optional ones
-        form.reset({
-          name: profile.name || "",
-          business_address: profile.business_address || "",
-          ABN_or_ACN: profile.ABN_or_ACN || "",
-          contact_email: profile.contact_email || "",
-          phone: profile.phone || "",
-          logo_url: profile.logo_url || "",
-        });
+        if (profile) {
+          form.reset({
+            name: profile.name || "",
+            business_address: profile.business_address || "",
+            ABN_or_ACN: profile.ABN_or_ACN || "",
+            contact_email: profile.contact_email || "",
+            phone: profile.phone || "",
+            logo_url: profile.logo_url || "",
+          });
+        } else {
+          // Handle case where profile is null
+          form.reset({
+            name: "",
+            business_address: "",
+            ABN_or_ACN: "",
+            contact_email: "",
+            phone: "",
+            logo_url: "",
+          });
+        }
       } catch (error) {
         console.error("Failed to fetch seller profile:", error);
         toast({

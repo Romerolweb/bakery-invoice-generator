@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     await logger.error(
       funcPrefix,
       `Unexpected error processing PDF download for receipt ${receiptId}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)),
     );
     return new NextResponse("Internal Server Error", { status: 500 });
   }

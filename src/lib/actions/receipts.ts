@@ -4,9 +4,6 @@
 import {
   Receipt,
   LineItem,
-  Product,
-  SellerProfile,
-  Customer,
 } from "@/lib/types";
 import {
   IPdfGenerator,

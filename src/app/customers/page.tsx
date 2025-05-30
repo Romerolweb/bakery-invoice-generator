@@ -192,7 +192,7 @@ function CustomersPageContent() {
       const data = await customerService.fetchAll();
       setCustomers(data);
     } catch (error) {
-      console.error("Client: Failed to fetch customers:", error);
+      console.error("Client: Failed to fetch customers:", error instanceof Error ? error : new Error(String(error)));
       toast({
         title: "Error",
         description: "Could not load customers. Please try again later.",
@@ -242,7 +242,7 @@ function CustomersPageContent() {
         });
       }
     } catch (error) {
-      console.error(`Client: Failed to delete customer ${id}:`, error);
+      console.error(`Client: Failed to delete customer ${id}:`, error instanceof Error ? error : new Error(String(error)));
       toast({
         title: "Error",
         description: "An unexpected error occurred while deleting.",
@@ -286,7 +286,7 @@ function CustomersPageContent() {
         });
       }
     } catch (error) {
-      console.error(`Client: Failed to ${editingCustomer ? "update" : "add"} customer:`, error);
+      console.error(`Client: Failed to ${editingCustomer ? "update" : "add"} customer:`, error instanceof Error ? error : new Error(String(error)));
       toast({
         title: "Error",
         description: "An unexpected error occurred during submission.",

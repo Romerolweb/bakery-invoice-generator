@@ -1001,5 +1001,44 @@
       "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
       "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
     }
+  },
+  {
+    "receipt_id": "4a9da1f9-9c22-4879-9e58-380b81b02da5",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
   }
 ]

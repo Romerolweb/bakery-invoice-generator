@@ -50,7 +50,7 @@ export async function getProducts(): Promise<Product[]> {
     await logger.info(funcPrefix, `Retrieved ${products.length} products.`);
     return products;
   } catch (error) {
-    await logger.error(funcPrefix, "Error fetching products", error);
+    await logger.error(funcPrefix, "Error fetching products", error instanceof Error ? error : new Error(String(error)));
     return []; // Return empty array on error
   }
 }
@@ -102,7 +102,7 @@ export async function addProduct(
     await logger.error(
       funcPrefix,
       "Unexpected error during product creation",
-      error,
+      error instanceof Error ? error : new Error(String(error)),
     );
     return { success: false, message: "An unexpected error occurred." };
   }
@@ -162,7 +162,7 @@ export async function updateProduct(
     await logger.error(
       funcPrefix,
       "Unexpected error during product update",
-      error,
+      error instanceof Error ? error : new Error(String(error)),
     );
     return { success: false, message: "An unexpected error occurred." };
   }
@@ -196,7 +196,7 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
     await logger.error(
       funcPrefix,
       "Unexpected error during product deletion",
-      error,
+      error instanceof Error ? error : new Error(String(error)),
     );
     return { success: false, message: "An unexpected error occurred." };
   }
@@ -224,7 +224,7 @@ export async function getProductById(
     await logger.info(funcPrefix, `Retrieved product by ID.`);
     return product;
   } catch (error) {
-    await logger.error(funcPrefix, "Error fetching product by ID", error);
+    await logger.error(funcPrefix, "Error fetching product by ID", error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

@@ -1,4 +1,4 @@
-import type { Receipt, LineItem, Customer, SellerProfile } from "@/lib/types";
+import type { LineItem, Customer, SellerProfile } from "@/lib/types";
 import type PDFKit from "pdfkit"; // Correct import for PDFKit types
 import { IPdfReceiptTemplate } from "./IPdfReceiptTemplate";
 import * as pdfStyles from "../pdfStyles";

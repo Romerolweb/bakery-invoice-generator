@@ -81,7 +81,7 @@ export async function getCustomers(): Promise<Customer[]> {
     await logger.info(funcPrefix, `Retrieved ${customers.length} customers.`);
     return customers;
   } catch (error) {
-    await logger.error(funcPrefix, "Error fetching customers", error);
+    await logger.error(funcPrefix, "Error fetching customers", error instanceof Error ? error : new Error(String(error)));
     return []; // Return empty array on error as per previous logic
   }
 }
@@ -134,7 +134,7 @@ export async function addCustomer(
     await logger.error(
       funcPrefix,
       "Unexpected error during customer creation",
-      error,
+      error instanceof Error ? error : new Error(String(error)),
     );
     return { success: false, message: "An unexpected error occurred." };
   }
@@ -202,7 +202,7 @@ export async function updateCustomer(
     await logger.error(
       funcPrefix,
       "Unexpected error during customer update",
-      error,
+      error instanceof Error ? error : new Error(String(error)),
     );
     return { success: false, message: "An unexpected error occurred." };
   }
@@ -237,7 +237,7 @@ export async function deleteCustomer(id: string): Promise<ActionResult> {
     await logger.error(
       funcPrefix,
       "Unexpected error during customer deletion",
-      error,
+      error instanceof Error ? error : new Error(String(error)),
     );
     return { success: false, message: "An unexpected error occurred." };
   }
@@ -272,7 +272,7 @@ export async function getCustomerById(
     }
     return customer;
   } catch (error) {
-    await logger.error(funcPrefix, "Error fetching customer by ID", error);
+    await logger.error(funcPrefix, "Error fetching customer by ID", error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

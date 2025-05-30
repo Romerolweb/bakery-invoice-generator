@@ -108,7 +108,7 @@ export default function ProductsPage() {
       const data = await getProducts();
       setProducts(data);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
+      console.error("Failed to fetch products:", error instanceof Error ? error : new Error(String(error)));
       toast({
         title: "Error",
         description: "Could not load products. Please try again later.",
@@ -157,7 +157,7 @@ export default function ProductsPage() {
         });
       }
     } catch (error) {
-      console.error("Failed to delete product:", error);
+      console.error("Failed to delete product:", error instanceof Error ? error : new Error(String(error)));
       toast({
         title: "Error",
         description: "An unexpected error occurred.",

@@ -120,19 +120,12 @@ describe("PdfGenerator", () => {
     // Mock path.join specifically for PDF directory
     vi.mocked(path.join).mockImplementation((...args) => {
       if (args.includes("receipt-pdfs")) {
-        return path.posix.join(...args); // Use posix join for consistency
+        return args.join("/"); // Simple join with forward slash
       }
       if (args.includes("receipts.json")) {
-        // Example for other paths if needed
-        return path.posix.join(
-          process.cwd(),
-          "src",
-          "lib",
-          "data",
-          "receipts.json",
-        );
+        return `${process.cwd()}/src/lib/data/receipts.json`;
       }
-      return path.posix.join(...args); // Default posix join
+      return args.join("/"); // Default simple join
     });
 
     // Setup mock for PDFDocument constructor using the correctly typed mock

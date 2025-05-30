@@ -47,7 +47,7 @@ export default function ReceiptsHistoryPage() {
       // Sorting is now handled in the server action
       setReceipts(data);
     } catch (error) {
-      console.error(CLIENT_LOG_PREFIX, "Failed to fetch receipts", error); // Use console.error
+      console.error(CLIENT_LOG_PREFIX, "Failed to fetch receipts", error instanceof Error ? error : new Error(String(error))); // Use console.error
       toast({
         title: "Error Loading History",
         description: "Could not load invoice history. Please try again later.", // Updated text
@@ -108,7 +108,7 @@ export default function ReceiptsHistoryPage() {
         });
       }
     } catch (error) {
-      console.error(funcPrefix, "Error checking PDF status via API", error); // Use console.error
+      console.error(funcPrefix, "Error checking PDF status via API", error instanceof Error ? error : new Error(String(error))); // Use console.error
       toast({
         title: "Error Checking Status",
         description: `Could not check PDF status: ${error instanceof Error ? error.message : "Unknown error"}`,

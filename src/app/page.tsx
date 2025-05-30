@@ -131,7 +131,7 @@ export default function NewInvoicePage() {
           `Loaded ${customersData.length} customers and ${productsData.length} products.`,
         ); // Use console.log
       } catch (error) {
-        console.error(CLIENT_LOG_PREFIX, "Failed to load initial data", error); // Use console.error
+        console.error(CLIENT_LOG_PREFIX, "Failed to load initial data", error instanceof Error ? error : new Error(String(error))); // Use console.error
         toast({
           title: "Error Loading Data",
           description:

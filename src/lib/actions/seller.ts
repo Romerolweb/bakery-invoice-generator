@@ -54,7 +54,7 @@ export async function getSellerProfile(): Promise<SellerProfile | null> {
     }
     return profile;
   } catch (error) {
-    await logger.error(funcPrefix, "Error getting seller profile", error);
+    await logger.error(funcPrefix, "Error getting seller profile", error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -102,7 +102,7 @@ export async function updateSellerProfile(
     await logger.error(
       funcPrefix,
       "Unexpected error during seller profile update",
-      error,
+      error instanceof Error ? error : new Error(String(error)),
     );
     return { success: false, message: "An unexpected error occurred." };
   }
