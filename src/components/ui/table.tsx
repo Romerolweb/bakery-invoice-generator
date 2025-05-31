@@ -11,7 +11,9 @@ const Table = React.forwardRef<
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
       {...props}
-    />
+    >
+      {props.children}
+    </table>
   </div>
 ));
 Table.displayName = "Table";
@@ -54,15 +56,15 @@ TableFooter.displayName = "TableFooter";
 const TableRow = React.forwardRef<
   HTMLTableRowElement,
   React.HTMLAttributes<HTMLTableRowElement>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...otherProps }, ref) => (
   <tr
     ref={ref}
     className={cn(
       "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
       className,
     )}
-    {...props} // Children will be passed here
-  />
+    {...otherProps} // Spread other attributes like key, etc.
+  >{children}</tr> // Render children directly inside the tr tags
 ));
 TableRow.displayName = "TableRow";
 

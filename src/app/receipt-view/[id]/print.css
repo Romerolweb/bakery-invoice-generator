@@ -1,0 +1,35 @@
+/* filepath: /Users/sebastianromerolaguna/close/github.com/romerolweb/bakery-invoice-generator/src/app/receipt-view/[id]/print.css */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #fff; /* Ensure white background for printing */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact; /* Standard property */
+  }
+
+  /* Hide elements not meant for printing if any exist in ReceiptWebView */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure receipt content takes full width */
+  .receipt-print-container {
+    width: 100%;
+    margin: 0;
+    padding: 1cm; /* Add some padding for print */
+    box-shadow: none; /* Remove any shadows */
+    border: none; /* Remove any borders */
+  }
+
+  /* Add any other print-specific styles for ReceiptWebView components here */
+}
+
+/* Styles for screen viewing of the print page, if needed */
+.receipt-print-container-screen {
+  max-width: 800px; /* Or your preferred width */
+  margin: 2rem auto; /* Center on screen */
+  padding: 2rem;
+  border: 1px solid #eee;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
