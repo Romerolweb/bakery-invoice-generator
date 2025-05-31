@@ -243,7 +243,7 @@ export default function NewInvoicePage() {
               variant="outline"
               size="sm"
               onClick={() =>
-                window.open(`/receipts/${receiptId}`, "_blank")
+                window.open(`/receipt/${receiptId}`, "_blank") // Changed from /receipts/ to /receipt/
               }
             >
               <Eye className="mr-2 h-4 w-4" /> View Receipt

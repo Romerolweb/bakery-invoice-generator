@@ -20,7 +20,7 @@ export function ReceiptActionButton({ receiptId }: Readonly<ReceiptActionButtonP
           </a>
         </Button>
       </Link>
-      <Link href={`/receipt-view/${receiptId}`} passHref>
+      <Link href={`/api/print-receipt/${receiptId}`} passHref>
         <Button variant="outline" size="sm" asChild>
           <a className="flex items-center" target="_blank" rel="noopener noreferrer">
             <PrinterIcon className="mr-2 h-4 w-4" />

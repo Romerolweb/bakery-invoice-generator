@@ -7,9 +7,9 @@ interface PrintToolbarProps {
   receiptId: string;
 }
 
-export function PrintToolbar({ receiptId }: PrintToolbarProps) {
+export function PrintToolbar({ receiptId }: Readonly<PrintToolbarProps>) {
   const handlePrint = () => {
-    window.print();
+    window.open(`/api/print-receipt/${receiptId}`, '_blank'); // New: Open API route in new tab
   };
 
   const handleClose = () => {
