@@ -1,4 +1,4 @@
-import { ReceiptWebView } from '@/components/receipts/ReceiptWebView';
+import { ReceiptWebView } from '../../../components/receipts/ReceiptWebView';
 import './print.css';
 
 interface ReceiptViewPageProps {
