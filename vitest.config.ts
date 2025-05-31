@@ -8,6 +8,10 @@ export default defineConfig({
     globals: true, // Use global APIs like describe, it, expect
     environment: "jsdom", // Simulate browser environment for things like window, document
     setupFiles: [], // Optional: path to setup files (e.g., './tests/setup.ts')
+    include: [
+      "**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"
+    ],
     alias: {
       "@": path.resolve(__dirname, "./src"), // Match tsconfig paths
     },

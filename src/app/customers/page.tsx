@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useCallback } from "react"; // Added useCallback
+import { useState, useEffect, Suspense, useCallback, useMemo } from "react"; // Added useCallback and useMemo
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -172,10 +172,9 @@ function CustomersPageContent() {
     defaultValues,
   });
   
-  // Memoize service and manager instances if they don't depend on component state/props
-  // For now, assuming they are stable or their instability is managed.
-  const formManager = new CustomerFormManager(form);
-  const customerService = new CustomerService();
+  // Memoize service and manager instances to prevent infinite re-renders
+  const formManager = useMemo(() => new CustomerFormManager(form), [form]);
+  const customerService = useMemo(() => new CustomerService(), []);
   const customerType = form.watch("customer_type");
 
   // --- Handlers (Memoized with useCallback) ---

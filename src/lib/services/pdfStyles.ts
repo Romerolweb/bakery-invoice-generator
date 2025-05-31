@@ -1,8 +1,13 @@
 // PDF Styling and Constants
 
-// Use built-in PDFKit fonts that are more universally available
-export const FONT_REGULAR = "Courier";
-export const FONT_BOLD = "Courier-Bold";
+// Use built-in PDFKit standard fonts (no external files needed)
+// PDFKit has these 14 built-in fonts available without external files:
+// Helvetica, Helvetica-Bold, Helvetica-Oblique, Helvetica-BoldOblique
+// Times-Roman, Times-Bold, Times-Italic, Times-BoldItalic
+// Courier, Courier-Bold, Courier-Oblique, Courier-BoldOblique
+// Symbol, ZapfDingbats
+export const FONT_REGULAR = "Helvetica";
+export const FONT_BOLD = "Helvetica-Bold";
 
 export const PAGE_MARGIN = 50;
 

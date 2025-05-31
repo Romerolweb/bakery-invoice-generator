@@ -14,7 +14,7 @@ import PDFDocument from "pdfkit";
 import { logger } from "@/lib/services/logging"; // Removed format and parseISO as they are used by template
 import * as pdfStyles from "./pdfStyles"; // Import styles
 
-const DATA_DIR = path.join(process.cwd(), "src", "lib", "data");
+const DATA_DIR = path.join(process.cwd() || __dirname, "src", "lib", "data");
 const PDF_DIR = path.join(DATA_DIR, "receipt-pdfs"); // Directory to store generated PDFs
 
 export class PdfGenerator implements IPdfGenerator {
@@ -68,13 +68,18 @@ export class PdfGenerator implements IPdfGenerator {
       });
       
       // Set font after document creation to handle it properly
+      // PDFKit has 14 built-in fonts that don't require external files:
+      // Helvetica, Helvetica-Bold, Helvetica-Oblique, Helvetica-BoldOblique
+      // Times-Roman, Times-Bold, Times-Italic, Times-BoldItalic
+      // Courier, Courier-Bold, Courier-Oblique, Courier-BoldOblique
+      // Symbol, ZapfDingbats
       try {
         this._doc.font(pdfStyles.FONT_REGULAR);
-        logger.debug(this._logPrefix, `Font ${pdfStyles.FONT_REGULAR} set successfully`);
+        logger.debug(this._logPrefix, `Built-in font ${pdfStyles.FONT_REGULAR} set successfully`);
       } catch (fontError) {
-        // Fallback to a basic font if the specified font fails
-        logger.warn(this._logPrefix, `Font ${pdfStyles.FONT_REGULAR} failed, falling back to Courier`);
-        this._doc.font('Courier');
+        // Fallback to Helvetica which is always available in PDFKit
+        logger.warn(this._logPrefix, `Font ${pdfStyles.FONT_REGULAR} failed, falling back to Helvetica`);
+        this._doc.font('Helvetica');
       }
       
       // Pass the document and logPrefix to the template
@@ -309,8 +314,7 @@ export class PdfGenerator implements IPdfGenerator {
       this._template.addHeader(receipt.is_tax_invoice);
       this._template.addSellerInfo(receipt.seller_profile_snapshot);
       this._template.addCustomerInfo(receipt.customer_snapshot);
-      // If addInvoiceDetails is not part of the interface, remove or replace with the correct method if needed.
-      // this._template.addInvoiceDetails(receipt.receipt_id, receipt.date_of_purchase);
+      this._template.addInvoiceInfo(receipt.receipt_id, receipt.date_of_purchase);
 
       this._template.addItemsTable(receipt.line_items, receipt.GST_amount > 0);
       this._template.addTotals(
@@ -319,6 +323,7 @@ export class PdfGenerator implements IPdfGenerator {
         receipt.total_inc_GST,
         receipt.GST_amount > 0 // Pass includeGST as the fourth argument
       );
+      this._template.addFooter(); // Add footer to complete the PDF
 
       // --- Finalize Document ---
       await this._finalize();
