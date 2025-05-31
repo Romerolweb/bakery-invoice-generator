@@ -1,0 +1,161 @@
+/* Print-optimized styles for receipt view */
+@media print {
+  /* Hide non-printable elements */
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* Remove all margins and padding from page */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  /* Optimize page layout for printing */
+  .receipt-container {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0.5in !important;
+    background: white !important;
+  }
+  
+  .receipt-content {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    font-size: 12pt !important;
+    line-height: 1.4 !important;
+  }
+  
+  /* Ensure tables don't break awkwardly */
+  table {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border-collapse: collapse !important;
+  }
+  
+  table th, 
+  table td {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* Optimize fonts for printing */
+  body {
+    font-family: 'Times New Roman', serif !important;
+    font-size: 12pt !important;
+    line-height: 1.4 !important;
+    color: black !important;
+  }
+  
+  h1, h2, h3 {
+    font-family: 'Times New Roman', serif !important;
+    color: black !important;
+  }
+  
+  /* Remove shadows and effects that don't print well */
+  .shadow-sm,
+  .shadow,
+  .shadow-md,
+  .shadow-lg {
+    box-shadow: none !important;
+  }
+  
+  /* Ensure good contrast for printing */
+  .text-gray-600 {
+    color: #333333 !important;
+  }
+  
+  .text-gray-900 {
+    color: #000000 !important;
+  }
+  
+  .bg-gray-50 {
+    background-color: #f8f9fa !important;
+  }
+  
+  /* Borders should be visible in print */
+  .border,
+  .border-gray-300 {
+    border: 1pt solid #333333 !important;
+  }
+  
+  .border-b {
+    border-bottom: 1pt solid #333333 !important;
+  }
+  
+  .border-t {
+    border-top: 1pt solid #333333 !important;
+  }
+  
+  /* Ensure proper spacing */
+  .space-y-6 > * + * {
+    margin-top: 18pt !important;
+  }
+  
+  .space-y-2 > * + * {
+    margin-top: 6pt !important;
+  }
+  
+  .space-y-1 > * + * {
+    margin-top: 3pt !important;
+  }
+  
+  /* Grid layouts should work in print */
+  .grid-cols-1,
+  .md\\:grid-cols-2 {
+    display: block !important;
+  }
+  
+  @supports (display: grid) {
+    .md\\:grid-cols-2 {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+    }
+  }
+  
+  /* Font weights */
+  .font-bold {
+    font-weight: bold !important;
+  }
+  
+  .font-semibold {
+    font-weight: 600 !important;
+  }
+  
+  .font-medium {
+    font-weight: 500 !important;
+  }
+  
+  /* Text alignment */
+  .text-center {
+    text-align: center !important;
+  }
+  
+  .text-right {
+    text-align: right !important;
+  }
+  
+  .text-left {
+    text-align: left !important;
+  }
+  
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always !important;
+  }
+  
+  .page-break-after {
+    page-break-after: always !important;
+  }
+  
+  .no-page-break {
+    page-break-inside: avoid !important;
+  }
+}

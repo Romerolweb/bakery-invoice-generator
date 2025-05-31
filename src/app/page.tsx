@@ -60,7 +60,7 @@ import {
   PlusCircle,
   Trash2,
   CalendarIcon,
-  Download,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -231,52 +231,26 @@ export default function NewInvoicePage() {
         const receiptId = result.receipt.receipt_id;
         const shortId = receiptId.substring(0, 8);
 
-        // Handle PDF status based on the result
-        if (result.pdfGenerated && result.pdfPath) {
-          console.info(
-            CLIENT_LOG_PREFIX,
-            `Invoice ${shortId}... created AND PDF generated. Server Path (internal): ${result.pdfPath}`,
-          ); // Use console.info
-          toast({
-            title: "Invoice Created & PDF Ready",
-            description: `Invoice ${shortId}... generated successfully.`,
-            action: (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  window.open(`/api/download-pdf?id=${receiptId}`, "_blank")
-                }
-              >
-                <Download className="mr-2 h-4 w-4" /> Download PDF
-              </Button>
-            ),
-            duration: 9000, // Longer duration for action button
-          });
-        } else if (result.pdfError) {
-          console.warn(
-            CLIENT_LOG_PREFIX,
-            `Invoice ${shortId}... created, but PDF generation FAILED: ${result.pdfError}`,
-          ); // Use console.warn
-          toast({
-            title: "Invoice Created (PDF Failed)",
-            description: `Invoice ${shortId}... saved, but PDF generation failed: ${result.pdfError}`,
-            variant: "destructive",
-            duration: 15000, // Keep visible longer for error details
-          });
-        } else {
-          // This case should be less common now with the refactored action result
-          console.warn(
-            CLIENT_LOG_PREFIX,
-            `Invoice ${shortId}... created, but PDF status is unknown or generation was not attempted due to prior error.`,
-          ); // Use console.warn
-          toast({
-            title: "Invoice Created (PDF Status Uncertain)",
-            description: `Invoice ${shortId}... saved, but the PDF status is unclear. Check history later.`,
-            variant: "default", // Use default variant
-            duration: 7000,
-          });
-        }
+        console.info(
+          CLIENT_LOG_PREFIX,
+          `Invoice ${shortId}... created successfully.`,
+        ); // Use console.info
+        toast({
+          title: "Invoice Created Successfully",
+          description: `Invoice ${shortId}... has been created.`,
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                window.open(`/receipts/${receiptId}`, "_blank")
+              }
+            >
+              <Eye className="mr-2 h-4 w-4" /> View Receipt
+            </Button>
+          ),
+          duration: 9000, // Longer duration for action button
+        });
 
         // Reset form only on successful data save
         console.info(CLIENT_LOG_PREFIX, "Resetting form and totals..."); // Use console.info

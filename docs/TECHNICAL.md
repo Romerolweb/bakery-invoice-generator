@@ -10,7 +10,7 @@ This document provides detailed technical information for developers working on 
 
 1. **Separation of Concerns**: Clear boundaries between data access, business logic, and presentation
 2. **Type Safety**: Comprehensive TypeScript usage throughout the application
-3. **Template-Based PDF Generation**: Extensible system for different PDF layouts
+3. **Web-Based Receipt Viewing**: Browser-based receipt display and printing system
 4. **Server Actions**: Next.js server actions for secure server-side operations
 5. **Component Composition**: Reusable UI components following Shadcn patterns
 
@@ -27,7 +27,6 @@ This document provides detailed technical information for developers working on 
 - **Next.js API Routes** for endpoints
 - **Server Actions** for form handling
 - **File-based JSON storage** for data persistence
-- **PDFKit** for PDF generation
 
 #### Development
 - **Vitest** for unit testing
@@ -46,8 +45,7 @@ src/lib/data/
 ├── customers.json       # Customer records
 ├── products.json        # Product catalog
 ├── receipts.json        # Receipt/invoice records
-├── seller-profile.json  # Business information
-└── receipt-pdfs/        # Generated PDF files
+└── seller-profile.json  # Business information
 ```
 
 ### Data Access Layer
@@ -80,92 +78,119 @@ Located in `src/lib/actions/`, this layer handles:
 - **Business logic coordination**
 - **Error handling and user feedback**
 
-## PDF Generation System
+## Web-Based Receipt System
 
 ### Architecture
 
-The PDF generation system uses a template-based architecture for flexibility and maintainability:
+The web-based receipt system uses a component-based architecture for modularity and maintainability:
 
 ```
-PdfGenerator (Orchestrator)
+ReceiptWebView (Container)
     ↓
-Template Registry (Configuration)
+ReceiptContent (Layout)
     ↓
-IPdfReceiptTemplate (Interface)
+Receipt Components (Sections)
     ↓
-DefaultReceiptTemplate (Implementation)
-    ↓
-PDFKit (Engine)
+HTML/CSS (Rendering)
 ```
 
 ### Key Components
 
-#### 1. IPdfReceiptTemplate Interface
+#### 1. ReceiptWebView Component
 
-Defines the contract for all PDF templates:
+Main container that manages receipt data fetching and state:
 
 ```typescript
-export interface IPdfReceiptTemplate {
-  doc: PDFKit.PDFDocument;
-  logPrefix: string;
+interface ReceiptWebViewProps {
+  receiptId: string;
+}
+
+export function ReceiptWebView({ receiptId }: ReceiptWebViewProps) {
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  setDocument(doc: PDFKit.PDFDocument): void;
-  setLogPrefix(logPrefix: string): void;
-  addHeader(isTaxInvoice: boolean): void;
-  addSellerInfo(seller: SellerProfile): void;
-  addCustomerInfo(customer: Omit<Customer, "id">): void;
-  addInvoiceInfo(invoiceId: string, dateIsoString: string): void;
-  addItemsTable(lineItems: LineItem[], includeGstColumn: boolean): void;
-  addTotals(subtotal: number, gstAmount: number, total: number, includeGST: boolean): void;
-  addFooter(notes?: string): void;
+  // Fetch receipt data from API
+  // Handle loading and error states
+  // Render ReceiptContent when ready
 }
 ```
 
-#### 2. Template Registry
+#### 2. ReceiptContent Component
 
-Centralizes template configuration:
+Layout component that renders all receipt sections:
 
 ```typescript
-export const PDF_TEMPLATE_CONFIG = {
-  DEFAULT: "default",
-  // Add new templates here
-} as const;
+interface ReceiptContentProps {
+  receipt: Receipt;
+}
 
-export const CURRENT_PDF_TEMPLATE = PDF_TEMPLATE_CONFIG.DEFAULT;
+export function ReceiptContent({ receipt }: ReceiptContentProps) {
+  return (
+    <div className="receipt-container">
+      <ReceiptHeader isInvoice={receipt.is_tax_invoice} />
+      <ReceiptSellerInfo seller={receipt.seller_profile_snapshot} />
+      <ReceiptCustomerInfo customer={receipt.customer_snapshot} />
+      <ReceiptItemsTable items={receipt.line_items} />
+      <ReceiptTotals receipt={receipt} />
+      <ReceiptFooter notes={receipt.notes} />
+    </div>
+  );
+}
 ```
 
-#### 3. PdfGenerator Service
+#### 3. Section Components
 
-Orchestrates the PDF creation process:
+Individual components for each receipt section:
 
-1. **Initialization**: Sets up PDFKit document and file streams
-2. **Template Setup**: Instantiates and configures the selected template
-3. **Content Generation**: Delegates content creation to the template
-4. **Finalization**: Handles file writing and cleanup
-5. **Error Handling**: Manages failures and cleanup
+- **ReceiptHeader**: Displays "RECEIPT" or "TAX INVOICE" title
+- **ReceiptSellerInfo**: Business information and contact details
+- **ReceiptCustomerInfo**: Customer details and address
+- **ReceiptItemsTable**: Itemized list with prices and GST
+- **ReceiptTotals**: Subtotal, GST, and total calculations
+- **ReceiptFooter**: Notes and footer information
 
-### Adding New PDF Templates
+### Print Optimization
 
-1. **Create Template Class**:
+The system includes CSS print styles for optimal printing:
+
+```css
+@media print {
+  .print\\:hidden {
+    display: none;
+  }
+  
+  .receipt-container {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Additional print-specific styling */
+}
+```
+
+### Adding New Receipt Layouts
+
+1. **Create Layout Component**:
    ```typescript
-   // src/lib/services/pdfTemplates/ModernReceiptTemplate.ts
-   export class ModernReceiptTemplate implements IPdfReceiptTemplate {
-     // Implement all interface methods
+   // src/components/receipts/layouts/CompactReceiptLayout.tsx
+   export function CompactReceiptLayout({ receipt }: ReceiptContentProps) {
+     // Implement compact layout
    }
    ```
 
-2. **Register Template**:
+2. **Update ReceiptContent**:
    ```typescript
-   // src/lib/services/pdfTemplates/templateRegistry.ts
-   export const PDF_TEMPLATE_CONFIG = {
-     DEFAULT: "default",
-     MODERN: "modern",  // Add new template
-   } as const;
-   ```
-
-3. **Configure Selection**:
-   ```typescript
-   export const CURRENT_PDF_TEMPLATE = PDF_TEMPLATE_CONFIG.MODERN;
+   // Add layout selection logic
+   const layoutType = receipt.layout || 'default';
+   
+   switch (layoutType) {
+     case 'compact':
+       return <CompactReceiptLayout receipt={receipt} />;
+     default:
+       return <DefaultReceiptLayout receipt={receipt} />;
+   }
    ```
 
 ## Component Architecture
@@ -341,7 +366,6 @@ describe('Component/Function Name', () => {
 ```bash
 # Required
 PORT=9002
-PDF_GENERATOR=pdfkit
 
 # Optional
 NODE_ENV=production

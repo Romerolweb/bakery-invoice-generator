@@ -5,7 +5,7 @@
 - Seller Profile Management: Configure and store seller details such as business name, address, ABN/ACN, and contact email.
 - Product Catalog Management: Manage product catalog including adding, updating, and deleting products with details like name, description, unit price, and GST applicability.
 - Customer Management: Create and manage customer records with details like name, contact information, and address.
-- Receipt Generation: Generate PDF receipts and tax invoices with required details such as business information, customer details, itemized products, and GST calculations.
+- Receipt Generation: Generate web-based receipts and tax invoices with required details such as business information, customer details, itemized products, and GST calculations. Receipts are viewable and printable directly from the browser.
 
 ## Style Guidelines:
 

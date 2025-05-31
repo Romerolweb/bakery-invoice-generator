@@ -25,9 +25,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge"; // To show Tax Invoice status
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Download, PlusCircle, AlertCircle } from "lucide-react"; // Keep PlusCircle if needed elsewhere, or import inline
+import { Loader2, PlusCircle } from "lucide-react"; // Removed Download, AlertCircle
 import Link from "next/link"; // For linking back to create new
-// Removed logger import: import { logger } from '@/lib/services/logging';
+import { ReceiptViewButton } from "@/components/receipts/ReceiptViewButton"; // Add receipt view button
 
 const CLIENT_LOG_PREFIX = "ReceiptsHistoryPage";
 
@@ -35,7 +35,6 @@ export default function ReceiptsHistoryPage() {
   const { toast } = useToast();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [checkingPdfId, setCheckingPdfId] = useState<string | null>(null); // Track which PDF is being checked
 
   const fetchReceipts = async () => {
     console.info(CLIENT_LOG_PREFIX, "Starting fetchReceipts..."); // Use console.info
@@ -63,73 +62,6 @@ export default function ReceiptsHistoryPage() {
   useEffect(() => {
     fetchReceipts();
   }, []); // Fetch only once
-
-  const checkPdfStatus = async (receiptId: string) => {
-    const funcPrefix = `${CLIENT_LOG_PREFIX}:checkPdfStatus:${receiptId.substring(0, 8)}`;
-    console.info(funcPrefix, `Checking PDF status...`); // Use console.info
-    setCheckingPdfId(receiptId); // Indicate checking started
-    try {
-      const response = await fetch(`/api/pdf-status?id=${receiptId}`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `API error ${response.status}: ${errorText || response.statusText}`,
-        );
-      }
-      const data = await response.json();
-
-      if (data.status === "ready") {
-        console.info(funcPrefix, `PDF is ready, initiating download.`); // Use console.info
-        toast({
-          title: "PDF Ready",
-          description: `Downloading PDF for ${receiptId.substring(0, 8)}...`,
-          duration: 3000,
-        });
-        window.open(`/api/download-pdf?id=${receiptId}`, "_blank");
-      } else if (data.status === "not_found") {
-        console.warn(
-          funcPrefix,
-          `PDF not found. It might be generating or failed.`,
-        ); // Use console.warn
-        toast({
-          title: "PDF Not Ready",
-          description:
-            "PDF is not available yet. It might still be generating, or an error occurred during creation. Please wait a moment and try again, or regenerate if the issue persists.",
-          variant: "default",
-          duration: 9000,
-        });
-      } else {
-        console.warn(funcPrefix, `Unknown PDF status received: ${data.status}`); // Use console.warn
-        toast({
-          title: "Unknown Status",
-          description: "Could not determine PDF status.",
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
-    } catch (error) {
-      console.error(funcPrefix, "Error checking PDF status via API", error instanceof Error ? error : new Error(String(error))); // Use console.error
-      toast({
-        title: "Error Checking Status",
-        description: `Could not check PDF status: ${error instanceof Error ? error.message : "Unknown error"}`,
-        variant: "destructive",
-        duration: 7000,
-      });
-    } finally {
-      setCheckingPdfId(null); // Indicate checking finished regardless of outcome
-    }
-  };
-
-  const handleDownloadPdf = (receiptId: string) => {
-    const funcPrefix = `${CLIENT_LOG_PREFIX}:handleDownloadPdf:${receiptId.substring(0, 8)}`;
-    console.info(funcPrefix, `Initiating PDF status check for download.`); // Use console.info
-    toast({
-      title: "Checking PDF...",
-      description: `Checking availability for ${receiptId.substring(0, 8)}...`,
-      duration: 2500,
-    });
-    checkPdfStatus(receiptId); // Check status first, which will trigger download if ready
-  };
 
   return (
     <div className="space-y-6">
@@ -208,21 +140,10 @@ export default function ReceiptsHistoryPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      {/* Placeholder: Add view/details button later if needed */}
-                      {/* <Button variant="ghost" size="icon" title="View Details">... */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownloadPdf(receipt.receipt_id)}
-                        disabled={checkingPdfId === receipt.receipt_id} // Disable button while checking this specific PDF
-                      >
-                        {checkingPdfId === receipt.receipt_id ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="mr-2 h-4 w-4" />
-                        )}
-                        Download PDF
-                      </Button>
+                      <ReceiptViewButton 
+                        receiptId={receipt.receipt_id}
+                        variant="view"
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

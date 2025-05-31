@@ -3,11 +3,11 @@ import react from "@vitejs/plugin-react"; // Required for testing React componen
 import path from "path";
 
 export default defineConfig({
-  // plugins: [react()], // Uncomment if you test React components directly
+  plugins: [react()], // Enable React testing
   test: {
     globals: true, // Use global APIs like describe, it, expect
     environment: "jsdom", // Simulate browser environment for things like window, document
-    setupFiles: [], // Optional: path to setup files (e.g., './tests/setup.ts')
+    setupFiles: ['./vitest.setup.ts'], // Setup file for testing library
     include: [
       "**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
       "**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"
