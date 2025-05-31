@@ -15,7 +15,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -363,7 +362,7 @@ export default function ProductsPage() {
                   <TableRow key={product.id}>
                     <TableCell>{product.name}</TableCell>
                     <TableCell className="max-w-[200px] truncate">
-                      {product.description || "-"}
+                      {product.description ?? "-"}
                     </TableCell>
                     <TableCell>${product.unit_price.toFixed(2)}</TableCell>
                     <TableCell>
