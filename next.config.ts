@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   env: {
-    PORT: process.env.PORT || '9002',
+    PORT: process.env.PORT ?? '9002',
   },
   typescript: {
     ignoreBuildErrors: true,

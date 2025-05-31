@@ -10,10 +10,10 @@ interface ReceiptViewButtonProps {
 }
 
 export function ReceiptViewButton({ 
-  receiptId, 
+  receiptId,
   variant = 'view',
   className = '' 
-}: ReceiptViewButtonProps) {
+}: Readonly<ReceiptViewButtonProps>) {
   const handleOpenReceipt = () => {
     const url = `/receipt/${receiptId}`;
     const features = 'width=900,height=700,scrollbars=yes,resizable=yes,toolbar=no,menubar=no';

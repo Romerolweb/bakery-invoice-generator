@@ -27,12 +27,12 @@ ENV PORT=${PORT:-3000}
 # Install Puppeteer dependencies for Alpine
 # Based on https://pptr.dev/troubleshooting#chrome-doesnt-launch-on-linux
 RUN apk add --no-cache \
+    ca-certificates \
     chromium \
-    nss \
     freetype \
     freetype-dev \
     harfbuzz \
-    ca-certificates \
+    nss \
     ttf-freefont
 
 WORKDIR /app
