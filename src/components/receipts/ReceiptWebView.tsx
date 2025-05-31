@@ -17,7 +17,7 @@ interface ApiResponse {
   error?: string;
 }
 
-export function ReceiptWebView({ receiptId }: ReceiptWebViewProps) {
+export function ReceiptWebView({ receiptId }: Readonly<ReceiptWebViewProps>) {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function ReceiptWebView({ receiptId }: ReceiptWebViewProps) {
         const result: ApiResponse = await response.json();
 
         if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch receipt');
+          throw new Error(result.error ?? 'Failed to fetch receipt');
         }
 
         if (!result.data) {

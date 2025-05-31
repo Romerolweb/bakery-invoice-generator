@@ -1,4 +1,4 @@
-// filepath: /Users/sebastianromerolaguna/close/github.com/romerolweb/bakery-invoice-generator/src/components/receipts/ReceiptActionButton.tsx
+// filepath: path to project/ romerolweb/bakery-invoice-generator/src/components/receipts/ReceiptActionButton.tsx
 'use client';
 
 import Link from 'next/link';
