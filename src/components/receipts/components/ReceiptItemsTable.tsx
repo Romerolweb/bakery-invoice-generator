@@ -20,7 +20,7 @@ export function ReceiptItemsTable({ items, showGST }: ReceiptItemsTableProps) {
         </thead>
         <tbody>
           {items.map((item, index) => (
-            <tr key={index} className="hover:bg-gray-25">
+            <tr key={index} className="hover:bg-gray-50">
               <td className="border border-gray-300 px-4 py-2">
                 {item.description || item.product_name}
               </td>
