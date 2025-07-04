@@ -20,8 +20,9 @@ async function readCustomersFile(): Promise<Customer[]> {
       `Successfully read customers file: ${customersFilePath}`,
     );
     return JSON.parse(data) as Customer[];
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) { // Changed from any to unknown
+    // Type guard for ENOENT error
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Customers file not found at ${customersFilePath}, returning empty array.`,
@@ -31,9 +32,13 @@ async function readCustomersFile(): Promise<Customer[]> {
     await logger.error(
       funcPrefix,
       `Error reading customers file: ${customersFilePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)) // Ensure Error object for logger
     );
-    throw new Error(`Failed to read customers data: ${error.message}`); // Re-throw other errors
+    // Check if error is an instance of Error to access message property
+    if (error instanceof Error) {
+      throw new Error(`Failed to read customers data: ${error.message}`);
+    }
+    throw new Error(`Failed to read customers data: Unexpected error occurred.`); // Fallback
   }
 }
 
@@ -47,13 +52,17 @@ async function writeCustomersFile(customers: Customer[]): Promise<void> {
       funcPrefix,
       `Successfully wrote customers file: ${customersFilePath}`,
     );
-  } catch (error: any) {
+  } catch (error: unknown) { // Changed from any to unknown
     await logger.error(
       funcPrefix,
       `Error writing customers file: ${customersFilePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)) // Ensure Error object for logger
     );
-    throw new Error(`Failed to write customers data: ${error.message}`); // Re-throw error
+    // Check if error is an instance of Error to access message property
+    if (error instanceof Error) {
+      throw new Error(`Failed to write customers data: ${error.message}`);
+    }
+    throw new Error(`Failed to write customers data: Unexpected error occurred.`); // Fallback
   }
 }
 

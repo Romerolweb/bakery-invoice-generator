@@ -138,7 +138,11 @@ export async function updateProduct(
   );
   try {
     // Prepare data for update (remove ID from the payload)
-    const { id: _id, ...dataToUpdate } = validationResult.data;
+    // const { id: _id, ...dataToUpdate } = validationResult.data; // Original line
+    const dataToUpdate = { ...validationResult.data };
+    if ('id' in dataToUpdate) {
+      delete (dataToUpdate as { id?: string }).id; // Remove id
+    }
 
     const updatedProduct = await ProductDataAccess.updateProduct(
       id,

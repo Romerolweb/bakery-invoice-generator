@@ -1,5 +1,5 @@
 // src/lib/recordChanges.ts
-import fs from "fs";
+// import fs from "fs"; // Removed unused static import, fs is dynamically imported
 import path from "path";
 import { format } from "date-fns";
 import { logger } from "./services/logging"; // Import logger for internal use if needed

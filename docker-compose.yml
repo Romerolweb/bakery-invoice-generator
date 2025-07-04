@@ -14,12 +14,12 @@ services:
     volumes:
       - .:/app # Mount the host directory to the container for live updates in dev
       - /app/node_modules # Exclude node_modules from the mount to use container's version
-      - pdf_data:/app/src/lib/data/receipt-pdfs # Named volume for persistent PDF storage
-    # Run as 'node' user (UID 1000 typically). Ensure host's ./src/lib/data is writable by this UID for mkdir.
+      # - pdf_data:/app/src/lib/data/receipt-pdfs # Removed PDF volume
+    # Run as 'node' user (UID 1000 typically).
     user: "node"
     working_dir: /app
-    # Create PDF directory and start dev server
-    command: sh -c "mkdir -p src/lib/data/receipt-pdfs && npm run dev"
+    # Start dev server
+    command: npm run dev
     develop:
       watch:
         - action: sync
@@ -41,6 +41,6 @@ services:
         - action: rebuild
           path: tsconfig.json
 
-volumes:
-  pdf_data: # Defines the named volume for storing generated PDFs
+# volumes:
+  # pdf_data: # Defines the named volume for storing generated PDFs # Removed PDF volume
 

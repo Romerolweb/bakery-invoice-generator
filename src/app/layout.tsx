@@ -44,7 +44,7 @@ export default function RootLayout({
               >
                 {/* Replace with SVG logo if available */}
                 <ShoppingBag className="h-6 w-6 text-primary" />
-                <span>Baker's Invoice</span>
+                <span>Baker&apos;s Invoice</span>
               </Link>
             </SidebarHeader>
             <SidebarContent>
@@ -93,7 +93,7 @@ export default function RootLayout({
             </SidebarContent>
             <SidebarFooter className="p-4 text-xs text-muted-foreground">
               {/* Footer content if needed */}
-              &copy; {new Date().getFullYear()} Baker's Invoice
+              &copy; {new Date().getFullYear()} Baker&apos;s Invoice
             </SidebarFooter>
           </Sidebar>
           <SidebarInset>

@@ -14,7 +14,7 @@ import {
 } from "@/lib/actions/customers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+// import { Label } from "@/components/ui/label"; // Removed unused import
 import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
@@ -38,7 +38,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  // DialogTrigger, // Removed unused import
   DialogClose,
 } from "@/components/ui/dialog";
 import {

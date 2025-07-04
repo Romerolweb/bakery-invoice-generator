@@ -24,16 +24,16 @@ FROM node:22-alpine AS production
 ENV NODE_ENV=production
 ENV PORT=${PORT:-3000}
 
-# Install Puppeteer dependencies for Alpine
-# Based on https://pptr.dev/troubleshooting#chrome-doesnt-launch-on-linux
-RUN apk add --no-cache \
-    ca-certificates \
-    chromium \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    nss \
-    ttf-freefont
+# Removed Puppeteer/Chromium dependencies as PDF generation is no longer the primary focus.
+# If any other functionality unexpectedly requires these, they might need to be re-added selectively.
+# RUN apk add --no-cache \
+#     ca-certificates \
+#     chromium \
+#     freetype \
+#     freetype-dev \
+#     harfbuzz \
+#     nss \
+#     ttf-freefont
 
 WORKDIR /app
 

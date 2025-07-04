@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // Added useCallback
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -39,7 +39,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  // DialogTrigger, // Removed unused import
   DialogClose,
 } from "@/components/ui/dialog";
 import {
@@ -101,7 +101,7 @@ export default function ProductsPage() {
     },
   });
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getProducts();
@@ -116,11 +116,11 @@ export default function ProductsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]); // Added useCallback and toast dependency
 
   useEffect(() => {
     fetchProducts();
-  }, [toast]);
+  }, [fetchProducts]); // Changed dependency to fetchProducts
 
   const handleAddNewProduct = () => {
     setEditingProduct(null);
@@ -395,7 +395,7 @@ export default function ProductsPage() {
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                               This action cannot be undone. This will
-                              permanently delete the product "{product.name}".
+                              permanently delete the product &quot;{product.name}&quot;.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

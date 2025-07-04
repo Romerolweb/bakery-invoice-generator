@@ -1,6 +1,6 @@
-# Invoice Generator Application Architecture
+# Receipt Generator Application Architecture
 
-This document outlines the architecture and design patterns used in the Baker's Invoice application.
+This document outlines the architecture and design patterns used in the Receipt Generator application.
 
 ## Overview
 
@@ -113,19 +113,19 @@ The web-based receipt system consists of several key components:
 *   The **Logging Service** (`src/lib/services/logging.ts`) provides functions (`logger.info`, `logger.warn`, `logger.error`, `logger.debug`) used throughout the server-side code to record events. Logs are sent to the console and potentially to `logs/app.log` based on configuration. This aids in debugging and monitoring application behavior.
 *   The **Change Recording Service** (`src/lib/recordChanges.ts`) is a developer-specific tool that logs code modifications to `changes.log`, helping to trace the evolution of the codebase during development.
 
-## Data Flow Example (Creating an Invoice)
+## Data Flow Example (Creating a Receipt)
 
-1.  User fills out the invoice form in the `NewInvoicePage` component (`src/app/page.tsx`).
-2.  User clicks "Generate Invoice".
+1.  User fills out the new receipt form in the `NewInvoicePage` component (`src/app/page.tsx`). (Note: Page name might be "New Invoice Page" but generates a "receipt").
+2.  User clicks "Generate Receipt" (or a similarly labeled button).
 3.  The form's `onSubmit` handler in `NewInvoicePage` calls the `createReceipt` Server Action (`src/lib/actions/receipts.ts`) with the validated form data.
-4.  `createReceipt` performs validation, fetches necessary data (products, seller, customer) via the Data Access Layer.
-5.  `createReceipt` calculates totals and constructs the `Receipt` object.
-6.  `createReceipt` calls `createReceiptData` in the Data Access Layer (`src/lib/data-access/receipts.ts`) to save the receipt JSON data.
-7.  `createReceipt` returns a success result with the receipt ID.
-8.  `NewInvoicePage` displays a success message and provides a "View Receipt" button.
-9.  When the user clicks "View Receipt", they are navigated to `/receipt/[id]`.
-10. The `ReceiptWebView` component fetches the receipt data via the API route (`/api/receipts/[id]`).
-11. The receipt data is rendered using the `ReceiptContent` component with all receipt sections.
-12. Users can view the receipt on screen or print it using the browser's print function.
+4.  `createReceipt` performs validation, potentially fetches or uses existing data (products, seller, customer details if needed for the receipt context) via the Data Access Layer.
+5.  `createReceipt` calculates totals and constructs the `Receipt` object based on the form input.
+6.  `createReceipt` calls functions in the Data Access Layer (`src/lib/data-access/receipts.ts`) to save the new receipt data (e.g., to `receipts.json`).
+7.  `createReceipt` returns a success result, typically including the newly created receipt's ID.
+8.  The `NewInvoicePage` (or relevant UI) displays a success message and may provide a "View Receipt" button/link.
+9.  When the user clicks "View Receipt", they are navigated to a unique URL for that receipt (e.g., `/receipt/[id]`).
+10. The page/component for viewing a single receipt (e.g., `ReceiptWebView` at `/receipt/[id]`) fetches the specific receipt's data, possibly using another Server Action or an API route that calls the Data Access Layer.
+11. The receipt data is rendered as HTML using components like `ReceiptContent` and its sub-components, displaying all necessary sections.
+12. Users can view the receipt on screen or use the browser's built-in print functionality (triggered by the `PrintToolbar` or similar) to print it.
 
 This architecture aims for clarity, maintainability, and flexibility, particularly around the web-based receipt viewing system.

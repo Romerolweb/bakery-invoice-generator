@@ -1,7 +1,7 @@
 // src/app/receipts/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // Added useCallback
 
 import type { Receipt } from "@/lib/types";
 import { getAllReceipts } from "@/lib/actions/receipts";
@@ -26,7 +26,7 @@ export default function ReceiptsHistoryPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchReceipts = async () => {
+  const fetchReceipts = useCallback(async () => { // Wrapped in useCallback
     console.info(CLIENT_LOG_PREFIX, "Starting fetchReceipts...");
     setIsLoading(true);
     try {
@@ -50,11 +50,11 @@ export default function ReceiptsHistoryPage() {
       setIsLoading(false);
       console.info(CLIENT_LOG_PREFIX, "Finished fetchReceipts.");
     }
-  };
+  }, [toast]); // Added toast to dependency array for useCallback
 
   useEffect(() => {
     fetchReceipts();
-  }, []);
+  }, [fetchReceipts]); // Changed dependency to fetchReceipts
 
   return (
     <div className="space-y-6">

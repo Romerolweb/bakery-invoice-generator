@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // Added useCallback
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
 
-import type { Customer, Product, Receipt } from "@/lib/types";
+import type { Customer, Product } from "@/lib/types"; // Removed Receipt
 import { getCustomers } from "@/lib/actions/customers";
 import { getProducts } from "@/lib/actions/products";
 import { createReceipt } from "@/lib/actions/receipts"; // Use createReceipt
@@ -146,33 +146,7 @@ export default function NewInvoicePage() {
     loadData();
   }, [toast]); // Dependency array includes toast
 
-  // Recalculate totals when line items or GST setting change
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name?.startsWith("line_items") || name === "include_gst") {
-        console.debug(
-          CLIENT_LOG_PREFIX,
-          `Form field changed (${name}), recalculating totals...`,
-        ); // Use console.debug
-        calculateTotals(value as ReceiptFormData);
-      }
-    });
-    // Trigger initial calculation once products are loaded
-    if (products.length > 0 && !isLoadingData) {
-      console.debug(
-        CLIENT_LOG_PREFIX,
-        "Performing initial total calculation...",
-      ); // Use console.debug
-      calculateTotals(form.getValues());
-    }
-    return () => {
-      console.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch."); // Use console.debug
-      subscription.unsubscribe();
-    };
-    // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
-  }, [form, products, isLoadingData]);
-
-  const calculateTotals = (formData: ReceiptFormData) => {
+  const calculateTotals = useCallback((formData: ReceiptFormData) => {
     let subtotal = 0;
     let gstAmount = 0;
 
@@ -202,9 +176,65 @@ export default function NewInvoicePage() {
     };
     console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
     setCalculatedTotals(newTotals);
-  };
+  }, [products]); // Added products to useCallback dependency array
 
-  const onSubmit = async (data: ReceiptFormData) => {
+  // Recalculate totals when line items or GST setting change
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name?.startsWith("line_items") || name === "include_gst") {
+        console.debug(
+          CLIENT_LOG_PREFIX,
+          `Form field changed (${name}), recalculating totals...`,
+        ); // Use console.debug
+        calculateTotals(value as ReceiptFormData);
+      }
+    });
+    // Trigger initial calculation once products are loaded
+    if (products.length > 0 && !isLoadingData) {
+      console.debug(
+        CLIENT_LOG_PREFIX,
+        "Performing initial total calculation...",
+      ); // Use console.debug
+      calculateTotals(form.getValues());
+    }
+    return () => {
+      console.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch."); // Use console.debug
+      subscription.unsubscribe();
+    };
+    // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait, calculateTotals
+  }, [form, products, isLoadingData, calculateTotals]);
+
+  // const onSubmit = async (data: ReceiptFormData) => { // This was the start of the duplicated/incorrect block
+
+  //   formData.line_items.forEach((item) => {
+  //     const product = products.find((p) => p.id === item.product_id);
+  //     if (product && item.quantity > 0) {
+  //       const lineTotalExclGST = product.unit_price * item.quantity;
+  //       subtotal += lineTotalExclGST;
+  //       // Only apply GST if 'include_gst' is checked AND the product is GST applicable
+  //       if (formData.include_gst && product.GST_applicable) {
+  //         gstAmount += lineTotalExclGST * 0.1;
+  //       }
+  //     }
+  //   });
+
+  //   // Ensure GST is zero if the main flag is off
+  //   if (!formData.include_gst) {
+  //     gstAmount = 0;
+  //   }
+
+  //   // Ensure calculations are rounded to 2 decimal places
+  //   const total = subtotal + gstAmount;
+  //   const newTotals = {
+  //     subtotal: parseFloat(subtotal.toFixed(2)),
+  //     gst: parseFloat(gstAmount.toFixed(2)),
+  //     total: parseFloat(total.toFixed(2)),
+  //   };
+  //   console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
+  //   setCalculatedTotals(newTotals);
+  // }, [products]); // Added products to useCallback dependency array
+
+  const onSubmit = async (data: ReceiptFormData) => { // This is the correct onSubmit
     console.info(
       CLIENT_LOG_PREFIX,
       "onSubmit triggered. Starting invoice submission...",
@@ -590,7 +620,7 @@ export default function NewInvoicePage() {
                               "text-muted-foreground/50",
                           )}
                         >
-                          Force "Tax Invoice" Label
+                          Force &quot;Tax Invoice&quot; Label
                         </Label>
                         <FormDescription
                           className={cn(

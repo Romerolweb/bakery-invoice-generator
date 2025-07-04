@@ -19,8 +19,9 @@ async function readSellerProfileFile(): Promise<SellerProfile | null> {
       `Successfully read seller profile file: ${sellerProfileFilePath}`,
     );
     return JSON.parse(data) as SellerProfile;
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) { // Changed from any to unknown
+    // Type guard for ENOENT error
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Seller profile file not found at ${sellerProfileFilePath}, returning null.`,
@@ -46,13 +47,17 @@ async function writeSellerProfileFile(profile: SellerProfile): Promise<void> {
       funcPrefix,
       `Successfully wrote seller profile file: ${sellerProfileFilePath}`,
     );
-  } catch (error: any) {
+  } catch (error: unknown) { // Changed from any to unknown
     await logger.error(
       funcPrefix,
       `Error writing seller profile file: ${sellerProfileFilePath}`,
       error instanceof Error ? error : new Error(String(error)), // Ensure Error object
     );
-    throw new Error(`Failed to write seller profile data: ${(error instanceof Error ? error.message : String(error))}`);
+    // Check if error is an instance of Error to access message property correctly
+    if (error instanceof Error) {
+      throw new Error(`Failed to write seller profile data: ${error.message}`);
+    }
+    throw new Error(`Failed to write seller profile data: Unexpected error occurred.`); // Fallback
   }
 }
 
@@ -65,8 +70,9 @@ async function deleteSellerProfileFile(): Promise<void> {
       funcPrefix,
       `Successfully deleted seller profile file: ${sellerProfileFilePath}`,
     );
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) { // Changed from any to unknown
+    // Type guard for ENOENT error
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Seller profile file not found at ${sellerProfileFilePath}, no action taken.`,

@@ -1,4 +1,4 @@
-# **App Name**: Baker's Receipt
+# **App Name**: Receipt Generator App
 
 ## Core Features:
 

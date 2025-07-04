@@ -26,8 +26,9 @@ async function readReceiptsFile(): Promise<Receipt[]> {
       `Successfully read receipts file: ${receiptsFilePath}`,
     );
     return JSON.parse(data) as Receipt[];
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) { // Changed from any to unknown
+    // Type guard for ENOENT error
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Receipts file not found at ${receiptsFilePath}, returning empty array.`,
@@ -37,9 +38,13 @@ async function readReceiptsFile(): Promise<Receipt[]> {
     await logger.error(
       funcPrefix,
       `Error reading receipts file: ${receiptsFilePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)) // Ensure Error object for logger
     );
-    throw new Error(`Failed to read receipts data: ${error.message}`); // Re-throw other errors
+    // Check if error is an instance of Error to access message property
+    if (error instanceof Error) {
+      throw new Error(`Failed to read receipts data: ${error.message}`);
+    }
+    throw new Error(`Failed to read receipts data: Unexpected error occurred.`); // Fallback
   }
 }
 
@@ -59,13 +64,17 @@ async function writeReceiptsFile(receipts: Receipt[]): Promise<void> {
       funcPrefix,
       `Successfully wrote receipts file: ${receiptsFilePath}`,
     );
-  } catch (error: any) {
+  } catch (error: unknown) { // Changed from any to unknown
     await logger.error(
       funcPrefix,
       `Error writing receipts file: ${receiptsFilePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)) // Ensure Error object for logger
     );
-    throw new Error(`Failed to write receipts data: ${error.message}`); // Re-throw error
+    // Check if error is an instance of Error to access message property
+    if (error instanceof Error) {
+      throw new Error(`Failed to write receipts data: ${error.message}`);
+    }
+    throw new Error(`Failed to write receipts data: Unexpected error occurred.`); // Fallback
   }
 }
 
@@ -151,8 +160,9 @@ export async function getReceiptPdfPath(
     await fs.access(filePath, fs.constants.F_OK); // F_OK checks existence
     await logger.info(funcPrefix, `PDF found at path: ${filePath}`);
     return filePath;
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) { // Changed from any to unknown
+    // Type guard for ENOENT error
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === "ENOENT") {
       // File does not exist - this is an expected case if PDF is not ready/failed
       await logger.info(
         funcPrefix,
@@ -163,7 +173,7 @@ export async function getReceiptPdfPath(
       await logger.error(
         funcPrefix,
         `Error accessing PDF file at ${filePath}`,
-        error,
+        error instanceof Error ? error : new Error(String(error)) // Ensure Error object for logger
       );
     }
     return null; // Return null if file doesn't exist or other access error
@@ -197,12 +207,12 @@ export async function getReceiptPdfContent(
       `Successfully read PDF content (${pdfBuffer.length} bytes).`,
     );
     return pdfBuffer;
-  } catch (error: any) {
+  } catch (error: unknown) { // Changed from any to unknown
     // Catch potential errors during readFile itself (though access check reduces likelihood)
     await logger.error(
       funcPrefix,
       `Error reading PDF file content at ${filePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)) // Ensure Error object for logger
     );
     return null;
   }

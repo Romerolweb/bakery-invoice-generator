@@ -172,7 +172,11 @@ export async function updateCustomer(
   );
   try {
     // Prepare data for update (remove ID from the data payload itself)
-    const { id: _id, ...dataToUpdate } = validationResult.data;
+    // const { id: _id, ...dataToUpdate } = validationResult.data; // Original line with unused _id
+    const dataToUpdate = { ...validationResult.data };
+    if ('id' in dataToUpdate) {
+      delete (dataToUpdate as { id?: string }).id; // Remove id to prevent it from being passed to the update function
+    }
 
     // Ensure ABN/Business Name are null/undefined if individual
     const finalDataToUpdate =

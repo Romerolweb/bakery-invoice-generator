@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides detailed technical information for developers working on the Invoice Generator application. It covers architecture decisions, implementation details, and guidelines for extending the system.
+This document provides detailed technical information for developers working on the Receipt Generator application. It covers architecture decisions, implementation details, and guidelines for extending the system.
 
 ## Architecture Overview
 
@@ -255,8 +255,8 @@ const onSubmit = async (data: z.infer<typeof formSchema>) => {
 ### Server-Side Error Handling
 
 1. **Validation**: Input validation with Zod schemas
-2. **File Operations**: Proper error handling for file I/O
-3. **PDF Generation**: Comprehensive error handling with cleanup
+2. **File Operations**: Proper error handling for file I/O (e.g., for JSON data files)
+3. **Data Integrity**: Ensuring consistency when creating/updating receipt data.
 4. **Logging**: Structured logging for debugging
 
 ### Error Response Pattern
@@ -274,10 +274,10 @@ type ActionResult<T> = {
 
 ### Unit Testing
 
-- **Data Access Layer**: Test CRUD operations
-- **Server Actions**: Test business logic and validation
-- **PDF Generation**: Test template rendering and file creation
-- **Utilities**: Test helper functions
+- **Data Access Layer**: Test CRUD operations for receipts, customers, products.
+- **Server Actions**: Test business logic, validation, and data transformation for receipt creation and other actions.
+- **UI Components**: Test rendering of receipt components (`ReceiptWebView`, `ReceiptContent`, etc.) with mock data.
+- **Utilities**: Test helper functions (e.g., calculation functions, date formatting).
 
 ### Testing Tools
 
@@ -314,10 +314,10 @@ describe('Component/Function Name', () => {
 
 ### Backend Performance
 
-1. **File I/O**: Efficient JSON parsing and writing
-2. **PDF Generation**: Memory-efficient PDFKit usage
-3. **Caching**: Consider caching for repeated operations
-4. **Resource Cleanup**: Proper stream and file handle cleanup
+1. **File I/O**: Efficient JSON parsing and writing for data files.
+2. **Server Actions**: Optimize server actions for quick responses.
+3. **Caching**: Consider caching for frequently accessed data or computations.
+4. **Resource Cleanup**: Proper handling of any server-side resources.
 
 ## Security Considerations
 
@@ -330,9 +330,8 @@ describe('Component/Function Name', () => {
 
 ### File Security
 
-- **Path Traversal**: Validate file paths
-- **File Permissions**: Proper file system permissions
-- **PDF Generation**: Sanitize content for PDF generation
+- **Path Traversal**: Validate file paths if dealing with dynamic file access.
+- **File Permissions**: Ensure appropriate file system permissions for data files (`src/lib/data/`).
 
 ## Development Guidelines
 
@@ -383,12 +382,11 @@ The application includes optimized Docker configuration:
 
 ### Production Checklist
 
-- [ ] Environment variables configured
-- [ ] File permissions set correctly
-- [ ] PDF directory writable
-- [ ] Memory limits appropriate
-- [ ] Health monitoring configured
-- [ ] Backup strategy for JSON data
+- [ ] Environment variables configured (`PORT`, `NODE_ENV`).
+- [ ] File permissions for `src/lib/data/` directory allow read/write by the Node.js process.
+- [ ] Memory limits appropriate for a Node.js application.
+- [ ] Health monitoring configured (if applicable).
+- [ ] Backup strategy for JSON data (e.g., `customers.json`, `products.json`, `receipts.json`, `seller-profile.json`).
 - [ ] SSL certificates installed
 - [ ] Error logging configured
 
@@ -416,10 +414,11 @@ export DEBUG=*
 
 ### Common Debug Scenarios
 
-1. **PDF Generation Issues**: Check font paths and permissions
-2. **Data Access Errors**: Verify JSON file structure
-3. **Type Errors**: Run `npm run typecheck`
-4. **Build Issues**: Clear `.next` and `node_modules`
+1. **Receipt Display Issues**: Check component rendering logic, data fetching for receipts, CSS styles (including print styles), and browser console for errors.
+2. **Data Access Errors**: Verify JSON file structure in `src/lib/data/`, file permissions, and data access function logic.
+3. **Type Errors**: Run `npm run typecheck` to identify TypeScript issues.
+4. **Build Issues**: Clear `.next` and `node_modules`, then reinstall and rebuild.
+5. **Form Submission Problems**: Check Server Action logic, Zod validation schemas, and network requests in browser dev tools.
 
 ## Future Enhancements
 
@@ -428,18 +427,18 @@ export DEBUG=*
 1. **Database Integration**: Replace JSON with PostgreSQL/MongoDB
 2. **Authentication**: Add user authentication system
 3. **Multi-tenant**: Support multiple businesses
-4. **Email Integration**: Send invoices via email
-5. **Payment Integration**: Add payment processing
-6. **API Endpoints**: RESTful API for external integrations
-7. **Mobile App**: React Native mobile application
-8. **Advanced PDF Templates**: More sophisticated layouts
-9. **Reporting**: Business analytics and reporting
-10. **Backup System**: Automated data backup
+4. **Email Integration**: Send receipts via email
+5. **Payment Integration**: Add payment processing links/info to receipts
+6. **API Endpoints**: RESTful API for external integrations (e.g., accounting software)
+7. **Mobile App**: React Native mobile application for on-the-go receipt creation/viewing
+8. **Advanced Web Templates/Themes**: More sophisticated and customizable web receipt layouts/themes
+9. **Reporting**: Business analytics and reporting on receipt data
+10. **Backup System**: Automated data backup for JSON files or database
 
 ### Scalability Considerations
 
-1. **Database**: Move to proper database system
-2. **File Storage**: Cloud storage for PDFs
+1. **Database**: Move to proper database system (e.g., PostgreSQL, MongoDB) for robust data management.
+2. **File Storage**: If generating and storing other files (e.g., logos, attachments), consider cloud storage (S3, Azure Blob). For receipt data itself, a database is preferred for scalability.
 3. **Caching**: Redis for session and data caching
 4. **Load Balancing**: Multiple application instances
 5. **CDN**: Content delivery network for assets
@@ -449,11 +448,12 @@ export DEBUG=*
 
 ### Common Issues
 
-#### PDF Generation Fails
-- Check font file permissions
-- Verify PDFKit installation
-- Check available disk space
-- Review error logs
+#### Web Receipt Display/Functionality Fails
+- **Check Browser Console**: Look for JavaScript errors or failed network requests.
+- **Verify Data**: Ensure the receipt data being fetched is correct and complete.
+- **Component Logic**: Debug individual React components responsible for rendering receipt sections.
+- **CSS/Styling**: Inspect styles, especially print-specific CSS (`@media print`), if printing is problematic.
+- **Server Actions/API**: If data isn't loading or saving, check the relevant Server Action or API route logic and logs.
 
 #### Type Errors
 - Run `npm run typecheck`

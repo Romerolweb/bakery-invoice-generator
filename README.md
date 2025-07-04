@@ -1,6 +1,6 @@
 # Invoice Generator App
 
-This is a modern Invoice Generator application built with Next.js, React, TypeScript, and Shadcn UI. It allows you to create professional invoices by managing customers and products, calculating totals including GST, and generating web-based receipts for viewing and printing.
+This is a modern Invoice Generator application built with Next.js, React, TypeScript, and Shadcn UI. It allows you to create professional invoices by managing customers and products, calculating totals including GST, and generating web-based invoices for viewing and printing.
 
 The project is designed with modern practices, including TypeScript for type safety, separation of concerns for maintainability and testability, and a responsive web-based invoice viewing system.
 
@@ -204,12 +204,13 @@ echo "PORT=9003" > .env.dev
 PORT=9003 npm run dev
 ```
 
-#### 2. PDF Generation Issues
-**Error:** Font loading or PDF creation failures
+#### 2. Web Invoice Display Issues
+**Error:** Invoice not rendering correctly, data not loading, or print functionality errors.
 **Solutions:**
-- Ensure PDFKit dependencies are installed: `npm install pdfkit @types/pdfkit`
-- Check that fonts directory exists: `src/lib/fonts/`
-- Verify webpack configuration in `next.config.ts`
+- Check browser console for JavaScript errors.
+- Ensure `src/lib/fonts/` directory exists if custom web fonts are used and not loading.
+- Verify component props and data flow for invoice components.
+- Test print functionality in different browsers if issues are browser-specific.
 
 #### 3. TypeScript Compilation Errors
 **Solution:**
@@ -249,12 +250,12 @@ export DEBUG=*
 echo "DEBUG=*" >> .env.dev
 ```
 
-### Receipt Viewing Debug
+### Invoice Viewing Debug
 
-Check web receipt viewing status:
-1. Navigate to `/receipts` page
-2. Create a new receipt
-3. Click "View Receipt" to open the web view
+Check web invoice viewing status:
+1. Navigate to `/invoices` page (or the relevant page for listing invoices, e.g., `/receipts` if the route hasn't been renamed yet)
+2. Create a new invoice
+3. Click "View Invoice" (or similar button) to open the web view
 4. Monitor browser console for any loading or display issues
 
 ### Port Configuration
@@ -290,10 +291,6 @@ chmod +x dev.sh start.sh
 - **Tailwind CSS 3.4+** - Utility-first CSS framework
 - **Lucide React** - Icon library
 
-### PDF Generation
-- **PDFKit 0.17.0** - Pure JavaScript PDF generation
-- **Custom Template System** - Extensible PDF template architecture
-
 ### Development Tools
 - **Vitest 3.1.4** - Fast unit testing framework
 - **ESLint** - Code linting
@@ -315,52 +312,52 @@ src/
 │   ├── api/               # API routes
 │   ├── customers/         # Customer management page
 │   ├── products/          # Product management page
-│   ├── receipts/          # Receipt/invoice page
+│   ├── invoices/          # Invoice page (previously receipts)
 │   └── settings/          # Settings page
 ├── components/ui/         # Reusable UI components (Shadcn)
 ├── lib/
 │   ├── actions/          # Server actions (data operations)
 │   ├── data/             # JSON data storage
 │   ├── data-access/      # Data access layer
-│   ├── services/         # Business logic services
-│   └── fonts/            # Font files for display
+│   ├── services/         # Business logic services (if any, review if PDF related)
+│   └── fonts/            # Font files for display (if used by web UI)
 └── hooks/                # Custom React hooks
 ```
 
-### Web Receipt Architecture
+### Web Invoice Architecture
 
-The application uses a web-based receipt viewing system:
+The application uses a web-based invoice viewing system:
 
 #### Key Components
 
-1. **ReceiptWebView Component** (`src/components/receipts/ReceiptWebView.tsx`)
-   - Main component for displaying receipts in web format
-   - Handles receipt data fetching and error states
+1. **InvoiceWebView Component** (`src/components/invoices/InvoiceWebView.tsx` or similar, needs verification)
+   - Main component for displaying invoices in web format
+   - Handles invoice data fetching and error states
    - Provides responsive design for various screen sizes
 
-2. **ReceiptContent Component** (`src/components/receipts/components/ReceiptContent.tsx`)
-   - Renders the formatted receipt layout
+2. **InvoiceContent Component** (`src/components/invoices/components/InvoiceContent.tsx` or similar, needs verification)
+   - Renders the formatted invoice layout
    - Handles business and individual customer display
    - Calculates and displays GST and totals
 
-3. **PrintToolbar Component** (`src/components/receipts/components/PrintToolbar.tsx`)
+3. **PrintToolbar Component** (`src/components/invoices/components/PrintToolbar.tsx` or similar, needs verification)
    - Provides print and close functionality
    - Hidden during print mode for clean output
    - Allows easy window management
 
-4. **Receipt Components** (`src/components/receipts/components/`)
-   - Modular components for different receipt sections
+4. **Invoice Components** (`src/components/invoices/components/` or similar, needs verification)
+   - Modular components for different invoice sections
    - Includes customer info, seller info, items table, and totals
-   - Reusable across different receipt views
+   - Reusable across different invoice views
 
-#### Receipt Viewing Flow
+#### Invoice Viewing Flow
 
 ```mermaid
 graph TD
-    A[Receipt Action] --> B[Open Receipt URL]
-    B --> C[ReceiptWebView Component]
-    C --> D[Fetch Receipt Data]
-    D --> E[Display Receipt Content]
+    A[Invoice Action] --> B[Open Invoice URL]
+    B --> C[InvoiceWebView Component]
+    C --> D[Fetch Invoice Data]
+    D --> E[Display Invoice Content]
     E --> F[Print/Close Options]
 ```
 
@@ -369,26 +366,14 @@ graph TD
 1. **User Input** → Forms on frontend pages
 2. **Server Actions** → Handle form submissions and business logic
 3. **Data Access Layer** → Manages JSON file operations
-4. **Web Receipt Display** → Shows receipts in browser for viewing and printing
-5. **Data Storage** → Saves receipt data to JSON files
+4. **Web Invoice Display** → Shows invoices in browser for viewing and printing
+5. **Data Storage** → Saves invoice data to JSON files
 
 ### Configuration
 
 #### Environment Variables
 - `PORT` - Application port (default: 9002)
 - `NODE_ENV` - Environment mode (development/production)
-
-#### Template Configuration
-Templates are configured in `src/lib/services/pdfTemplates/templateRegistry.ts`:
-
-```typescript
-export const PDF_TEMPLATE_CONFIG = {
-  DEFAULT: "default",
-  // Add new templates here
-} as const;
-
-export const CURRENT_PDF_TEMPLATE = PDF_TEMPLATE_CONFIG.DEFAULT;
-```
 
 ## 🔄 Development Workflow
 
@@ -400,13 +385,6 @@ export const CURRENT_PDF_TEMPLATE = PDF_TEMPLATE_CONFIG.DEFAULT;
 4. **Create UI components** using Shadcn patterns
 5. **Add tests** for new functionality
 
-### Adding New PDF Templates
-
-1. **Create new template class** implementing `IPdfReceiptTemplate`
-2. **Add to template registry** in `templateRegistry.ts`
-3. **Update configuration** to use new template
-4. **Test PDF generation** with new template
-
 ### Code Quality
 
 The project enforces code quality through:
@@ -417,10 +395,10 @@ The project enforces code quality through:
 
 ### Deployment Considerations
 
-- **Environment Variables**: Ensure all required env vars are set
-- **File Permissions**: PDF directory must be writable
-- **Memory**: PDF generation requires adequate memory allocation
-- **Fonts**: Ensure font files are included in production builds
+- **Environment Variables**: Ensure all required env vars are set.
+- **File System Access**: Ensure the application has necessary permissions if it needs to read/write files (e.g., for data storage if not using a database).
+- **Memory**: Ensure adequate memory allocation for the Node.js process.
+- **Web Fonts**: If custom fonts are used, ensure they are correctly configured and accessible in production builds.
 
 ## 🤝 Contributing
 

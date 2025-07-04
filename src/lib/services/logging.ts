@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import path from "path";
 
 type LogData =
-  | Record<string, any>
+  | Record<string, unknown> // Changed any to unknown
   | string
   | number
   | boolean
@@ -87,7 +87,7 @@ async function log(
     } else {
       try {
         dataStringForConsole = `\nData: ${typeof data === "object" ? JSON.stringify(data, null, 2) : data}`;
-      } catch (e) {
+      } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
         dataStringForConsole = "\nData: [Could not stringify data]";
       }
     }
@@ -110,7 +110,7 @@ async function log(
       } else {
         try {
           dataStringForFile = ` | Data: ${typeof data === "object" ? JSON.stringify(data) : data}`;
-        } catch (e) {
+        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
           dataStringForFile = " | Data: [Could not stringify data]";
         }
       }

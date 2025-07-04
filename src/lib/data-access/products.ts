@@ -19,8 +19,9 @@ async function readProductsFile(): Promise<Product[]> {
       `Successfully read products file: ${productsFilePath}`,
     );
     return JSON.parse(data) as Product[];
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) { // Changed from any to unknown
+    // Type guard for ENOENT error
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Products file not found at ${productsFilePath}, returning empty array.`,
@@ -30,9 +31,13 @@ async function readProductsFile(): Promise<Product[]> {
     await logger.error(
       funcPrefix,
       `Error reading products file: ${productsFilePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)) // Ensure Error object for logger
     );
-    throw new Error(`Failed to read products data: ${error.message}`); // Re-throw other errors
+    // Check if error is an instance of Error to access message property
+    if (error instanceof Error) {
+      throw new Error(`Failed to read products data: ${error.message}`);
+    }
+    throw new Error(`Failed to read products data: Unexpected error occurred.`); // Fallback
   }
 }
 
@@ -46,13 +51,17 @@ async function writeProductsFile(products: Product[]): Promise<void> {
       funcPrefix,
       `Successfully wrote products file: ${productsFilePath}`,
     );
-  } catch (error: any) {
+  } catch (error: unknown) { // Changed from any to unknown
     await logger.error(
       funcPrefix,
       `Error writing products file: ${productsFilePath}`,
-      error,
+      error instanceof Error ? error : new Error(String(error)) // Ensure Error object for logger
     );
-    throw new Error(`Failed to write products data: ${error.message}`); // Re-throw error
+    // Check if error is an instance of Error to access message property
+    if (error instanceof Error) {
+      throw new Error(`Failed to write products data: ${error.message}`);
+    }
+    throw new Error(`Failed to write products data: Unexpected error occurred.`); // Fallback
   }
 }
 
