@@ -26,8 +26,8 @@ async function readReceiptsFile(): Promise<Receipt[]> {
       `Successfully read receipts file: ${receiptsFilePath}`,
     );
     return JSON.parse(data) as Receipt[];
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Receipts file not found at ${receiptsFilePath}, returning empty array.`,
@@ -39,7 +39,7 @@ async function readReceiptsFile(): Promise<Receipt[]> {
       `Error reading receipts file: ${receiptsFilePath}`,
       error,
     );
-    throw new Error(`Failed to read receipts data: ${error.message}`); // Re-throw other errors
+    throw new Error(`Failed to read receipts data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw other errors
   }
 }
 
@@ -59,13 +59,13 @@ async function writeReceiptsFile(receipts: Receipt[]): Promise<void> {
       funcPrefix,
       `Successfully wrote receipts file: ${receiptsFilePath}`,
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     await logger.error(
       funcPrefix,
       `Error writing receipts file: ${receiptsFilePath}`,
       error,
     );
-    throw new Error(`Failed to write receipts data: ${error.message}`); // Re-throw error
+    throw new Error(`Failed to write receipts data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw error
   }
 }
 
@@ -151,8 +151,8 @@ export async function getReceiptPdfPath(
     await fs.access(filePath, fs.constants.F_OK); // F_OK checks existence
     await logger.info(funcPrefix, `PDF found at path: ${filePath}`);
     return filePath;
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
       // File does not exist - this is an expected case if PDF is not ready/failed
       await logger.info(
         funcPrefix,
@@ -197,7 +197,7 @@ export async function getReceiptPdfContent(
       `Successfully read PDF content (${pdfBuffer.length} bytes).`,
     );
     return pdfBuffer;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Catch potential errors during readFile itself (though access check reduces likelihood)
     await logger.error(
       funcPrefix,

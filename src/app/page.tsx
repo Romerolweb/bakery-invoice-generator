@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
 
-import type { Customer, Product, Receipt } from "@/lib/types";
+import type { Customer, Product } from "@/lib/types";
 import { getCustomers } from "@/lib/actions/customers";
 import { getProducts } from "@/lib/actions/products";
 import { createReceipt } from "@/lib/actions/receipts"; // Use createReceipt
@@ -170,9 +170,9 @@ export default function NewInvoicePage() {
       subscription.unsubscribe();
     };
     // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
-  }, [form, products, isLoadingData]);
+  }, [form, products, isLoadingData, calculateTotals]);
 
-  const calculateTotals = (formData: ReceiptFormData) => {
+  const calculateTotals = useCallback((formData: ReceiptFormData) => {
     let subtotal = 0;
     let gstAmount = 0;
 
@@ -202,7 +202,7 @@ export default function NewInvoicePage() {
     };
     console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
     setCalculatedTotals(newTotals);
-  };
+  }, [products]);
 
   const onSubmit = async (data: ReceiptFormData) => {
     console.info(
@@ -590,7 +590,7 @@ export default function NewInvoicePage() {
                               "text-muted-foreground/50",
                           )}
                         >
-                          Force "Tax Invoice" Label
+                          Force &quot;Tax Invoice&quot; Label
                         </Label>
                         <FormDescription
                           className={cn(

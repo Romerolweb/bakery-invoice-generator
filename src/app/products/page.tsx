@@ -39,7 +39,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
 import {
@@ -101,7 +100,7 @@ export default function ProductsPage() {
     },
   });
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getProducts();
@@ -116,11 +115,11 @@ export default function ProductsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchProducts();
-  }, [toast]);
+  }, [fetchProducts]);
 
   const handleAddNewProduct = () => {
     setEditingProduct(null);
@@ -395,7 +394,7 @@ export default function ProductsPage() {
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                               This action cannot be undone. This will
-                              permanently delete the product "{product.name}".
+                              permanently delete the product &quot;{product.name}&quot;.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

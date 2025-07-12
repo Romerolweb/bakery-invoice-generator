@@ -26,7 +26,7 @@ export default function ReceiptsHistoryPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchReceipts = async () => {
+  const fetchReceipts = useCallback(async () => {
     console.info(CLIENT_LOG_PREFIX, "Starting fetchReceipts...");
     setIsLoading(true);
     try {
@@ -50,11 +50,11 @@ export default function ReceiptsHistoryPage() {
       setIsLoading(false);
       console.info(CLIENT_LOG_PREFIX, "Finished fetchReceipts.");
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchReceipts();
-  }, []);
+  }, [fetchReceipts]);
 
   return (
     <div className="space-y-6">

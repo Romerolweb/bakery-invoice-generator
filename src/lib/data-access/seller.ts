@@ -19,8 +19,8 @@ async function readSellerProfileFile(): Promise<SellerProfile | null> {
       `Successfully read seller profile file: ${sellerProfileFilePath}`,
     );
     return JSON.parse(data) as SellerProfile;
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Seller profile file not found at ${sellerProfileFilePath}, returning null.`,
@@ -46,7 +46,7 @@ async function writeSellerProfileFile(profile: SellerProfile): Promise<void> {
       funcPrefix,
       `Successfully wrote seller profile file: ${sellerProfileFilePath}`,
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     await logger.error(
       funcPrefix,
       `Error writing seller profile file: ${sellerProfileFilePath}`,
@@ -65,8 +65,8 @@ async function deleteSellerProfileFile(): Promise<void> {
       funcPrefix,
       `Successfully deleted seller profile file: ${sellerProfileFilePath}`,
     );
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Seller profile file not found at ${sellerProfileFilePath}, no action taken.`,
