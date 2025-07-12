@@ -19,8 +19,8 @@ async function readProductsFile(): Promise<Product[]> {
       `Successfully read products file: ${productsFilePath}`,
     );
     return JSON.parse(data) as Product[];
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Products file not found at ${productsFilePath}, returning empty array.`,
@@ -32,7 +32,7 @@ async function readProductsFile(): Promise<Product[]> {
       `Error reading products file: ${productsFilePath}`,
       error,
     );
-    throw new Error(`Failed to read products data: ${error.message}`); // Re-throw other errors
+    throw new Error(`Failed to read products data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw other errors
   }
 }
 
@@ -46,13 +46,13 @@ async function writeProductsFile(products: Product[]): Promise<void> {
       funcPrefix,
       `Successfully wrote products file: ${productsFilePath}`,
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     await logger.error(
       funcPrefix,
       `Error writing products file: ${productsFilePath}`,
       error,
     );
-    throw new Error(`Failed to write products data: ${error.message}`); // Re-throw error
+    throw new Error(`Failed to write products data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw error
   }
 }
 

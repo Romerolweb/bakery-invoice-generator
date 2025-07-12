@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useCallback } from "react"; // Added useCallback
+import { useState, useEffect, Suspense, useCallback, useMemo } from "react"; // Added useCallback and useMemo
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,7 +14,6 @@ import {
 } from "@/lib/actions/customers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
@@ -38,7 +37,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
 import {
@@ -127,13 +125,13 @@ class CustomerFormManager {
     this.form.reset({
       id: customer.id,
       customer_type: customer.customer_type,
-      first_name: customer.first_name || "",
-      last_name: customer.last_name || "",
-      business_name: customer.business_name || "",
-      abn: customer.abn || "",
-      email: customer.email || "",
-      phone: customer.phone || "",
-      address: customer.address || "",
+      first_name: customer.first_name ?? "",
+      last_name: customer.last_name ?? "",
+      business_name: customer.business_name ?? "",
+      abn: customer.abn ?? "",
+      email: customer.email ?? "",
+      phone: customer.phone ?? "",
+      address: customer.address ?? "",
     });
   }
   clearErrors() {
@@ -172,10 +170,9 @@ function CustomersPageContent() {
     defaultValues,
   });
   
-  // Memoize service and manager instances if they don't depend on component state/props
-  // For now, assuming they are stable or their instability is managed.
-  const formManager = new CustomerFormManager(form);
-  const customerService = new CustomerService();
+  // Memoize service and manager instances to prevent infinite re-renders
+  const formManager = useMemo(() => new CustomerFormManager(form), [form]);
+  const customerService = useMemo(() => new CustomerService(), []);
   const customerType = form.watch("customer_type");
 
   // --- Handlers (Memoized with useCallback) ---
@@ -237,7 +234,7 @@ function CustomersPageContent() {
       } else {
         toast({
           title: "Error",
-          description: result.message || "Failed to delete customer.",
+          description: result.message ?? "Failed to delete customer.",
           variant: "destructive",
         });
       }
@@ -526,42 +523,70 @@ function CustomersPageContent() {
         </DialogContent>
       </Dialog>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer List</CardTitle>
-          <CardDescription>View and manage your customers.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : customers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
-              No customers found. Add one to get started!
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {customers.map((customer) => (
+      <CustomerTable
+        customers={customers}
+        isLoading={isLoading}
+        handleEditCustomer={handleEditCustomer}
+        handleDeleteCustomer={handleDeleteCustomer}
+      />
+    </div>
+  );
+}
+
+// --- Customer Table Component ---
+interface CustomerTableProps {
+  customers: Customer[];
+  isLoading: boolean;
+  handleEditCustomer: (customer: Customer) => void;
+  handleDeleteCustomer: (id: string) => void;
+}
+
+function CustomerTable({
+  customers,
+  isLoading,
+  handleEditCustomer,
+  handleDeleteCustomer,
+}: CustomerTableProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Customer List</CardTitle>
+        <CardDescription>View and manage your customers.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-40">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : customers.length === 0 ? (
+          <p className="text-center text-muted-foreground py-4">
+            No customers found. Add one to get started!
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {customers.map((customer) => {
+                let displayName: string;
+                if (customer.customer_type === "individual") {
+                  displayName = `${customer.first_name ?? ""} ${customer.last_name ?? ""}`.trim();
+                } else {
+                  displayName = customer.business_name ?? "";
+                }
+                return (
                   <TableRow key={customer.id}>
-                    <TableCell>
-                      {customer.customer_type === "individual"
-                        ? `${customer.first_name || ""} ${customer.last_name || ""}`.trim()
-                        : customer.business_name}
-                    </TableCell>
+                    <TableCell>{displayName}</TableCell>
                     <TableCell>{customer.customer_type}</TableCell>
-                    <TableCell>{customer.email || "-"}</TableCell>
-                    <TableCell>{customer.phone || "-"}</TableCell>
+                    <TableCell>{customer.email ?? "-"}</TableCell>
+                    <TableCell>{customer.phone ?? "-"}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
@@ -574,19 +599,19 @@ function CustomersPageContent() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteCustomer(customer.id!)}
+                        onClick={() => handleDeleteCustomer(customer.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
