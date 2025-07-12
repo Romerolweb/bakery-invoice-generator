@@ -15,10 +15,5 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"), // Match tsconfig paths
     },
-    // Optional: configure coverage
-    // coverage: {
-    //   provider: 'v8', // or 'istanbul'
-    //   reporter: ['text', 'json', 'html'],
-    // },
   },
 });

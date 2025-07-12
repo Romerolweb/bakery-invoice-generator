@@ -41,6 +41,18 @@ services:
         - action: rebuild
           path: tsconfig.json
 
+  mongo:
+    image: mongo:4.2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: NotSecret1234!
+      MONGO_INITDB_DATABASE: bliss
+    volumes:
+      - ./scripts/mongo/init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./_mongo:/data/db
+    ports:
+      - '27017:27017'
+
 volumes:
   pdf_data: # Defines the named volume for storing generated PDFs
 
