@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  title: Bakery Invoice API
+  description: A professional invoice system for bakeries
+  version: 1.0.0
+  contact:
+    name: API Support
+    url: http://www.bakery-invoice.com/support
+    email: support@bakery-invoice.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8081/api/v1
+    description: Development server
+  - url: https://api.bakery-invoice.com/v1
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if the API is healthy
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+                    example: 1.0.0
+
+  /customers:
+    get:
+      summary: List customers
+      description: Retrieve a list of all customers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+    post:
+      summary: Create customer
+      description: Create a new customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /customers/{id}:
+    get:
+      summary: Get customer
+      description: Retrieve a specific customer by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update customer
+      description: Update an existing customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerRequest'
+      responses:
+        '200':
+          description: Customer updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete customer
+      description: Delete a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Customer deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer_type:
+          type: string
+          enum: [individual, business]
+        first_name:
+          type: string
+          nullable: true
+        last_name:
+          type: string
+          nullable: true
+        business_name:
+          type: string
+          nullable: true
+        abn:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateCustomerRequest:
+      type: object
+      required:
+        - customer_type
+      properties:
+        customer_type:
+          type: string
+          enum: [individual, business]
+        first_name:
+          type: string
+        last_name:
+          type: string
+        business_name:
+          type: string
+        abn:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        customer_type:
+          type: string
+          enum: [individual, business]
+        first_name:
+          type: string
+        last_name:
+          type: string
+        business_name:
+          type: string
+        abn:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

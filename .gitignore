@@ -51,3 +51,4 @@ next-env.d.ts
 
 # Puppeteer cache
 .cache/puppeteer
+.kiro/*
