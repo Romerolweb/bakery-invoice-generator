@@ -116,6 +116,7 @@ CREATE INDEX idx_customers_email ON customers(email);
 CREATE INDEX idx_customers_phone ON customers(phone);
 CREATE INDEX idx_customers_business_name ON customers(business_name);
 CREATE INDEX idx_customers_last_name ON customers(last_name);
+CREATE INDEX idx_customers_first_name ON customers(first_name);
 
 CREATE INDEX idx_products_name ON products(name);
 CREATE INDEX idx_products_category ON products(category);
@@ -134,59 +135,6 @@ CREATE INDEX idx_line_items_product_name ON line_items(product_name);
 CREATE INDEX idx_email_audit_receipt_id ON email_audit(receipt_id);
 CREATE INDEX idx_email_audit_status ON email_audit(status);
 CREATE INDEX idx_email_audit_sent_at ON email_audit(sent_at);
-
--- Full-text search tables for enhanced search capabilities
-CREATE VIRTUAL TABLE customers_fts USING fts5(
-    id UNINDEXED,
-    first_name,
-    last_name,
-    business_name,
-    email,
-    phone,
-    address,
-    content='customers',
-    content_rowid='rowid'
-);
-
-CREATE VIRTUAL TABLE products_fts USING fts5(
-    id UNINDEXED,
-    name,
-    description,
-    category,
-    content='products',
-    content_rowid='rowid'
-);
-
--- Triggers to keep FTS tables in sync
-CREATE TRIGGER customers_fts_insert AFTER INSERT ON customers BEGIN
-    INSERT INTO customers_fts(rowid, id, first_name, last_name, business_name, email, phone, address)
-    VALUES (NEW.rowid, NEW.id, NEW.first_name, NEW.last_name, NEW.business_name, NEW.email, NEW.phone, NEW.address);
-END;
-
-CREATE TRIGGER customers_fts_delete AFTER DELETE ON customers BEGIN
-    DELETE FROM customers_fts WHERE rowid = OLD.rowid;
-END;
-
-CREATE TRIGGER customers_fts_update AFTER UPDATE ON customers BEGIN
-    DELETE FROM customers_fts WHERE rowid = OLD.rowid;
-    INSERT INTO customers_fts(rowid, id, first_name, last_name, business_name, email, phone, address)
-    VALUES (NEW.rowid, NEW.id, NEW.first_name, NEW.last_name, NEW.business_name, NEW.email, NEW.phone, NEW.address);
-END;
-
-CREATE TRIGGER products_fts_insert AFTER INSERT ON products BEGIN
-    INSERT INTO products_fts(rowid, id, name, description, category)
-    VALUES (NEW.rowid, NEW.id, NEW.name, NEW.description, NEW.category);
-END;
-
-CREATE TRIGGER products_fts_delete AFTER DELETE ON products BEGIN
-    DELETE FROM products_fts WHERE rowid = OLD.rowid;
-END;
-
-CREATE TRIGGER products_fts_update AFTER UPDATE ON products BEGIN
-    DELETE FROM products_fts WHERE rowid = OLD.rowid;
-    INSERT INTO products_fts(rowid, id, name, description, category)
-    VALUES (NEW.rowid, NEW.id, NEW.name, NEW.description, NEW.category);
-END;
 
 -- Trigger to automatically update updated_at timestamps
 CREATE TRIGGER customers_updated_at AFTER UPDATE ON customers BEGIN

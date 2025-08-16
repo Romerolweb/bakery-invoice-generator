@@ -1,0 +1,1763 @@
+[
+  {
+    "receipt_id": "3a87acb4-a95a-4e0d-9947-bb3608af84dc",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-05T00:00:00.000Z",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "378e9ff3-86bd-40d9-ae5a-11d697ab0352",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-05T00:00:00.000Z",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "45252f23-a774-42be-9963-858bc4b87456",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-05T00:00:00.000Z",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "9daf6191-dda8-4803-82e1-ddfa15b96e58",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-05T00:00:00.000Z",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "cdae79a3-1ad6-46f9-9f08-9d286cdeb83f",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-05T00:00:00.000Z",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "c2663b90-e31a-4554-9272-4888cb89afe9",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-05T00:00:00.000Z",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 35,
+        "unit_price": 10,
+        "line_total": 350,
+        "product_name": "Chocoflan Dessert",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 350,
+    "GST_amount": 0,
+    "total_inc_GST": 350,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "4e8904b4-a4ad-487a-b58c-dbe9311975ee",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "2297f7e0-9860-4be8-95c3-e0ff42cb203e",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "e63866bb-137d-45cd-a130-317759114167",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "c7bd0367-913e-466b-a51c-cbf6482e2f81",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 3,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "60230e17-e678-4b45-b628-5be8d4264f5c",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "2fd541d5-9d0f-4206-bb55-755f91e62e00",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "c950a023-826d-42be-94d4-c31d591cd558",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "d984d4cb-7409-4ab0-9fb5-52291520ecc1",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "96e26078-9049-481f-9945-5052cb348b07",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "f1938040-709d-4d9f-9230-0d47ba5ae42e",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "a6a2d0dd-0ece-4239-8c1b-3d3cc66d6d45",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD"
+    }
+  },
+  {
+    "receipt_id": "fbacca10-7fff-4837-8bcb-cf90cdf4b94f",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "497d13e6-793b-41fc-b24c-6fc9562252f0",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-14",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "8169153d-5ca2-4386-a259-af69978c23c8",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-14",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "2373ad3f-798c-46bc-a697-4b748b4ecc76",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-14",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "9627539e-dad4-4dff-9ea1-ee4816012669",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-14",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      },
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 3,
+        "unit_price": 10,
+        "line_total": 30,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 30,
+    "GST_amount": 0,
+    "total_inc_GST": 30,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "9cda9235-58dc-40ca-b77e-317fb9af01f5",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-14",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "44ffdbea-c8de-4617-88c2-a61d825d2002",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-14",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "ba101794-c912-44a2-9069-6405897100c6",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-14",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "2a75bb40-b624-4f4d-b9ed-dfacb5a73d0c",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "4a9da1f9-9c22-4879-9e58-380b81b02da5",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-06",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "2c6bbdaf-ca9b-4d8f-9de3-42c2c8c9e5ad",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 3,
+        "unit_price": 10,
+        "line_total": 30,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      },
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 3,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 30,
+    "GST_amount": 0,
+    "total_inc_GST": 30,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "43f151e5-82a2-4092-9ba5-c11c69d72920",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "fcef79e8-de4d-4f78-b148-48dc4d61a45d",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "f1c7acd9-137c-4868-9376-5c5bf5911be3",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "c847113a-da55-48ef-bc62-fda9320adda6",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "fe506369-e995-4b10-8072-4f4010b73587",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "b2855f33-7039-4a50-ad7f-f78f76ec3d6f",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "83a8fbad-18e4-455d-b3dd-2a97b09e0a05",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "f1562f01-b530-4b02-8767-8b836ba7f2fc",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "809e1046-b5f9-4e1b-8379-47755613c39d",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "12ce5b2e-5edd-47d2-a697-afd26f7e1910",
+    "customer_id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "email": "aasdff@sad.com",
+      "phone": "0404040404",
+      "address": "aqyi. toy",
+      "customer_type": "individual",
+      "first_name": "asdf",
+      "last_name": "asf",
+      "id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f"
+    }
+  },
+  {
+    "receipt_id": "4d05a1ca-fab7-45f5-bdd9-677c22d51638",
+    "customer_id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "email": "aasdff@sad.com",
+      "phone": "0404040404",
+      "address": "aqyi. toy",
+      "customer_type": "individual",
+      "first_name": "asdf",
+      "last_name": "asf",
+      "id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f"
+    }
+  },
+  {
+    "receipt_id": "4fe752ce-943b-4be8-ad36-ca14c0d70a3f",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-30",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 1,
+        "unit_price": 10,
+        "line_total": 10,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 10,
+    "GST_amount": 0,
+    "total_inc_GST": 10,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "40c957b7-829c-4970-88f6-8e5c8ac21511",
+    "customer_id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f",
+    "date_of_purchase": "2025-05-31",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "email": "aasdff@sad.com",
+      "phone": "0404040404",
+      "address": "aqyi. toy",
+      "customer_type": "individual",
+      "first_name": "asdf",
+      "last_name": "asf",
+      "id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f"
+    }
+  },
+  {
+    "receipt_id": "7420fb5a-8ea9-48cb-b74b-d5d6d058c25e",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-31",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 100,
+        "unit_price": 10,
+        "line_total": 1000,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 1000,
+    "GST_amount": 0,
+    "total_inc_GST": 1000,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "816e7565-b547-4850-8c0a-b46343d33d59",
+    "customer_id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f",
+    "date_of_purchase": "2025-05-31",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 0,
+    "GST_amount": 0,
+    "total_inc_GST": 0,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "customer_type": "business",
+      "first_name": "John",
+      "last_name": "Toro",
+      "business_name": "Australian Pentecostal Church Inc",
+      "abn": "",
+      "email": "apc@aupentecostal.org.au",
+      "phone": "0478516064",
+      "address": "Unit 6/116-120 River Hills Rd, Eagleby, QLD",
+      "id": "ec1d48bb-7368-4364-8b58-e8f57ee7bf5f"
+    }
+  },
+  {
+    "receipt_id": "859bc274-fa1e-4c15-ba6a-311ada7934ce",
+    "customer_id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f",
+    "date_of_purchase": "2025-06-01",
+    "line_items": [
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 2,
+        "unit_price": 10,
+        "line_total": 20,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      },
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 5,
+        "unit_price": 10,
+        "line_total": 50,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 70,
+    "GST_amount": 0,
+    "total_inc_GST": 70,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "email": "aasdff@sad.com",
+      "phone": "0404040404",
+      "address": "aqyi. toy",
+      "customer_type": "individual",
+      "first_name": "asdf",
+      "last_name": "asf",
+      "id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f"
+    }
+  },
+  {
+    "receipt_id": "188ce4b0-3544-40c1-a8d9-7c85613a22e8",
+    "customer_id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f",
+    "date_of_purchase": "2025-06-05",
+    "line_items": [
+      {
+        "product_id": "1a9aad32-181c-44bf-8763-a703d1573da4",
+        "quantity": 1,
+        "unit_price": 0,
+        "line_total": 0,
+        "product_name": "Hearth Chocoflan cake ",
+        "description": "Hearth shaped cake for 8 people aprox.",
+        "GST_applicable": false
+      },
+      {
+        "product_id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1",
+        "quantity": 2,
+        "unit_price": 10,
+        "line_total": 20,
+        "product_name": "Chocoflan Dessert",
+        "description": "Chocoflan dessert, Rounded style",
+        "GST_applicable": false
+      }
+    ],
+    "subtotal_excl_GST": 20,
+    "GST_amount": 0,
+    "total_inc_GST": 20,
+    "is_tax_invoice": false,
+    "seller_profile_snapshot": {
+      "name": "Sweet Words Australia",
+      "business_address": "226 Gallipoli Rd, Carina Heights, Brisbane, QLD 4152",
+      "ABN_or_ACN": "94948186091",
+      "contact_email": "wordssweet49@gmail.com",
+      "phone": "0426879874",
+      "logo_url": "https://t3.ftcdn.net/jpg/04/15/87/80/360_F_415878087_9oiQhKAgnPjD1cmmDP0NWzXrTLrdYMMY.jpg"
+    },
+    "customer_snapshot": {
+      "email": "aasdff@sad.com",
+      "phone": "0404040404",
+      "address": "aqyi. toy",
+      "customer_type": "individual",
+      "first_name": "asdf",
+      "last_name": "asf",
+      "id": "66255a7a-845d-449e-aa7f-47af3a0f5f1f"
+    }
+  }
+]

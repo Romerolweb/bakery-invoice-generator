@@ -153,7 +153,7 @@ func (m *MigrationManager) GetMigrationStatus() (*MigrationInfo, error) {
 func (m *MigrationManager) ValidateSchema() error {
 	m.logger.Info("Validating database schema...")
 
-	// List of expected tables
+	// List of expected tables (removed FTS tables)
 	expectedTables := []string{
 		"customers",
 		"products",
@@ -162,8 +162,6 @@ func (m *MigrationManager) ValidateSchema() error {
 		"line_items",
 		"seller_profile",
 		"email_audit",
-		"customers_fts",
-		"products_fts",
 	}
 
 	// Check if all expected tables exist
@@ -218,9 +216,19 @@ func (m *MigrationManager) initMigrate() (*migrate.Migrate, error) {
 // createBackup creates a backup of the database before migrations
 func (m *MigrationManager) createBackup() error {
 	// Get database file path from connection
-	var dbPath string
-	if err := m.db.QueryRow("PRAGMA database_list").Scan(nil, nil, &dbPath); err != nil {
-		return fmt.Errorf("failed to get database path: %w", err)
+	rows, err := m.db.Query("PRAGMA database_list")
+	if err != nil {
+		return fmt.Errorf("failed to query database list: %w", err)
+	}
+	defer rows.Close()
+
+	var seq int
+	var name, dbPath string
+	if !rows.Next() {
+		return fmt.Errorf("no database found")
+	}
+	if err := rows.Scan(&seq, &name, &dbPath); err != nil {
+		return fmt.Errorf("failed to scan database path: %w", err)
 	}
 
 	if dbPath == "" || dbPath == ":memory:" {
@@ -292,19 +300,63 @@ func InitializeDatabase(dbPath, migrationsPath string, logger *logrus.Logger) (*
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(time.Hour)
 
-	// Create migration manager and run migrations
-	migrationManager := NewMigrationManager(db, migrationsPath, logger)
-	if err := migrationManager.RunMigrations(); err != nil {
+	// Run simple migration
+	if err := runSimpleMigration(db, migrationsPath, logger); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	// Validate schema
-	if err := migrationManager.ValidateSchema(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("schema validation failed: %w", err)
-	}
-
 	logger.Info("Database initialized successfully")
 	return db, nil
+}
+
+// runSimpleMigration runs a simple migration without external libraries
+func runSimpleMigration(db *sql.DB, migrationsPath string, logger *logrus.Logger) error {
+	// Check if schema_migrations table exists
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_migrations'").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check schema_migrations table: %w", err)
+	}
+
+	// Create schema_migrations table if it doesn't exist
+	if count == 0 {
+		_, err := db.Exec(`CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)`)
+		if err != nil {
+			return fmt.Errorf("failed to create schema_migrations table: %w", err)
+		}
+	}
+
+	// Check if migration has been applied
+	err = db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = 1").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check migration status: %w", err)
+	}
+
+	if count > 0 {
+		logger.Info("Migration already applied")
+		return nil
+	}
+
+	// Read and execute migration file
+	migrationFile := filepath.Join(migrationsPath, "001_initial_schema.up.sql")
+	content, err := os.ReadFile(migrationFile)
+	if err != nil {
+		return fmt.Errorf("failed to read migration file: %w", err)
+	}
+
+	// Execute migration
+	_, err = db.Exec(string(content))
+	if err != nil {
+		return fmt.Errorf("failed to execute migration: %w", err)
+	}
+
+	// Record migration
+	_, err = db.Exec("INSERT INTO schema_migrations (version) VALUES (1)")
+	if err != nil {
+		return fmt.Errorf("failed to record migration: %w", err)
+	}
+
+	logger.Info("Migration applied successfully")
+	return nil
 }

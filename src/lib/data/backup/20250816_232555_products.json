@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Chocoflan Dessert",
+    "description": "Chocoflan dessert, Rounded style",
+    "unit_price": 10,
+    "GST_applicable": false,
+    "id": "c3d24bc8-1eab-46b4-bc43-4b922f5a69c1"
+  },
+  {
+    "name": "Hearth Chocoflan cake ",
+    "description": "Hearth shaped cake for 8 people aprox.",
+    "unit_price": 0,
+    "GST_applicable": false,
+    "id": "1a9aad32-181c-44bf-8763-a703d1573da4"
+  }
+]

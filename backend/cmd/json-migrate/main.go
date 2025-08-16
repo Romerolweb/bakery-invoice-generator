@@ -71,15 +71,8 @@ func main() {
 func checkJSONFiles(jsonPath string, logger *logrus.Logger) error {
 	logger.Info("Checking for JSON files...")
 
-	// Create a temporary database connection for the migrator
-	db, err := database.InitializeDatabase(":memory:", "./migrations", logger)
-	if err != nil {
-		return fmt.Errorf("failed to create temporary database: %w", err)
-	}
-	defer db.Close()
-
-	migrator := migration.NewJSONMigrator(db, jsonPath, logger)
-
+	// Just check files without database connection
+	migrator := migration.NewJSONMigrator(nil, jsonPath, logger)
 	hasFiles, existingFiles := migrator.CheckJSONFilesExist()
 
 	if !hasFiles {
@@ -113,21 +106,15 @@ func runMigration(dbPath, jsonPath string, logger *logrus.Logger, dryRun, forceB
 
 	logger.Info("Starting JSON to SQLite migration...")
 
-	// Initialize database connection
-	config := &database.ConnectionConfig{
-		DatabasePath:   dbPath,
-		MigrationsPath: "./migrations",
-		Logger:         logger,
+	// Initialize database directly
+	db, err := database.InitializeDatabase(dbPath, "./migrations", logger)
+	if err != nil {
+		return fmt.Errorf("failed to initialize database: %w", err)
 	}
-
-	connectionManager := database.NewConnectionManager(config)
-	if err := connectionManager.Connect(); err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer connectionManager.Close()
+	defer db.Close()
 
 	// Create migrator
-	migrator := migration.NewJSONMigrator(connectionManager.GetDB(), jsonPath, logger)
+	migrator := migration.NewJSONMigrator(db, jsonPath, logger)
 
 	// Check if JSON files exist
 	hasFiles, existingFiles := migrator.CheckJSONFilesExist()
