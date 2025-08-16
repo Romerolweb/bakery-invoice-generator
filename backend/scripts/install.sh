@@ -19,7 +19,7 @@ echo "=================================="
 echo -e "${YELLOW}Checking Go installation...${NC}"
 if ! command -v go &> /dev/null; then
     echo -e "${RED}❌ Go is not installed${NC}"
-    echo -e "${YELLOW}Please install Go 1.21 or later from https://golang.org/dl/${NC}"
+    echo -e "${YELLOW}Please install Go 1.24.6 or later from https://golang.org/dl/${NC}"
     exit 1
 fi
 
@@ -27,7 +27,7 @@ GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
 echo -e "${GREEN}✅ Go ${GO_VERSION} is installed${NC}"
 
 # Check Go version
-REQUIRED_VERSION="1.21"
+REQUIRED_VERSION="1.24.6"
 if ! printf '%s\n%s\n' "$REQUIRED_VERSION" "$GO_VERSION" | sort -V -C; then
     echo -e "${RED}❌ Go version ${GO_VERSION} is too old. Please upgrade to Go ${REQUIRED_VERSION} or later${NC}"
     exit 1

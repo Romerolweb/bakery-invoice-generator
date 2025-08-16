@@ -15,7 +15,7 @@ import (
 var container *server.Container
 
 func init() {
-	cfg, err := config.Load()
+	cfg, err := config.GetOptimizedConfig()
 	if err != nil {
 		panic("Failed to load configuration: " + err.Error())
 	}

@@ -4,7 +4,7 @@
 BINARY_NAME=bakery-invoice-api
 DOCKER_IMAGE=bakery-invoice-api
 DOCKER_TAG=latest
-GO_VERSION=1.21
+GO_VERSION=1.24.6
 
 # Colors for output
 RED=\033[0;31m
@@ -69,24 +69,17 @@ dev-watch: ## Start development server with file watching (requires air)
 # Building
 build: ## Build the server binary
 	@echo "$(YELLOW)Building server binary...$(NC)"
-	@CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/$(BINARY_NAME) cmd/server/main.go
-	@echo "$(GREEN)✓ Server binary built: bin/$(BINARY_NAME)$(NC)"
+	@./scripts/build.sh -t server
+	@echo "$(GREEN)✓ Server binary built$(NC)"
 
 build-all: ## Build all binaries (server + lambda functions)
 	@echo "$(YELLOW)Building all binaries...$(NC)"
-	@$(MAKE) build
-	@$(MAKE) lambda-build
+	@./scripts/build.sh -t all
 	@echo "$(GREEN)✓ All binaries built$(NC)"
 
 lambda-build: ## Build Lambda function binaries
 	@echo "$(YELLOW)Building Lambda functions...$(NC)"
-	@mkdir -p bin
-	@for func in customers products receipts email; do \
-		echo "$(YELLOW)Building $$func function...$(NC)"; \
-		GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/$$func cmd/lambda/$$func/main.go; \
-		zip -j bin/$$func.zip bin/$$func; \
-		echo "$(GREEN)✓ $$func function built$(NC)"; \
-	done
+	@./scripts/build.sh -t lambda
 	@echo "$(GREEN)✓ All Lambda functions built$(NC)"
 
 # Testing
@@ -121,22 +114,60 @@ format: ## Format code
 # Database
 migrate-up: ## Run database migrations up
 	@echo "$(YELLOW)Running database migrations...$(NC)"
-	@if ! command -v migrate >/dev/null 2>&1; then \
-		echo "$(RED)golang-migrate is not installed. Please install it first.$(NC)"; \
-		echo "$(YELLOW)Install with: go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest$(NC)"; \
-		exit 1; \
-	fi
-	@migrate -path migrations -database "sqlite3://data/bakery.db" up
+	@go run cmd/migrate/main.go -action=up -db=./data/bakery.db -migrations=./migrations
 	@echo "$(GREEN)✓ Database migrations completed$(NC)"
 
 migrate-down: ## Run database migrations down
 	@echo "$(YELLOW)Rolling back database migrations...$(NC)"
-	@migrate -path migrations -database "sqlite3://data/bakery.db" down
+	@go run cmd/migrate/main.go -action=down -db=./data/bakery.db -migrations=./migrations
 	@echo "$(GREEN)✓ Database migrations rolled back$(NC)"
+
+migrate-status: ## Show migration status
+	@echo "$(YELLOW)Checking migration status...$(NC)"
+	@go run cmd/migrate/main.go -action=status -db=./data/bakery.db -migrations=./migrations
+
+migrate-validate: ## Validate database schema
+	@echo "$(YELLOW)Validating database schema...$(NC)"
+	@go run cmd/migrate/main.go -action=validate -db=./data/bakery.db -migrations=./migrations
+	@echo "$(GREEN)✓ Schema validation completed$(NC)"
+
+migrate-json: ## Migrate data from JSON files to SQLite
+	@echo "$(YELLOW)Migrating JSON data to SQLite...$(NC)"
+	@go run cmd/json-migrate/main.go -action=migrate -db=./data/bakery.db -json=../src/lib/data
+	@echo "$(GREEN)✓ JSON migration completed$(NC)"
+
+migrate-json-check: ## Check for JSON files ready for migration
+	@echo "$(YELLOW)Checking for JSON files...$(NC)"
+	@go run cmd/json-migrate/main.go -action=check -json=../src/lib/data
+
+migrate-json-validate: ## Validate JSON migration results
+	@echo "$(YELLOW)Validating JSON migration...$(NC)"
+	@go run cmd/json-migrate/main.go -action=validate -db=./data/bakery.db -json=../src/lib/data
+	@echo "$(GREEN)✓ JSON migration validation completed$(NC)"
+
+migrate-json-dry-run: ## Perform a dry run of JSON migration
+	@echo "$(YELLOW)Performing JSON migration dry run...$(NC)"
+	@go run cmd/json-migrate/main.go -action=migrate -db=./data/bakery.db -json=../src/lib/data -dry-run
+	@echo "$(GREEN)✓ JSON migration dry run completed$(NC)"
+
+migrate-full: ## Complete migration from JSON to SQLite (recommended)
+	@echo "$(YELLOW)Running complete JSON to SQLite migration...$(NC)"
+	@./scripts/migrate-json.sh
+	@echo "$(GREEN)✓ Complete migration finished$(NC)"
+
+migrate-full-dry-run: ## Complete migration dry run
+	@echo "$(YELLOW)Running complete migration dry run...$(NC)"
+	@./scripts/migrate-json.sh --dry-run
+	@echo "$(GREEN)✓ Complete migration dry run finished$(NC)"
 
 migrate-create: ## Create a new migration file (usage: make migrate-create NAME=migration_name)
 	@if [ -z "$(NAME)" ]; then \
 		echo "$(RED)Please provide a migration name: make migrate-create NAME=migration_name$(NC)"; \
+		exit 1; \
+	fi
+	@if ! command -v migrate >/dev/null 2>&1; then \
+		echo "$(RED)golang-migrate is not installed. Please install it first.$(NC)"; \
+		echo "$(YELLOW)Install with: go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest$(NC)"; \
 		exit 1; \
 	fi
 	@migrate create -ext sql -dir migrations $(NAME)
@@ -270,3 +301,20 @@ full-deploy: ## Full deployment (build + test + deploy)
 	@$(MAKE) test
 	@$(MAKE) deploy-lambda
 	@echo "$(GREEN)🎉 Full deployment completed!$(NC)"
+
+# Validation
+validate: ## Validate both server and lambda deployments
+	@echo "$(YELLOW)Validating deployments...$(NC)"
+	@./scripts/validate-deployment.sh -m both
+
+validate-server: ## Validate server deployment only
+	@echo "$(YELLOW)Validating server deployment...$(NC)"
+	@./scripts/validate-deployment.sh -m server
+
+validate-lambda: ## Validate lambda deployment only (requires LAMBDA_URL)
+	@echo "$(YELLOW)Validating lambda deployment...$(NC)"
+	@if [ -z "$(LAMBDA_URL)" ]; then \
+		echo "$(RED)Please provide LAMBDA_URL: make validate-lambda LAMBDA_URL=https://your-api-gateway-url$(NC)"; \
+		exit 1; \
+	fi
+	@./scripts/validate-deployment.sh -m lambda -l $(LAMBDA_URL)

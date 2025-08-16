@@ -40,11 +40,14 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
-	// Load configuration
-	cfg, err := config.Load()
+	// Load configuration optimized for deployment mode
+	cfg, err := config.GetOptimizedConfig()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+
+	// Log deployment mode
+	log.Printf("Starting in %s mode", config.GetDeploymentMode())
 
 	// Initialize dependencies
 	container, err := server.NewContainer(cfg)

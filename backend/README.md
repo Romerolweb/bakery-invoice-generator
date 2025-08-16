@@ -5,23 +5,27 @@ A professional invoice system backend built with Go, designed specifically for b
 ## Features
 
 - **RESTful API** with comprehensive OpenAPI documentation
-- **SQLite Database** with automatic migrations
-- **Dual Deployment** - Traditional server and AWS Lambda serverless
-- **File Storage Abstraction** - Local filesystem and AWS S3 support
+- **SQLite Database** with automatic migrations (PostgreSQL for serverless)
+- **Dual Deployment Architecture** - Single codebase for both traditional server and AWS Lambda serverless
+- **Modular Serverless Design** - Each API domain can be deployed as separate Lambda functions
+- **Intelligent Configuration** - Automatic adaptation between server and serverless modes
+- **File Storage Abstraction** - Seamless switching between local filesystem and AWS S3
 - **Email Integration** - Professional receipt delivery with PDF attachments
 - **GST Compliance** - Australian tax requirements with automatic calculations
 - **Docker Support** - Containerized deployment with persistent storage
 - **Comprehensive Testing** - Unit, integration, and API contract tests
+- **Deployment Validation** - Automated testing for both deployment modes
 
 ## Quick Start
 
 ### Prerequisites
 
-- Go 1.21 or later
-- SQLite 3
-- Docker (optional)
+- Go 1.24.6 or later
+- SQLite 3 (for server mode) or PostgreSQL (for serverless mode)
+- Docker (optional, for containerized deployment)
 - AWS CLI (for Lambda deployment)
 - Serverless Framework (for Lambda deployment)
+- Node.js and npm (for Serverless Framework)
 
 ### Installation
 
@@ -80,6 +84,11 @@ make docker-compose-up  # Start with docker-compose
 make deploy-lambda      # Deploy to AWS Lambda
 make deploy-lambda-dev  # Deploy to Lambda (dev)
 make deploy-lambda-prod # Deploy to Lambda (prod)
+
+# Validation
+make validate           # Validate both deployments
+make validate-server    # Validate server deployment
+make validate-lambda LAMBDA_URL=https://api.gateway.url  # Validate Lambda
 
 # Utilities
 make clean              # Clean build artifacts
