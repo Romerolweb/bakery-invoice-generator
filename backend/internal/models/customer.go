@@ -152,8 +152,3 @@ func (c *Customer) GetSearchableText() string {
 func (c *Customer) UpdateTimestamp() {
 	c.UpdatedAt = time.Now()
 }
-
-// isValidEmail performs basic email validation
-func isValidEmail(email string) bool {
-	return strings.Contains(email, "@") && strings.Contains(email, ".")
-}

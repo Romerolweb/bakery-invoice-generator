@@ -19,6 +19,14 @@ var abnRegex = regexp.MustCompile(`^\d{2}[\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3}$`)
 // ACN validation regex (9 digits with optional spaces/hyphens)
 var acnRegex = regexp.MustCompile(`^\d{3}[\s-]?\d{3}[\s-]?\d{3}$`)
 
+// isValidEmail validates email format using regex
+func isValidEmail(email string) bool {
+	if len(email) > 254 {
+		return false
+	}
+	return emailRegex.MatchString(strings.TrimSpace(email))
+}
+
 // IsValidPhone validates Australian phone number format
 func IsValidPhone(phone string) bool {
 	if phone == "" {

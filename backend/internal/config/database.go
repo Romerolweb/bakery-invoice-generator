@@ -12,8 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// DatabaseConfig holds database-specific configuration
-type DatabaseConfig struct {
+// DatabaseSettings holds database-specific configuration
+type DatabaseSettings struct {
 	Path            string        `mapstructure:"path"`
 	MigrationsPath  string        `mapstructure:"migrations_path"`
 	MaxOpenConns    int           `mapstructure:"max_open_conns"`
@@ -23,9 +23,9 @@ type DatabaseConfig struct {
 	BackupEnabled   bool          `mapstructure:"backup_enabled"`
 }
 
-// DefaultDatabaseConfig returns default database configuration
-func DefaultDatabaseConfig() *DatabaseConfig {
-	return &DatabaseConfig{
+// DefaultDatabaseSettings returns default database configuration
+func DefaultDatabaseSettings() *DatabaseSettings {
+	return &DatabaseSettings{
 		Path:            "./data/bakery.db",
 		MigrationsPath:  "./migrations",
 		MaxOpenConns:    1,
@@ -36,9 +36,9 @@ func DefaultDatabaseConfig() *DatabaseConfig {
 	}
 }
 
-// LoadDatabaseConfigFromEnv loads database configuration from environment variables
-func LoadDatabaseConfigFromEnv() *DatabaseConfig {
-	config := DefaultDatabaseConfig()
+// LoadDatabaseSettingsFromEnv loads database configuration from environment variables
+func LoadDatabaseSettingsFromEnv() *DatabaseSettings {
+	config := DefaultDatabaseSettings()
 
 	if path := os.Getenv("DB_PATH"); path != "" {
 		config.Path = path
@@ -82,7 +82,7 @@ func LoadDatabaseConfigFromEnv() *DatabaseConfig {
 }
 
 // Validate validates the database configuration
-func (c *DatabaseConfig) Validate() error {
+func (c *DatabaseSettings) Validate() error {
 	if c.Path == "" {
 		return fmt.Errorf("database path cannot be empty")
 	}
@@ -111,8 +111,8 @@ func (c *DatabaseConfig) Validate() error {
 	return nil
 }
 
-// ToConnectionConfig converts DatabaseConfig to database.ConnectionConfig
-func (c *DatabaseConfig) ToConnectionConfig(logger *logrus.Logger) *database.ConnectionConfig {
+// ToConnectionConfig converts DatabaseSettings to database.ConnectionConfig
+func (c *DatabaseSettings) ToConnectionConfig(logger *logrus.Logger) *database.ConnectionConfig {
 	return &database.ConnectionConfig{
 		DatabasePath:    c.Path,
 		MigrationsPath:  c.MigrationsPath,
@@ -124,7 +124,7 @@ func (c *DatabaseConfig) ToConnectionConfig(logger *logrus.Logger) *database.Con
 }
 
 // EnsureDirectories creates necessary directories for database operation
-func (c *DatabaseConfig) EnsureDirectories() error {
+func (c *DatabaseSettings) EnsureDirectories() error {
 	// Ensure database directory exists
 	dbDir := filepath.Dir(c.Path)
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
@@ -140,7 +140,7 @@ func (c *DatabaseConfig) EnsureDirectories() error {
 }
 
 // GetAbsolutePaths returns absolute paths for database and migrations
-func (c *DatabaseConfig) GetAbsolutePaths() (string, string, error) {
+func (c *DatabaseSettings) GetAbsolutePaths() (string, string, error) {
 	dbPath, err := filepath.Abs(c.Path)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get absolute database path: %w", err)
