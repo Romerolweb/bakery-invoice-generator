@@ -116,10 +116,15 @@ This package contains all the domain models for the bakery invoice system. The m
 
 ## Business Logic Implementation
 
-### GST Calculations
-- 10% GST rate applied when both `include_gst` is true AND product has `gst_applicable: true`
-- All monetary values rounded to 2 decimal places
-- Tax invoices automatically generated for amounts ≥ $82.50 AUD
+### GST Calculations and Australian Tax Compliance
+- **GST Rate**: 10% (Australian standard rate)
+- **GST Registration Threshold**: $75,000 annual turnover (businesses above this must register for GST)
+- **GST Charging**: Configurable per seller - businesses can choose whether to charge GST
+- **GST Application**: Applied only when seller charges GST AND product has `gst_applicable: true`
+- **Tax Invoice Threshold**: $82.50 AUD (GST must be shown on invoices ≥ this amount)
+- **Tax Invoice Requirement**: Generated when GST is charged AND (amount ≥ $82.50 OR customer is business)
+- **All monetary values rounded to 2 decimal places**
+- **GST Status Recording**: Each receipt records whether GST was charged or not
 
 ### Data Integrity
 - Immutable receipt snapshots preserve customer and seller data at creation time
@@ -133,7 +138,7 @@ This package contains all the domain models for the bakery invoice system. The m
 
 ## Usage Examples
 
-### Creating a Receipt
+### Creating a Receipt with GST Control
 ```go
 // Create customer and products
 customer := NewIndividualCustomer("John", "Doe")
@@ -146,13 +151,48 @@ receipt := NewReceipt(customer.ID)
 lineItem := NewLineItem(receipt.ReceiptID, product.ID, product, 2, 1)
 receipt.LineItems = []LineItem{*lineItem}
 
-// Set snapshots
+// Set up seller profile with GST settings
 seller := NewSellerProfile("Bakery Name", "Address", "ABN", "email@bakery.com")
+
+// Option 1: Large bakery (over $75k turnover) - charges GST
+seller.SetGSTRegistration(true)
+seller.SetChargeGST(true)
+
+// Option 2: Small bakery (under $75k turnover) - no GST
+// seller.GSTRegistered defaults to false
+// seller.ChargeGST defaults to false
+
+// Set snapshots
 receipt.SetCustomerSnapshot(customer)
 receipt.SetSellerProfileSnapshot(seller)
 
-// Calculate totals
-receipt.CalculateTotals(true) // true = include GST
+// Calculate totals based on seller's GST settings
+receipt.CalculateTotals(seller.ShouldChargeGST())
+
+// Check GST status
+fmt.Printf("GST Status: %s\n", receipt.GetGSTStatus())
+fmt.Printf("Seller Status: %s\n", seller.GetGSTStatus())
+```
+
+### GST Business Logic Examples
+```go
+// Small bakery under $75k threshold
+smallBakery := NewSellerProfile("Small Bakery", "Address", "ABN", "email")
+// smallBakery.GSTRegistered = false (default)
+// smallBakery.ChargeGST = false (default)
+fmt.Println(smallBakery.GetGSTStatus()) // "Not GST Registered (Annual turnover under $75,000)"
+
+// Large bakery over $75k threshold
+largeBakery := NewSellerProfile("Large Bakery", "Address", "ABN", "email")
+largeBakery.SetGSTRegistration(true)
+largeBakery.SetChargeGST(true)
+fmt.Println(largeBakery.GetGSTStatus()) // "GST Registered - Charging GST"
+
+// GST registered but choosing not to charge (allowed)
+optionalGST := NewSellerProfile("Optional GST Bakery", "Address", "ABN", "email")
+optionalGST.SetGSTRegistration(true)
+// optionalGST.ChargeGST remains false
+fmt.Println(optionalGST.GetGSTStatus()) // "GST Registered - Not Charging GST"
 ```
 
 ### Validation

@@ -9,8 +9,11 @@ const (
 	// GST rate for Australia
 	GSTRate = 0.10 // 10%
 
-	// Tax invoice threshold in AUD
+	// Tax invoice threshold in AUD (GST must be shown on invoices >= $82.50)
 	TaxInvoiceThreshold = 82.50
+
+	// GST registration threshold in AUD (businesses with turnover >= $75,000 must register)
+	GSTRegistrationThreshold = 75000.00
 
 	// Maximum retry attempts for email delivery
 	MaxEmailRetries = 3
@@ -104,23 +107,25 @@ func (ve *ValidationError) Error() string {
 
 // BusinessRules contains business logic constants and rules
 type BusinessRules struct {
-	GSTRate                float64
-	TaxInvoiceThreshold    float64
-	MaxLineItemsPerReceipt int
-	MaxReceiptAge          time.Duration
-	RequiredCustomerFields []string
-	RequiredProductFields  []string
+	GSTRate                  float64
+	TaxInvoiceThreshold      float64
+	GSTRegistrationThreshold float64
+	MaxLineItemsPerReceipt   int
+	MaxReceiptAge            time.Duration
+	RequiredCustomerFields   []string
+	RequiredProductFields    []string
 }
 
 // DefaultBusinessRules returns the default business rules for the bakery
 func DefaultBusinessRules() *BusinessRules {
 	return &BusinessRules{
-		GSTRate:                GSTRate,
-		TaxInvoiceThreshold:    TaxInvoiceThreshold,
-		MaxLineItemsPerReceipt: 50,
-		MaxReceiptAge:          365 * 24 * time.Hour, // 1 year
-		RequiredCustomerFields: []string{"customer_type"},
-		RequiredProductFields:  []string{"name", "unit_price", "category"},
+		GSTRate:                  GSTRate,
+		TaxInvoiceThreshold:      TaxInvoiceThreshold,
+		GSTRegistrationThreshold: GSTRegistrationThreshold,
+		MaxLineItemsPerReceipt:   50,
+		MaxReceiptAge:            365 * 24 * time.Hour, // 1 year
+		RequiredCustomerFields:   []string{"customer_type"},
+		RequiredProductFields:    []string{"name", "unit_price", "category"},
 	}
 }
 

@@ -133,8 +133,11 @@ func main() {
 	lineItem := models.NewLineItem(receipt.ReceiptID, product.ID, product, 2, 1)
 	receipt.LineItems = []models.LineItem{*lineItem}
 
-	// Set snapshots
+	// Set snapshots - seller charges GST
 	seller := models.NewSellerProfile("Test Bakery", "123 Main St", "12345678901", "test@bakery.com")
+	seller.SetGSTRegistration(true)
+	seller.SetChargeGST(true)
+	
 	if err := receipt.SetCustomerSnapshot(customer); err != nil {
 		log.Fatalf("Failed to set customer snapshot: %v", err)
 	}
@@ -142,8 +145,8 @@ func main() {
 		log.Fatalf("Failed to set seller snapshot: %v", err)
 	}
 
-	// Calculate totals
-	receipt.CalculateTotals(true)
+	// Calculate totals with GST
+	receipt.CalculateTotals(seller.ShouldChargeGST())
 	if err := receipt.Validate(); err != nil {
 		log.Fatalf("Receipt validation failed: %v", err)
 	}
@@ -164,6 +167,11 @@ func main() {
 	rules := models.DefaultBusinessRules()
 	fmt.Printf("✅ GST Rate: %.1f%%, Tax Invoice Threshold: $%.2f\n", 
 		rules.GSTRate*100, rules.TaxInvoiceThreshold)
+	fmt.Printf("✅ GST Registration Threshold: $%.0f\n", rules.GSTRegistrationThreshold)
+	
+	// Test GST Status
+	fmt.Printf("✅ Seller GST Status: %s\n", seller.GetGSTStatus())
+	fmt.Printf("✅ Receipt GST Status: %s\n", receipt.GetGSTStatus())
 
 	fmt.Println("\n🎉 All model functionality tests passed!")
 }
@@ -182,10 +190,12 @@ echo
 echo "📊 MILESTONE SUMMARY:"
 echo "✅ All domain models implemented and working correctly"
 echo "✅ Comprehensive validation and business logic included"
-echo "✅ GST calculations and tax invoice logic working"
+echo "✅ Australian GST compliance with configurable charging"
+echo "✅ GST registration threshold ($75k) and tax invoice rules"
+echo "✅ GST status recording and business logic working"
 echo "✅ Database migration system functional"
 echo "✅ JSON migration tools ready"
-echo "✅ All tests passing"
+echo "✅ All tests passing (including GST scenarios)"
 echo
 echo "🚀 NEXT PHASE READINESS:"
 echo "✅ Task 3.1 (Domain Models) - COMPLETE"

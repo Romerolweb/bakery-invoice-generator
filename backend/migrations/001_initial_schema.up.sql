@@ -56,6 +56,7 @@ CREATE TABLE receipts (
     gst_amount DECIMAL(10,2) NOT NULL,
     total_inc_gst DECIMAL(10,2) NOT NULL,
     is_tax_invoice BOOLEAN NOT NULL,
+    gst_charged BOOLEAN NOT NULL DEFAULT false,
     payment_method TEXT DEFAULT 'cash',
     notes TEXT,
     
@@ -94,6 +95,8 @@ CREATE TABLE seller_profile (
     contact_email TEXT NOT NULL,
     phone TEXT,
     logo_url TEXT,
+    gst_registered BOOLEAN NOT NULL DEFAULT false,
+    charge_gst BOOLEAN NOT NULL DEFAULT false,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -28,6 +28,7 @@ type Receipt struct {
 	GSTAmount             float64       `json:"gst_amount" db:"gst_amount"`
 	TotalIncGST           float64       `json:"total_inc_gst" db:"total_inc_gst"`
 	IsTaxInvoice          bool          `json:"is_tax_invoice" db:"is_tax_invoice"`
+	GSTCharged            bool          `json:"gst_charged" db:"gst_charged"`
 	PaymentMethod         PaymentMethod `json:"payment_method" db:"payment_method"`
 	Notes                 *string       `json:"notes,omitempty" db:"notes"`
 	SellerProfileSnapshot string        `json:"seller_profile_snapshot" db:"seller_profile_snapshot"`
@@ -59,6 +60,8 @@ type SellerProfileSnapshotData struct {
 	ContactEmail    string  `json:"contact_email"`
 	Phone           *string `json:"phone,omitempty"`
 	LogoURL         *string `json:"logo_url,omitempty"`
+	GSTRegistered   bool    `json:"gst_registered"`
+	ChargeGST       bool    `json:"charge_gst"`
 }
 
 // NewReceipt creates a new receipt with generated ID and timestamp
@@ -109,14 +112,15 @@ func (r *Receipt) Validate() error {
 }
 
 // CalculateTotals calculates and sets the subtotal, GST, and total amounts based on line items
-func (r *Receipt) CalculateTotals(includeGST bool) {
+func (r *Receipt) CalculateTotals(sellerChargesGST bool) {
 	var subtotal, gstAmount float64
 
 	for _, item := range r.LineItems {
 		lineSubtotal := item.UnitPrice * float64(item.Quantity)
 		subtotal += lineSubtotal
 
-		if item.GSTApplicable && includeGST {
+		// Only calculate GST if seller charges GST AND product is GST applicable
+		if item.GSTApplicable && sellerChargesGST {
 			gstAmount += roundToTwoDecimals(lineSubtotal * 0.10) // 10% GST
 		}
 	}
@@ -124,9 +128,11 @@ func (r *Receipt) CalculateTotals(includeGST bool) {
 	r.SubtotalExclGST = roundToTwoDecimals(subtotal)
 	r.GSTAmount = roundToTwoDecimals(gstAmount)
 	r.TotalIncGST = roundToTwoDecimals(subtotal + gstAmount)
+	r.GSTCharged = sellerChargesGST && gstAmount > 0
 
 	// Determine if this should be a tax invoice
-	r.IsTaxInvoice = r.TotalIncGST >= 82.50 || r.hasBusinessCustomer()
+	// Tax invoice required if GST is charged AND (total >= $82.50 OR customer is business)
+	r.IsTaxInvoice = r.GSTCharged && (r.TotalIncGST >= 82.50 || r.hasBusinessCustomer())
 }
 
 // SetCustomerSnapshot sets the customer snapshot from a Customer object
@@ -170,6 +176,8 @@ func (r *Receipt) SetSellerProfileSnapshot(seller *SellerProfile) error {
 		ContactEmail:    seller.ContactEmail,
 		Phone:           seller.Phone,
 		LogoURL:         seller.LogoURL,
+		GSTRegistered:   seller.GSTRegistered,
+		ChargeGST:       seller.ChargeGST,
 	}
 
 	data, err := json.Marshal(snapshot)
@@ -243,6 +251,35 @@ func (r *Receipt) GetCustomerDisplayName() string {
 	}
 
 	return "Unknown Customer"
+}
+
+// WasGSTCharged returns true if GST was charged on this receipt
+func (r *Receipt) WasGSTCharged() bool {
+	return r.GSTCharged
+}
+
+// GetGSTStatus returns a human-readable GST status for this receipt
+func (r *Receipt) GetGSTStatus() string {
+	if !r.GSTCharged {
+		return "No GST charged"
+	}
+	return fmt.Sprintf("GST charged: $%.2f", r.GSTAmount)
+}
+
+// GetSellerGSTStatusFromSnapshot returns the seller's GST status from the snapshot
+func (r *Receipt) GetSellerGSTStatusFromSnapshot() string {
+	snapshot, err := r.GetSellerProfileSnapshot()
+	if err != nil {
+		return "Unknown GST status"
+	}
+
+	if !snapshot.GSTRegistered {
+		return "Seller not GST registered"
+	}
+	if snapshot.ChargeGST {
+		return "Seller charges GST"
+	}
+	return "Seller GST registered but not charging GST"
 }
 
 // abs returns the absolute value of a float64

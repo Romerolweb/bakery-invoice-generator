@@ -15,6 +15,8 @@ type SellerProfile struct {
 	ContactEmail    string    `json:"contact_email" db:"contact_email" validate:"required,email"`
 	Phone           *string   `json:"phone,omitempty" db:"phone"`
 	LogoURL         *string   `json:"logo_url,omitempty" db:"logo_url"`
+	GSTRegistered   bool      `json:"gst_registered" db:"gst_registered"`
+	ChargeGST       bool      `json:"charge_gst" db:"charge_gst"`
 	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
 }
 
@@ -26,6 +28,8 @@ func NewSellerProfile(name, businessAddress, abnOrACN, contactEmail string) *Sel
 		BusinessAddress: businessAddress,
 		ABNOrACN:        abnOrACN,
 		ContactEmail:    contactEmail,
+		GSTRegistered:   false, // Default to not GST registered (under $75k threshold)
+		ChargeGST:       false, // Default to not charging GST
 		UpdatedAt:       time.Now(),
 	}
 }
@@ -164,6 +168,47 @@ func (sp *SellerProfile) GetABNOrACNFormatted() string {
 
 	// Return as-is if not standard format
 	return sp.ABNOrACN
+}
+
+// SetGSTRegistration sets the GST registration status
+func (sp *SellerProfile) SetGSTRegistration(registered bool) {
+	sp.GSTRegistered = registered
+	// If not registered, cannot charge GST
+	if !registered {
+		sp.ChargeGST = false
+	}
+	sp.UpdateTimestamp()
+}
+
+// SetChargeGST sets whether to charge GST (only if GST registered)
+func (sp *SellerProfile) SetChargeGST(charge bool) error {
+	if charge && !sp.GSTRegistered {
+		return fmt.Errorf("cannot charge GST when not GST registered")
+	}
+	sp.ChargeGST = charge
+	sp.UpdateTimestamp()
+	return nil
+}
+
+// IsGSTRegistered returns true if the business is registered for GST
+func (sp *SellerProfile) IsGSTRegistered() bool {
+	return sp.GSTRegistered
+}
+
+// ShouldChargeGST returns true if GST should be charged on transactions
+func (sp *SellerProfile) ShouldChargeGST() bool {
+	return sp.GSTRegistered && sp.ChargeGST
+}
+
+// GetGSTStatus returns a human-readable GST status
+func (sp *SellerProfile) GetGSTStatus() string {
+	if !sp.GSTRegistered {
+		return "Not GST Registered (Annual turnover under $75,000)"
+	}
+	if sp.ChargeGST {
+		return "GST Registered - Charging GST"
+	}
+	return "GST Registered - Not Charging GST"
 }
 
 // isNumeric checks if a string contains only digits
