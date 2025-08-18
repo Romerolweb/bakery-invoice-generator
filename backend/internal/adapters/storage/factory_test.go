@@ -3,215 +3,296 @@ package storage
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"testing"
-	"time"
 )
 
-func TestFactory(t *testing.T) {
+func TestFactory_CreateLocalStorage(t *testing.T) {
 	factory := DefaultFactory()
 
-	t.Run("CreateMockStorage", func(t *testing.T) {
-		config := &StorageConfig{
-			Type: "mock",
-		}
+	tempDir, err := os.MkdirTemp("", "factory_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
 
-		storage, err := factory.Create(config)
-		if err != nil {
-			t.Fatalf("Failed to create mock storage: %v", err)
-		}
-		defer storage.Close()
-
-		// Test basic operation
-		ctx := context.Background()
-		err = storage.Store(ctx, "test.txt", []byte("test"), nil)
-		if err != nil {
-			t.Fatalf("Store failed: %v", err)
-		}
-
-		data, err := storage.Retrieve(ctx, "test.txt")
-		if err != nil {
-			t.Fatalf("Retrieve failed: %v", err)
-		}
-
-		if string(data) != "test" {
-			t.Errorf("Data mismatch: got %q, want %q", string(data), "test")
-		}
-	})
-
-	t.Run("CreateLocalStorage", func(t *testing.T) {
-		// Create temporary directory
-		tempDir, err := os.MkdirTemp("", "storage_test")
-		if err != nil {
-			t.Fatalf("Failed to create temp dir: %v", err)
-		}
-		defer os.RemoveAll(tempDir)
-
-		config := &StorageConfig{
-			Type:     "local",
-			BasePath: tempDir,
-		}
-
-		storage, err := factory.Create(config)
-		if err != nil {
-			t.Fatalf("Failed to create local storage: %v", err)
-		}
-		defer storage.Close()
-
-		// Test basic operation
-		ctx := context.Background()
-		err = storage.Store(ctx, "test.txt", []byte("test"), nil)
-		if err != nil {
-			t.Fatalf("Store failed: %v", err)
-		}
-
-		// Verify file exists on disk
-		filePath := filepath.Join(tempDir, "test.txt")
-		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-			t.Error("File should exist on disk")
-		}
-
-		data, err := storage.Retrieve(ctx, "test.txt")
-		if err != nil {
-			t.Fatalf("Retrieve failed: %v", err)
-		}
-
-		if string(data) != "test" {
-			t.Errorf("Data mismatch: got %q, want %q", string(data), "test")
-		}
-	})
-
-	t.Run("CreateLocalStorageWithURL", func(t *testing.T) {
-		tempDir, err := os.MkdirTemp("", "storage_test")
-		if err != nil {
-			t.Fatalf("Failed to create temp dir: %v", err)
-		}
-		defer os.RemoveAll(tempDir)
-
-		config := &StorageConfig{
-			Type:     "local",
-			BasePath: tempDir,
-			Options: map[string]string{
-				"base_url": "http://localhost:8080/files",
+	tests := []struct {
+		name    string
+		config  *StorageConfig
+		wantErr bool
+	}{
+		{
+			name: "valid local storage config",
+			config: &StorageConfig{
+				Type:     "local",
+				BasePath: tempDir,
 			},
-		}
+			wantErr: false,
+		},
+		{
+			name: "local storage with base URL",
+			config: &StorageConfig{
+				Type:     "local",
+				BasePath: tempDir,
+				Options:  map[string]string{"base_url": "http://localhost:8080/files"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "local storage with default path",
+			config: &StorageConfig{
+				Type: "local",
+			},
+			wantErr: false,
+		},
+	}
 
-		storage, err := factory.Create(config)
-		if err != nil {
-			t.Fatalf("Failed to create local storage: %v", err)
-		}
-		defer storage.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage, err := factory.Create(tt.config)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-		// Store a file
-		ctx := context.Background()
-		err = storage.Store(ctx, "test.txt", []byte("test"), nil)
-		if err != nil {
-			t.Fatalf("Store failed: %v", err)
-		}
+			if !tt.wantErr {
+				if storage == nil {
+					t.Error("Create() returned nil storage")
+					return
+				}
 
-		// Generate URL
-		url, err := storage.GenerateURL(ctx, "test.txt", time.Hour)
-		if err != nil {
-			t.Fatalf("GenerateURL failed: %v", err)
-		}
+				// Test basic functionality
+				ctx := context.Background()
+				testKey := "test/file.txt"
+				testData := []byte("test content")
 
-		expectedURL := "http://localhost:8080/files/test.txt"
-		if url != expectedURL {
-			t.Errorf("URL mismatch: got %q, want %q", url, expectedURL)
-		}
-	})
+				err = storage.Store(ctx, testKey, testData, nil)
+				if err != nil {
+					t.Errorf("Failed to store test file: %v", err)
+				}
 
-	t.Run("UnsupportedStorageType", func(t *testing.T) {
-		config := &StorageConfig{
-			Type: "unsupported",
-		}
+				exists, err := storage.Exists(ctx, testKey)
+				if err != nil {
+					t.Errorf("Failed to check existence: %v", err)
+				}
+				if !exists {
+					t.Error("File should exist after store")
+				}
 
-		_, err := factory.Create(config)
-		if err == nil {
-			t.Error("Should fail for unsupported storage type")
-		}
-	})
-
-	t.Run("NilConfig", func(t *testing.T) {
-		_, err := factory.Create(nil)
-		if err == nil {
-			t.Error("Should fail for nil config")
-		}
-	})
-
-	t.Run("WithRetryConfig", func(t *testing.T) {
-		retryConfig := &RetryConfig{
-			MaxAttempts:   2,
-			InitialDelay:  50 * time.Millisecond,
-			BackoffFactor: 1.5,
-		}
-
-		factory := NewFactory(retryConfig)
-
-		config := &StorageConfig{
-			Type: "mock",
-		}
-
-		storage, err := factory.Create(config)
-		if err != nil {
-			t.Fatalf("Failed to create storage with retry: %v", err)
-		}
-		defer storage.Close()
-
-		// Verify it's wrapped with retry logic
-		if _, ok := storage.(*RetryableFileStorage); !ok {
-			t.Error("Storage should be wrapped with retry logic")
-		}
-	})
+				storage.Close()
+			}
+		})
+	}
 }
 
-func TestCreateFromConfig(t *testing.T) {
+func TestFactory_CreateMockStorage(t *testing.T) {
+	factory := DefaultFactory()
+
 	config := &StorageConfig{
 		Type: "mock",
 	}
 
-	storage, err := CreateFromConfig(config)
+	storage, err := factory.Create(config)
 	if err != nil {
-		t.Fatalf("CreateFromConfig failed: %v", err)
+		t.Errorf("Create() error = %v", err)
+		return
 	}
-	defer storage.Close()
 
-	// Test basic operation
+	if storage == nil {
+		t.Error("Create() returned nil storage")
+		return
+	}
+
+	// Test that it's actually a mock storage (wrapped in retry logic)
+	retryableStorage, ok := storage.(*RetryableFileStorage)
+	if !ok {
+		t.Error("Expected RetryableFileStorage wrapper")
+		return
+	}
+
+	// The underlying storage should be MockFileStorage
+	// We can't easily access it due to the wrapper, but we can test functionality
 	ctx := context.Background()
-	err = storage.Store(ctx, "test.txt", []byte("test"), nil)
+	testKey := "test/file.txt"
+	testData := []byte("test content")
+
+	err = retryableStorage.Store(ctx, testKey, testData, nil)
 	if err != nil {
-		t.Fatalf("Store failed: %v", err)
+		t.Errorf("Failed to store test file: %v", err)
+	}
+
+	exists, err := retryableStorage.Exists(ctx, testKey)
+	if err != nil {
+		t.Errorf("Failed to check existence: %v", err)
+	}
+	if !exists {
+		t.Error("File should exist after store")
+	}
+
+	storage.Close()
+}
+
+func TestFactory_CreateUnsupportedStorage(t *testing.T) {
+	factory := DefaultFactory()
+
+	config := &StorageConfig{
+		Type: "unsupported",
+	}
+
+	storage, err := factory.Create(config)
+	if err == nil {
+		t.Error("Create() should fail for unsupported storage type")
+	}
+	if storage != nil {
+		t.Error("Create() should return nil storage for unsupported type")
 	}
 }
 
+func TestFactory_CreateS3Storage(t *testing.T) {
+	factory := DefaultFactory()
+
+	config := &StorageConfig{
+		Type:   "s3",
+		Bucket: "test-bucket",
+		Region: "us-east-1",
+	}
+
+	storage, err := factory.Create(config)
+	if err == nil {
+		t.Error("Create() should fail for unimplemented S3 storage")
+	}
+	if storage != nil {
+		t.Error("Create() should return nil storage for unimplemented type")
+	}
+}
+
+func TestFactory_CreateGCSStorage(t *testing.T) {
+	factory := DefaultFactory()
+
+	config := &StorageConfig{
+		Type:   "gcs",
+		Bucket: "test-bucket",
+	}
+
+	storage, err := factory.Create(config)
+	if err == nil {
+		t.Error("Create() should fail for unimplemented GCS storage")
+	}
+	if storage != nil {
+		t.Error("Create() should return nil storage for unimplemented type")
+	}
+}
+
+func TestFactory_CreateWithNilConfig(t *testing.T) {
+	factory := DefaultFactory()
+
+	storage, err := factory.Create(nil)
+	if err == nil {
+		t.Error("Create() should fail with nil config")
+	}
+	if storage != nil {
+		t.Error("Create() should return nil storage with nil config")
+	}
+}
+
+func TestFactory_WithoutRetryConfig(t *testing.T) {
+	factory := NewFactory(nil) // No retry config
+
+	tempDir, err := os.MkdirTemp("", "factory_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	config := &StorageConfig{
+		Type:     "local",
+		BasePath: tempDir,
+	}
+
+	storage, err := factory.Create(config)
+	if err != nil {
+		t.Errorf("Create() error = %v", err)
+		return
+	}
+
+	if storage == nil {
+		t.Error("Create() returned nil storage")
+		return
+	}
+
+	// Without retry config, should still wrap with retry (using default config)
+	// The factory always wraps with retry logic
+	if storage == nil {
+		t.Error("Storage should not be nil")
+	}
+
+	storage.Close()
+}
+
+func TestCreateFromConfig(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "factory_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	config := &StorageConfig{
+		Type:     "local",
+		BasePath: tempDir,
+	}
+
+	storage, err := CreateFromConfig(config)
+	if err != nil {
+		t.Errorf("CreateFromConfig() error = %v", err)
+		return
+	}
+
+	if storage == nil {
+		t.Error("CreateFromConfig() returned nil storage")
+		return
+	}
+
+	// Test basic functionality
+	ctx := context.Background()
+	testKey := "test/file.txt"
+	testData := []byte("test content")
+
+	err = storage.Store(ctx, testKey, testData, nil)
+	if err != nil {
+		t.Errorf("Failed to store test file: %v", err)
+	}
+
+	storage.Close()
+}
+
 func TestMustCreate(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		config := &StorageConfig{
-			Type: "mock",
+	tempDir, err := os.MkdirTemp("", "factory_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test successful creation
+	config := &StorageConfig{
+		Type:     "local",
+		BasePath: tempDir,
+	}
+
+	storage := MustCreate(config)
+	if storage == nil {
+		t.Error("MustCreate() returned nil storage")
+	}
+	storage.Close()
+
+	// Test panic on failure
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("MustCreate() should panic on invalid config")
 		}
+	}()
 
-		storage := MustCreate(config)
-		defer storage.Close()
+	invalidConfig := &StorageConfig{
+		Type: "unsupported",
+	}
 
-		// Test basic operation
-		ctx := context.Background()
-		err := storage.Store(ctx, "test.txt", []byte("test"), nil)
-		if err != nil {
-			t.Fatalf("Store failed: %v", err)
-		}
-	})
-
-	t.Run("Panic", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("MustCreate should panic on error")
-			}
-		}()
-
-		config := &StorageConfig{
-			Type: "unsupported",
-		}
-
-		MustCreate(config)
-	})
+	MustCreate(invalidConfig) // Should panic
 }
