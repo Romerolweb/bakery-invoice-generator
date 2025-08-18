@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -272,4 +273,55 @@ type Logger interface {
 
 	// With returns a logger with additional fields
 	With(fields ...interface{}) Logger
+}
+
+// RepositoryContainer holds all repository instances
+type RepositoryContainer struct {
+	CustomerRepo        CustomerRepository
+	ProductRepo         ProductRepository
+	ReceiptRepo         ReceiptRepository
+	LineItemRepo        LineItemRepository
+	ProductCategoryRepo ProductCategoryRepository
+	SellerProfileRepo   SellerProfileRepository
+	EmailAuditRepo      EmailAuditRepository
+}
+
+// NewRepositoryContainer creates a new repository container with all repositories
+func NewRepositoryContainer(db *sql.DB, factory Factory) *RepositoryContainer {
+	return &RepositoryContainer{
+		CustomerRepo:        factory.CreateCustomerRepository(db),
+		ProductRepo:         factory.CreateProductRepository(db),
+		ReceiptRepo:         factory.CreateReceiptRepository(db),
+		LineItemRepo:        factory.CreateLineItemRepository(db),
+		ProductCategoryRepo: factory.CreateProductCategoryRepository(db),
+		SellerProfileRepo:   factory.CreateSellerProfileRepository(db),
+		EmailAuditRepo:      factory.CreateEmailAuditRepository(db),
+	}
+}
+
+// Validate validates that all repositories are properly initialized
+func (rc *RepositoryContainer) Validate() error {
+	if rc.CustomerRepo == nil {
+		return fmt.Errorf("customer repository is nil")
+	}
+	if rc.ProductRepo == nil {
+		return fmt.Errorf("product repository is nil")
+	}
+	if rc.ReceiptRepo == nil {
+		return fmt.Errorf("receipt repository is nil")
+	}
+	if rc.LineItemRepo == nil {
+		return fmt.Errorf("line item repository is nil")
+	}
+	if rc.ProductCategoryRepo == nil {
+		return fmt.Errorf("product category repository is nil")
+	}
+	if rc.SellerProfileRepo == nil {
+		return fmt.Errorf("seller profile repository is nil")
+	}
+	if rc.EmailAuditRepo == nil {
+		return fmt.Errorf("email audit repository is nil")
+	}
+
+	return nil
 }

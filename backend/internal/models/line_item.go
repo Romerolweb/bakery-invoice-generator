@@ -22,7 +22,18 @@ type LineItem struct {
 }
 
 // NewLineItem creates a new line item with generated ID
-func NewLineItem(receiptID, productID string, product *Product, quantity int, sortOrder int) *LineItem {
+func NewLineItem(receiptID, productID string, quantity int) *LineItem {
+	return &LineItem{
+		ID:        uuid.New().String(),
+		ReceiptID: receiptID,
+		ProductID: productID,
+		Quantity:  quantity,
+		SortOrder: 0,
+	}
+}
+
+// NewLineItemFromProduct creates a new line item from a product
+func NewLineItemFromProduct(receiptID, productID string, product *Product, quantity int, sortOrder int) *LineItem {
 	lineItem := &LineItem{
 		ID:            uuid.New().String(),
 		ReceiptID:     receiptID,

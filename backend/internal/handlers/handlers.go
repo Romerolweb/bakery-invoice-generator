@@ -4,29 +4,45 @@ package handlers
 // Actual implementations will be created in subsequent tasks
 
 import (
+	"bakery-invoice-api/internal/services"
 	"bakery-invoice-api/pkg/lambda"
 	"context"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 // CustomerHandler handles customer-related HTTP requests
 type CustomerHandler struct {
-	// customerService CustomerService // Will be implemented in later tasks
+	customerService services.CustomerService
 }
 
 // NewCustomerHandler creates a new customer handler
-func NewCustomerHandler(customerService interface{}) *CustomerHandler {
+func NewCustomerHandler(customerService services.CustomerService) *CustomerHandler {
 	return &CustomerHandler{
-		// customerService: customerService,
+		customerService: customerService,
 	}
 }
 
 // Gin handler methods (will be implemented in later tasks)
-func (h *CustomerHandler) CreateCustomer(c interface{})  {}
-func (h *CustomerHandler) ListCustomers(c interface{})   {}
-func (h *CustomerHandler) GetCustomer(c interface{})     {}
-func (h *CustomerHandler) UpdateCustomer(c interface{})  {}
-func (h *CustomerHandler) DeleteCustomer(c interface{})  {}
-func (h *CustomerHandler) SearchCustomers(c interface{}) {}
+func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *CustomerHandler) ListCustomers(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *CustomerHandler) GetCustomer(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *CustomerHandler) SearchCustomers(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
 
 // Lambda handler methods (will be implemented in later tasks)
 func (h *CustomerHandler) HandleCreate(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
@@ -50,24 +66,38 @@ func (h *CustomerHandler) HandleSearch(ctx context.Context, req *lambda.Request)
 
 // ProductHandler handles product-related HTTP requests
 type ProductHandler struct {
-	// productService ProductService // Will be implemented in later tasks
+	productService services.ProductService
 }
 
 // NewProductHandler creates a new product handler
-func NewProductHandler(productService interface{}) *ProductHandler {
+func NewProductHandler(productService services.ProductService) *ProductHandler {
 	return &ProductHandler{
-		// productService: productService,
+		productService: productService,
 	}
 }
 
 // Gin handler methods (will be implemented in later tasks)
-func (h *ProductHandler) CreateProduct(c interface{})  {}
-func (h *ProductHandler) ListProducts(c interface{})   {}
-func (h *ProductHandler) GetProduct(c interface{})     {}
-func (h *ProductHandler) UpdateProduct(c interface{})  {}
-func (h *ProductHandler) DeleteProduct(c interface{})  {}
-func (h *ProductHandler) SearchProducts(c interface{}) {}
-func (h *ProductHandler) ListCategories(c interface{}) {}
+func (h *ProductHandler) CreateProduct(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ProductHandler) ListProducts(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ProductHandler) GetProduct(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ProductHandler) UpdateProduct(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ProductHandler) DeleteProduct(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ProductHandler) SearchProducts(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ProductHandler) ListCategories(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
 
 // Lambda handler methods (will be implemented in later tasks)
 func (h *ProductHandler) HandleCreate(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
@@ -94,22 +124,32 @@ func (h *ProductHandler) HandleListCategories(ctx context.Context, req *lambda.R
 
 // ReceiptHandler handles receipt-related HTTP requests
 type ReceiptHandler struct {
-	// receiptService ReceiptService // Will be implemented in later tasks
+	receiptService services.ReceiptService
 }
 
 // NewReceiptHandler creates a new receipt handler
-func NewReceiptHandler(receiptService interface{}) *ReceiptHandler {
+func NewReceiptHandler(receiptService services.ReceiptService) *ReceiptHandler {
 	return &ReceiptHandler{
-		// receiptService: receiptService,
+		receiptService: receiptService,
 	}
 }
 
 // Gin handler methods (will be implemented in later tasks)
-func (h *ReceiptHandler) CreateReceipt(c interface{})  {}
-func (h *ReceiptHandler) ListReceipts(c interface{})   {}
-func (h *ReceiptHandler) GetReceipt(c interface{})     {}
-func (h *ReceiptHandler) GeneratePDF(c interface{})    {}
-func (h *ReceiptHandler) GetSalesReport(c interface{}) {}
+func (h *ReceiptHandler) CreateReceipt(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ReceiptHandler) ListReceipts(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ReceiptHandler) GetReceipt(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ReceiptHandler) GeneratePDF(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *ReceiptHandler) GetSalesReport(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
 
 // Lambda handler methods (will be implemented in later tasks)
 func (h *ReceiptHandler) HandleCreate(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
@@ -127,20 +167,26 @@ func (h *ReceiptHandler) HandleSalesReport(ctx context.Context, req *lambda.Requ
 
 // EmailHandler handles email-related HTTP requests
 type EmailHandler struct {
-	// emailService EmailService // Will be implemented in later tasks
+	emailService services.EmailService
 }
 
 // NewEmailHandler creates a new email handler
-func NewEmailHandler(emailService interface{}) *EmailHandler {
+func NewEmailHandler(emailService services.EmailService) *EmailHandler {
 	return &EmailHandler{
-		// emailService: emailService,
+		emailService: emailService,
 	}
 }
 
 // Gin handler methods (will be implemented in later tasks)
-func (h *EmailHandler) SendReceipt(c interface{})      {}
-func (h *EmailHandler) SendBulkReceipts(c interface{}) {}
-func (h *EmailHandler) GetEmailStatus(c interface{})   {}
+func (h *EmailHandler) SendReceipt(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *EmailHandler) SendBulkReceipts(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
+func (h *EmailHandler) GetEmailStatus(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "not implemented yet"})
+}
 
 // Lambda handler methods (will be implemented in later tasks)
 func (h *EmailHandler) HandleSendReceipt(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {

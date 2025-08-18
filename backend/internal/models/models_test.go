@@ -60,8 +60,8 @@ func TestReceiptCreation(t *testing.T) {
 	receipt := NewReceipt(customer.ID)
 
 	// Add line items
-	lineItem1 := NewLineItem(receipt.ReceiptID, product1.ID, product1, 2, 1)
-	lineItem2 := NewLineItem(receipt.ReceiptID, product2.ID, product2, 1, 2)
+	lineItem1 := NewLineItemFromProduct(receipt.ReceiptID, product1.ID, product1, 2, 1)
+	lineItem2 := NewLineItemFromProduct(receipt.ReceiptID, product2.ID, product2, 1, 2)
 
 	receipt.LineItems = []LineItem{*lineItem1, *lineItem2}
 
@@ -118,8 +118,8 @@ func TestReceiptCreationNoGST(t *testing.T) {
 	receipt := NewReceipt(customer.ID)
 
 	// Add line items
-	lineItem1 := NewLineItem(receipt.ReceiptID, product1.ID, product1, 2, 1)
-	lineItem2 := NewLineItem(receipt.ReceiptID, product2.ID, product2, 1, 2)
+	lineItem1 := NewLineItemFromProduct(receipt.ReceiptID, product1.ID, product1, 2, 1)
+	lineItem2 := NewLineItemFromProduct(receipt.ReceiptID, product2.ID, product2, 1, 2)
 
 	receipt.LineItems = []LineItem{*lineItem1, *lineItem2}
 
