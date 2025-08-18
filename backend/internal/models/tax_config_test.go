@@ -515,7 +515,6 @@ func TestABNValidationWithRealExamples(t *testing.T) {
 	validABNs := []string{
 		"51 824 753 556", // Example from ATO website
 		"53 004 085 616", // Another ATO example
-		"11 222 333 444", // Calculated valid ABN
 	}
 
 	for _, abn := range validABNs {
