@@ -13,10 +13,13 @@
     "start:prod": "source .env.prod && npm run start",
     "start:script": "./start.sh",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
+    "test:run": "vitest --run",
     "pretty": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\"",
+    "pretty:check": "prettier --check \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\"",
     "validate-config": "./validate-config.sh",
     "setup": "./setup.sh",
     "log-change": "node -e \"require('./src/lib/recordChanges').recordChange(process.argv[2], process.argv.slice(3).join(' '))\""
@@ -81,7 +84,7 @@
     "jsdom": "^25.0.1",
     "postcss": "^8",
     "prettier": "^3.5.3",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^4.1",
     "typescript": "^5.8.3",
     "vitest": "^3.1.4"
   }
