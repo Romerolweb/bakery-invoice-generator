@@ -58,14 +58,14 @@ func AdaptConfigForServerless(ctx context.Context, config *Config) *Config {
 	}
 
 	// Adapt database configuration for serverless
-	if config.Database.ConnectionString == "./data/bakery.db" {
+	if config.Database.Path == "./data/bakery.db" {
 		// In serverless mode, use a different database strategy
 		// This could be RDS, or a shared SQLite file in EFS
 		if rdsEndpoint := os.Getenv("RDS_ENDPOINT"); rdsEndpoint != "" {
-			config.Database.ConnectionString = buildRDSConnectionString()
+			config.Database.Path = buildRDSConnectionString()
 		} else {
 			// Use EFS mounted SQLite for serverless
-			config.Database.ConnectionString = "/mnt/efs/bakery.db"
+			config.Database.Path = "/mnt/efs/bakery.db"
 		}
 	}
 

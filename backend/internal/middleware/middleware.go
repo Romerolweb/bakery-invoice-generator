@@ -78,18 +78,5 @@ func RequestLogger() gin.HandlerFunc {
 	})
 }
 
-// Authentication middleware (placeholder - will be implemented in later tasks)
-func Authentication() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// TODO: Implement JWT authentication
-		c.Next()
-	}
-}
-
-// Authorization middleware (placeholder - will be implemented in later tasks)
-func Authorization(roles ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// TODO: Implement role-based authorization
-		c.Next()
-	}
-}
+// Legacy middleware functions have been moved to auth.go, logging.go, and validation.go
+// Use the new implementations from those files instead

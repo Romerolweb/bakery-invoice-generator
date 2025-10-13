@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,16 +11,14 @@ import (
 
 	"bakery-invoice-api/internal/config"
 	"bakery-invoice-api/internal/handlers"
-	"bakery-invoice-api/internal/middleware"
 	"bakery-invoice-api/pkg/server"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/sirupsen/logrus"
 )
 
 // @title Bakery Invoice API
-// @version 1.0
+// @version 1.0.1
 // @description A professional invoice system for bakeries
 // @termsOfService http://swagger.io/terms/
 
@@ -40,128 +38,169 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
-	// Load configuration optimized for deployment mode
-	cfg, err := config.GetOptimizedConfig()
+	// Initialize logging first
+	setupLogging()
+
+	logrus.Info("Starting Bakery Invoice API Server")
+
+	// Load configuration
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		logrus.WithError(err).Fatal("Failed to load configuration")
 	}
 
-	// Log deployment mode
-	log.Printf("Starting in %s mode", config.GetDeploymentMode())
+	// Configure logging based on config
+	configureLogging(cfg)
+
+	// Print configuration (with sensitive data masked)
+	if cfg.IsDevelopment() {
+		cfg.Print()
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"environment": cfg.Environment,
+		"port":        cfg.Port,
+		"database":    cfg.Database.Path,
+	}).Info("Configuration loaded")
 
 	// Initialize dependencies
 	container, err := server.NewContainer(cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize container: %v", err)
+		logrus.WithError(err).Fatal("Failed to initialize container")
 	}
-	defer container.Close()
-
-	// Setup Gin router
-	if cfg.Environment == "production" {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
-	router := gin.New()
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-
-	// Add middleware
-	router.Use(middleware.CORS())
-	router.Use(middleware.ErrorHandler())
-	router.Use(middleware.RequestLogger())
-
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":    "healthy",
-			"timestamp": time.Now().UTC(),
-			"version":   "1.0.0",
-		})
-	})
-
-	// API routes
-	v1 := router.Group("/api/v1")
-	{
-		// Initialize handlers
-		customerHandler := handlers.NewCustomerHandler(container.CustomerService)
-		productHandler := handlers.NewProductHandler(container.ProductService)
-		receiptHandler := handlers.NewReceiptHandler(container.ReceiptService)
-		emailHandler := handlers.NewEmailHandler(container.EmailService)
-
-		// Customer routes
-		customers := v1.Group("/customers")
-		{
-			customers.POST("", customerHandler.CreateCustomer)
-			customers.GET("", customerHandler.ListCustomers)
-			customers.GET("/:id", customerHandler.GetCustomer)
-			customers.PUT("/:id", customerHandler.UpdateCustomer)
-			customers.DELETE("/:id", customerHandler.DeleteCustomer)
-			customers.GET("/search", customerHandler.SearchCustomers)
-		}
-
-		// Product routes
-		products := v1.Group("/products")
-		{
-			products.POST("", productHandler.CreateProduct)
-			products.GET("", productHandler.ListProducts)
-			products.GET("/:id", productHandler.GetProduct)
-			products.PUT("/:id", productHandler.UpdateProduct)
-			products.DELETE("/:id", productHandler.DeleteProduct)
-			products.GET("/search", productHandler.SearchProducts)
-			products.GET("/categories", productHandler.ListCategories)
-		}
-
-		// Receipt routes
-		receipts := v1.Group("/receipts")
-		{
-			receipts.POST("", receiptHandler.CreateReceipt)
-			receipts.GET("", receiptHandler.ListReceipts)
-			receipts.GET("/:id", receiptHandler.GetReceipt)
-			receipts.GET("/:id/pdf", receiptHandler.GeneratePDF)
-			receipts.GET("/reports/sales", receiptHandler.GetSalesReport)
-		}
-
-		// Email routes
-		email := v1.Group("/email")
-		{
-			email.POST("/send-receipt", emailHandler.SendReceipt)
-			email.POST("/send-bulk", emailHandler.SendBulkReceipts)
-			email.GET("/status/:id", emailHandler.GetEmailStatus)
-		}
-	}
-
-	// Swagger documentation
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	// Start server
-	srv := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: router,
-	}
-
-	// Graceful shutdown
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+	defer func() {
+		if err := container.Close(); err != nil {
+			logrus.WithError(err).Error("Error closing container")
 		}
 	}()
 
-	log.Printf("Server started on port %s", cfg.Port)
+	// Perform health check
+	if err := container.HealthCheck(); err != nil {
+		logrus.WithError(err).Warn("Health check failed, but continuing startup")
+	}
+
+	// Setup Gin mode
+	if cfg.IsProduction() {
+		gin.SetMode(gin.ReleaseMode)
+	} else if cfg.IsTest() {
+		gin.SetMode(gin.TestMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
+
+	// Create router
+	router := gin.New()
+
+	// Setup middleware
+	handlers.SetupMiddleware(router, container.AuthService)
+
+	// Setup routes
+	routerConfig := &handlers.RouterConfig{
+		CustomerService: container.CustomerService,
+		ProductService:  container.ProductService,
+		ReceiptService:  container.ReceiptService,
+		EmailService:    container.EmailService,
+		AuthService:     container.AuthService,
+	}
+	handlers.SetupRoutes(router, routerConfig)
+
+	// Setup development routes if in development mode
+	if cfg.IsDevelopment() {
+		handlers.SetupDevelopmentRoutes(router, routerConfig)
+	}
+
+	// Create HTTP server with timeouts
+	srv := &http.Server{
+		Addr:           cfg.GetServerAddress(),
+		Handler:        router,
+		ReadTimeout:    time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout:   time.Duration(cfg.Server.WriteTimeout) * time.Second,
+		IdleTimeout:    time.Duration(cfg.Server.IdleTimeout) * time.Second,
+		MaxHeaderBytes: cfg.Server.MaxHeaderBytes,
+	}
+
+	// Start server in a goroutine
+	go func() {
+		logrus.WithFields(logrus.Fields{
+			"address":       srv.Addr,
+			"read_timeout":  srv.ReadTimeout,
+			"write_timeout": srv.WriteTimeout,
+		}).Info("Starting HTTP server")
+
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logrus.WithError(err).Fatal("Failed to start server")
+		}
+	}()
+
+	logrus.WithFields(logrus.Fields{
+		"port":        cfg.Port,
+		"environment": cfg.Environment,
+		"swagger_url": fmt.Sprintf("http://localhost:%s/swagger/index.html", cfg.Port),
+		"health_url":  fmt.Sprintf("http://localhost:%s/health", cfg.Port),
+	}).Info("Server started successfully")
 
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	logrus.Info("Shutting down server...")
 
 	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownTimeout := time.Duration(cfg.Server.ShutdownTimeout) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		logrus.WithError(err).Error("Server forced to shutdown")
+	} else {
+		logrus.Info("Server shutdown completed gracefully")
+	}
+}
+
+// setupLogging initializes basic logging
+func setupLogging() {
+	logrus.SetFormatter(&logrus.JSONFormatter{
+		TimestampFormat: time.RFC3339,
+	})
+	logrus.SetLevel(logrus.InfoLevel)
+}
+
+// configureLogging configures logging based on configuration
+func configureLogging(cfg *config.Config) {
+	// Set log level
+	level, err := logrus.ParseLevel(cfg.Logging.Level)
+	if err != nil {
+		logrus.WithError(err).Warn("Invalid log level, using info")
+		level = logrus.InfoLevel
+	}
+	logrus.SetLevel(level)
+
+	// Set log format
+	if cfg.Logging.Format == "text" {
+		logrus.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp: true,
+		})
+	} else {
+		logrus.SetFormatter(&logrus.JSONFormatter{
+			TimestampFormat: time.RFC3339,
+		})
 	}
 
-	log.Println("Server exited")
+	// Set output
+	switch cfg.Logging.Output {
+	case "stderr":
+		logrus.SetOutput(os.Stderr)
+	case "stdout":
+		logrus.SetOutput(os.Stdout)
+	default:
+		// For file output, you might want to implement log rotation
+		logrus.SetOutput(os.Stdout)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"level":  cfg.Logging.Level,
+		"format": cfg.Logging.Format,
+		"output": cfg.Logging.Output,
+	}).Debug("Logging configured")
 }
