@@ -1,0 +1,232 @@
+# Pre-commit hooks configuration for Bakery Invoice Generator
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+default_language_version:
+  node: system
+  go: system
+
+repos:
+  # ============================================================================
+  # 🔒 Security - Detect secrets and credentials
+  # ============================================================================
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.22.1
+    hooks:
+      - id: gitleaks
+        name: "🔒 security · Detect hardcoded secrets"
+
+  # ============================================================================
+  # 📁 Filesystem & Git Quality - Basic file hygiene
+  # ============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # File system checks
+      - id: check-case-conflict
+        name: "📁 filesystem · Check case sensitivity conflicts"
+      - id: check-symlinks
+        name: "📁 filesystem · Check for broken symlinks"
+      - id: check-executables-have-shebangs
+        name: "📁 filesystem · Verify executable files have shebangs"
+      - id: check-shebang-scripts-are-executable
+        name: "📁 filesystem · Verify shebang scripts are executable"
+
+      # Git quality checks
+      - id: check-merge-conflict
+        name: "🌳 git · Detect unresolved merge conflicts"
+      - id: check-added-large-files
+        name: "🌳 git · Prevent large file commits"
+        args: ['--maxkb=10000']  # 10MB limit
+      - id: no-commit-to-branch
+        name: "🌳 git · Protect main branches"
+        args: ['--branch', 'main', '--branch', 'master']
+
+      # File content checks
+      - id: end-of-file-fixer
+        name: "✨ files · Fix end of file whitespace"
+      - id: trailing-whitespace
+        name: "✨ files · Trim trailing whitespace"
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        name: "✨ files · Fix mixed line endings"
+        args: ['--fix=lf']
+
+  # ============================================================================
+  # 🐹 Go - Linting, formatting, and type checking
+  # ============================================================================
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+        name: "🐹 go · Format code with gofmt"
+        args: [-w]
+      - id: go-imports
+        name: "🐹 go · Organize imports with goimports"
+        args: [-w]
+      - id: go-vet-mod
+        name: "🐹 go · Vet code for issues"
+      - id: go-mod-tidy
+        name: "🐹 go · Tidy go.mod"
+      - id: golangci-lint-mod
+        name: "🐹 go · Lint with golangci-lint"
+        args: [--fix]
+
+  # ============================================================================
+  # 🟨 JavaScript/TypeScript - Code quality with ESLint and Prettier
+  # ============================================================================
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.17.0
+    hooks:
+      - id: eslint
+        name: "🟨 typescript · Lint with ESLint"
+        files: \.(js|jsx|ts|tsx|mjs|cjs)$
+        types: [file]
+        args:
+          - '--fix'
+          - '--max-warnings=0'  # Treat warnings as errors
+        additional_dependencies:
+          - eslint@8.47.0
+          - eslint-config-next@13.4.19
+          - '@typescript-eslint/eslint-plugin@6.7.4'
+          - '@typescript-eslint/parser@6.7.4'
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        name: "🟨 typescript · Format with Prettier"
+        files: \.(js|jsx|ts|tsx|json|css|scss|md|yaml|yml)$
+        additional_dependencies:
+          - prettier@3.4.2
+
+  # ============================================================================
+  # 🔍 TypeScript - Type checking
+  # ============================================================================
+  - repo: local
+    hooks:
+      - id: typescript-check
+        name: "🔍 typescript · Type check"
+        entry: npm run typecheck
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+        require_serial: true
+
+  # ============================================================================
+  # ✅ JSON/YAML/TOML Validation
+  # ============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-json
+        name: "✅ data · Validate JSON syntax"
+      - id: check-yaml
+        name: "✅ data · Validate YAML syntax"
+        args: ['--unsafe']  # Allow custom YAML tags
+      - id: check-toml
+        name: "✅ data · Validate TOML syntax"
+
+  # ============================================================================
+  # 📝 Markdown - Format and lint
+  # ============================================================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.43.0
+    hooks:
+      - id: markdownlint
+        name: "📝 markdown · Lint markdown files"
+        args: ['--fix']
+
+  # ============================================================================
+  # 🐳 Docker - Lint Dockerfiles
+  # ============================================================================
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        name: "🐳 docker · Lint Dockerfiles"
+
+  # ============================================================================
+  # 📦 Package.json - Sort and validate
+  # ============================================================================
+  - repo: local
+    hooks:
+      - id: package-json-sort
+        name: "📦 package · Sort package.json"
+        entry: npx sort-package-json
+        language: system
+        files: ^package\.json$
+
+  # ============================================================================
+  # 🔧 Custom Local Hooks - Project specific checks
+  # ============================================================================
+  - repo: local
+    hooks:
+      # Go specific checks
+      - id: go-test
+        name: "🧪 go · Run tests"
+        entry: bash -c 'cd backend && go test ./...'
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-build-check
+        name: "🔨 go · Build check"
+        entry: bash -c 'cd backend && go build ./...'
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      # Next.js specific checks
+      - id: nextjs-build-check
+        name: "⚡ nextjs · Build check"
+        entry: npm run build
+        language: system
+        files: \.(ts|tsx|js|jsx|json)$
+        pass_filenames: false
+        require_serial: true
+
+      # Database migration checks
+      - id: migration-validation
+        name: "🗄️ database · Validate migrations"
+        entry: bash -c 'cd backend && if [ -d "migrations" ]; then echo "Validating migrations..."; for file in migrations/*.sql; do if [ -f "$file" ]; then echo "Checking $file"; fi; done; fi'
+        language: system
+        files: ^backend/migrations/.*\.sql$
+        pass_filenames: false
+
+      # Environment file checks
+      - id: env-file-check
+        name: "🔐 env · Check environment files"
+        entry: bash -c 'for file in .env.example .env.*.example; do if [ -f "$file" ]; then echo "Checking $file for required variables..."; grep -q "ENVIRONMENT=" "$file" || echo "Warning: $file missing ENVIRONMENT variable"; fi; done'
+        language: system
+        files: ^\.env.*$
+        pass_filenames: false
+
+      # Serverless configuration validation
+      - id: serverless-config-check
+        name: "☁️ serverless · Validate configurations"
+        entry: bash -c 'cd backend/deployments/lambda && for file in serverless*.yml; do if [ -f "$file" ]; then echo "Validating $file..."; npx serverless print --config "$file" > /dev/null || echo "Error in $file"; fi; done'
+        language: system
+        files: ^backend/deployments/lambda/serverless.*\.yml$
+        pass_filenames: false
+
+# ============================================================================
+# Configuration
+# ============================================================================
+fail_fast: false  # Run all hooks even if one fails
+minimum_pre_commit_version: '3.0.0'
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+    .*\.min\.(js|css)$|
+    node_modules/.*|
+    \.next/.*|
+    dist/.*|
+    build/.*|
+    coverage/.*|
+    \.git/.*|
+    backend/bin/.*|
+    backend/data/.*|
+    .*\.log$
+  )$

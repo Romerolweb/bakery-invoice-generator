@@ -2,31 +2,50 @@ package main
 
 import (
 	"context"
+	"log"
 
 	"bakery-invoice-api/internal/config"
 	"bakery-invoice-api/internal/handlers"
 	"bakery-invoice-api/pkg/lambda"
-	"bakery-invoice-api/pkg/server"
 
 	"github.com/aws/aws-lambda-go/events"
 	awslambda "github.com/aws/aws-lambda-go/lambda"
 )
 
-var container *server.Container
+var connectionManager *lambda.ConnectionManager
 
 func init() {
+	// Initialize connection manager for cold start optimization
+	connectionManager = lambda.GetConnectionManager()
+
+	// Pre-load configuration for faster cold starts
 	cfg, err := config.GetOptimizedConfig()
 	if err != nil {
-		panic("Failed to load configuration: " + err.Error())
+		log.Printf("Warning: Failed to pre-load configuration: %v", err)
+		return
 	}
 
-	container, err = server.NewContainer(cfg)
-	if err != nil {
-		panic("Failed to initialize container: " + err.Error())
+	// Initialize connection manager
+	if err := connectionManager.Initialize(cfg); err != nil {
+		log.Printf("Warning: Failed to initialize connection manager: %v", err)
 	}
 }
 
 func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Get container with connection reuse
+	container, err := connectionManager.GetContainer(ctx)
+	if err != nil {
+		log.Printf("Failed to get container: %v", err)
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       `{"error": "Service unavailable"}`,
+		}, nil
+	}
+
+	// Update last used timestamp for connection management
+	connectionManager.UpdateLastUsed()
+
 	req := &lambda.Request{
 		Method:      event.HTTPMethod,
 		Path:        event.Path,
@@ -39,7 +58,6 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	receiptHandler := handlers.NewReceiptHandler(container.ReceiptService)
 
 	var resp *lambda.Response
-	var err error
 
 	switch {
 	case req.Method == "POST" && req.Path == "/api/v1/receipts":
@@ -59,6 +77,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	}
 
 	if err != nil {
+		log.Printf("Handler error: %v", err)
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 			Headers:    map[string]string{"Content-Type": "application/json"},

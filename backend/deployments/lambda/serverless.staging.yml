@@ -1,0 +1,229 @@
+# Staging environment configuration for Serverless Framework
+# This file extends the base serverless.yml for staging-specific settings
+
+service: bakery-invoice-api-staging
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: ${opt:region, 'us-east-1'}
+  stage: staging
+  memorySize: 512  # Medium memory for staging
+  timeout: 25      # Medium timeout for staging
+  environment:
+    ENVIRONMENT: staging
+    DB_CONNECTION_STRING: ${env:DB_CONNECTION_STRING}
+    STORAGE_TYPE: s3
+    S3_BUCKET: ${env:S3_BUCKET, 'bakery-invoice-staging-files'}
+    S3_REGION: ${self:provider.region}
+    SMTP_HOST: ${env:SMTP_HOST}
+    SMTP_PORT: ${env:SMTP_PORT, '587'}
+    SMTP_USERNAME: ${env:SMTP_USERNAME}
+    SMTP_PASSWORD: ${env:SMTP_PASSWORD}
+    SMTP_FROM: ${env:SMTP_FROM}
+    JWT_SECRET: ${env:JWT_SECRET}
+    LOG_LEVEL: info
+  
+  # Staging-specific IAM permissions (more restrictive than dev)
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+        - s3:DeleteObject
+        - s3:ListBucket
+      Resource:
+        - "arn:aws:s3:::${env:S3_BUCKET, 'bakery-invoice-staging-files'}"
+        - "arn:aws:s3:::${env:S3_BUCKET, 'bakery-invoice-staging-files'}/*"
+    - Effect: Allow
+      Action:
+        - rds:DescribeDBInstances
+        - rds:Connect
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: "*"
+
+functions:
+  customers:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/customers.zip
+    events:
+      - http:
+          path: /api/v1/customers
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/customers/{proxy+}
+          method: any
+          cors: true
+    # Add reserved concurrency for staging
+    reservedConcurrency: 10
+
+  products:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/products.zip
+    events:
+      - http:
+          path: /api/v1/products
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/products/{proxy+}
+          method: any
+          cors: true
+    reservedConcurrency: 10
+
+  receipts:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/receipts.zip
+    events:
+      - http:
+          path: /api/v1/receipts
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/receipts/{proxy+}
+          method: any
+          cors: true
+    reservedConcurrency: 15  # Higher for receipts as it's core functionality
+
+  email:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/email.zip
+    events:
+      - http:
+          path: /api/v1/email/{proxy+}
+          method: any
+          cors: true
+    reservedConcurrency: 5
+
+resources:
+  Resources:
+    # S3 Bucket for staging
+    StagingFileStorageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${env:S3_BUCKET, 'bakery-invoice-staging-files'}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+        VersioningConfiguration:
+          Status: Enabled
+        LifecycleConfiguration:
+          Rules:
+            - Id: DeleteIncompleteMultipartUploads
+              Status: Enabled
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 7
+            - Id: TransitionToIA
+              Status: Enabled
+              Transition:
+                Days: 30
+                StorageClass: STANDARD_IA
+
+    # RDS Instance for staging (smaller than production)
+    StagingDatabaseInstance:
+      Type: AWS::RDS::DBInstance
+      Properties:
+        DBInstanceIdentifier: bakery-invoice-staging
+        DBInstanceClass: db.t3.micro
+        Engine: postgres
+        EngineVersion: '15.4'
+        MasterUsername: ${env:DB_USER}
+        MasterUserPassword: ${env:DB_PASSWORD}
+        AllocatedStorage: 20
+        StorageType: gp2
+        StorageEncrypted: true
+        VpcSecurityGroups:
+          - !Ref DatabaseSecurityGroup
+        DBSubnetGroupName: !Ref DatabaseSubnetGroup
+        BackupRetentionPeriod: 7
+        MultiAZ: false
+        PubliclyAccessible: false
+        DeletionProtection: false  # Allow deletion in staging
+
+    # VPC Configuration
+    VPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: 10.1.0.0/16
+        EnableDnsHostnames: true
+        EnableDnsSupport: true
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-staging-vpc
+
+    DatabaseSubnetGroup:
+      Type: AWS::RDS::DBSubnetGroup
+      Properties:
+        DBSubnetGroupDescription: Subnet group for staging RDS database
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+
+    PrivateSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        CidrBlock: 10.1.1.0/24
+        AvailabilityZone: ${self:provider.region}a
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-staging-private-1
+
+    PrivateSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        CidrBlock: 10.1.2.0/24
+        AvailabilityZone: ${self:provider.region}b
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-staging-private-2
+
+    DatabaseSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for staging RDS database
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+    LambdaSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for staging Lambda functions
+        VpcId: !Ref VPC
+
+plugins:
+  - serverless-offline
+  - serverless-plugin-warmup
+
+custom:
+  serverless-offline:
+    httpPort: 3001
+    lambdaPort: 3002
+  
+  # Warmup configuration for staging
+  warmup:
+    enabled: true
+    events:
+      - schedule: rate(10 minutes)  # Less frequent than dev
+    timeout: 20

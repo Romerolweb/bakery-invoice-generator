@@ -1,0 +1,133 @@
+# Development environment configuration for Serverless Framework
+# This file extends the base serverless.yml for development-specific settings
+
+service: bakery-invoice-api-dev
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: ${opt:region, 'us-east-1'}
+  stage: dev
+  memorySize: 256  # Lower memory for dev to save costs
+  timeout: 15      # Shorter timeout for dev
+  environment:
+    ENVIRONMENT: dev
+    DB_CONNECTION_STRING: ${env:DB_CONNECTION_STRING, '/mnt/efs/bakery-dev.db'}
+    STORAGE_TYPE: s3
+    S3_BUCKET: ${env:S3_BUCKET, 'bakery-invoice-dev-files'}
+    S3_REGION: ${self:provider.region}
+    SMTP_HOST: ${env:SMTP_HOST, 'localhost'}
+    SMTP_PORT: ${env:SMTP_PORT, '1025'}  # MailHog for dev
+    SMTP_USERNAME: ${env:SMTP_USERNAME, ''}
+    SMTP_PASSWORD: ${env:SMTP_PASSWORD, ''}
+    SMTP_FROM: ${env:SMTP_FROM, 'dev@bakery-invoice.local'}
+    JWT_SECRET: ${env:JWT_SECRET, 'dev-secret-key-change-in-production'}
+    LOG_LEVEL: debug
+  
+  # Development-specific IAM permissions (more permissive for testing)
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource:
+        - "arn:aws:s3:::${env:S3_BUCKET, 'bakery-invoice-dev-files'}"
+        - "arn:aws:s3:::${env:S3_BUCKET, 'bakery-invoice-dev-files'}/*"
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: "*"
+
+functions:
+  customers:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/customers.zip
+    events:
+      - http:
+          path: /api/v1/customers
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/customers/{proxy+}
+          method: any
+          cors: true
+
+  products:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/products.zip
+    events:
+      - http:
+          path: /api/v1/products
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/products/{proxy+}
+          method: any
+          cors: true
+
+  receipts:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/receipts.zip
+    events:
+      - http:
+          path: /api/v1/receipts
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/receipts/{proxy+}
+          method: any
+          cors: true
+
+  email:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/email.zip
+    events:
+      - http:
+          path: /api/v1/email/{proxy+}
+          method: any
+          cors: true
+
+resources:
+  Resources:
+    # S3 Bucket for development
+    DevFileStorageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${env:S3_BUCKET, 'bakery-invoice-dev-files'}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+        # No versioning for dev to save costs
+        LifecycleConfiguration:
+          Rules:
+            - Id: DeleteOldFiles
+              Status: Enabled
+              ExpirationInDays: 30  # Auto-delete files after 30 days in dev
+
+plugins:
+  - serverless-offline
+  - serverless-plugin-warmup
+
+custom:
+  serverless-offline:
+    httpPort: 3001
+    lambdaPort: 3002
+    host: 0.0.0.0
+  
+  # Warmup configuration to prevent cold starts in dev
+  warmup:
+    enabled: true
+    events:
+      - schedule: rate(5 minutes)
+    timeout: 20

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"bakery-invoice-api/internal/services"
+	"bakery-invoice-api/pkg/lambda"
 )
 
 // ProductHandler handles product-related HTTP requests
@@ -566,4 +569,368 @@ func (h *ProductHandler) GetProductSalesData(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, salesData)
+}
+
+// Lambda-compatible handler methods
+
+// HandleCreate handles product creation for Lambda
+func (h *ProductHandler) HandleCreate(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	var createReq services.CreateProductRequest
+	if err := json.Unmarshal(req.Body, &createReq); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request body", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	product, err := h.productService.CreateProduct(ctx, &createReq)
+	if err != nil {
+		if isValidationError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusBadRequest,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Validation failed", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to create product", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(product)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusCreated,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleList handles product listing for Lambda
+func (h *ProductHandler) HandleList(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	filters := &services.ProductFilters{}
+
+	// Parse query parameters
+	if category := req.QueryParams["category"]; category != "" {
+		filters.Category = &category
+	}
+
+	if activeStr := req.QueryParams["active"]; activeStr != "" {
+		if val, err := strconv.ParseBool(activeStr); err == nil {
+			filters.Active = &val
+		}
+	}
+
+	if gstApplicableStr := req.QueryParams["gst_applicable"]; gstApplicableStr != "" {
+		if val, err := strconv.ParseBool(gstApplicableStr); err == nil {
+			filters.GSTApplicable = &val
+		}
+	}
+
+	if minPriceStr := req.QueryParams["min_price"]; minPriceStr != "" {
+		if val, err := strconv.ParseFloat(minPriceStr, 64); err == nil {
+			filters.MinPrice = &val
+		}
+	}
+
+	if maxPriceStr := req.QueryParams["max_price"]; maxPriceStr != "" {
+		if val, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
+			filters.MaxPrice = &val
+		}
+	}
+
+	if createdAfter := req.QueryParams["created_after"]; createdAfter != "" {
+		if t, err := time.Parse(time.RFC3339, createdAfter); err == nil {
+			filters.CreatedAfter = &t
+		}
+	}
+
+	if createdBefore := req.QueryParams["created_before"]; createdBefore != "" {
+		if t, err := time.Parse(time.RFC3339, createdBefore); err == nil {
+			filters.CreatedBefore = &t
+		}
+	}
+
+	limit := 100
+	if limitStr := req.QueryParams["limit"]; limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+	filters.Limit = &limit
+
+	offset := 0
+	if offsetStr := req.QueryParams["offset"]; offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+	filters.Offset = &offset
+
+	products, err := h.productService.ListProducts(ctx, filters)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to list products", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(products)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleGet handles product retrieval for Lambda
+func (h *ProductHandler) HandleGet(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	id := req.PathParams["id"]
+	if id == "" {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request", "message": "Product ID is required"}`),
+		}, nil
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid product ID", "message": "Product ID must be a valid UUID"}`),
+		}, nil
+	}
+
+	product, err := h.productService.GetProduct(ctx, id)
+	if err != nil {
+		if isNotFoundError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusNotFound,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Product not found", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to get product", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(product)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleUpdate handles product update for Lambda
+func (h *ProductHandler) HandleUpdate(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	id := req.PathParams["id"]
+	if id == "" {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request", "message": "Product ID is required"}`),
+		}, nil
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid product ID", "message": "Product ID must be a valid UUID"}`),
+		}, nil
+	}
+
+	var updateReq services.UpdateProductRequest
+	if err := json.Unmarshal(req.Body, &updateReq); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request body", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	product, err := h.productService.UpdateProduct(ctx, id, &updateReq)
+	if err != nil {
+		if isNotFoundError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusNotFound,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Product not found", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		if isValidationError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusBadRequest,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Validation failed", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to update product", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(product)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleDelete handles product deletion for Lambda
+func (h *ProductHandler) HandleDelete(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	id := req.PathParams["id"]
+	if id == "" {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request", "message": "Product ID is required"}`),
+		}, nil
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid product ID", "message": "Product ID must be a valid UUID"}`),
+		}, nil
+	}
+
+	err := h.productService.DeleteProduct(ctx, id)
+	if err != nil {
+		if isNotFoundError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusNotFound,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Product not found", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to delete product", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusNoContent,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       []byte(`{"message": "Product deleted successfully"}`),
+	}, nil
+}
+
+// HandleSearch handles product search for Lambda
+func (h *ProductHandler) HandleSearch(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	query := req.QueryParams["q"]
+	if query == "" {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request", "message": "Search query is required"}`),
+		}, nil
+	}
+
+	limit := 50
+	if limitStr := req.QueryParams["limit"]; limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	products, err := h.productService.SearchProducts(ctx, query, limit)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to search products", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(products)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleListCategories handles category listing for Lambda
+func (h *ProductHandler) HandleListCategories(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	categories, err := h.productService.GetProductCategories(ctx)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to get categories", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(categories)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
 }

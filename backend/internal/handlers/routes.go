@@ -203,8 +203,9 @@ func SetupDevelopmentRoutes(router *gin.Engine, config *RouterConfig) {
 					{"code": "AU", "name": "Australia", "tax": "GST", "rate": 0.10},
 					{"code": "GB", "name": "United Kingdom", "tax": "VAT", "rate": 0.20},
 					{"code": "US", "name": "United States", "tax": "Sales Tax", "rate": 0.08},
+					{"code": "COL", "name": "Colombia", "tax": "IVA", "rate": 0.19},
 				},
-				"api_version": "1.0.0",
+				"api_version": "1.0.1",
 				"swagger_url": "/swagger/index.html",
 			})
 		})

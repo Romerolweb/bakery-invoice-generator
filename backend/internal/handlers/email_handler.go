@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -9,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"bakery-invoice-api/internal/services"
+	"bakery-invoice-api/pkg/lambda"
 )
 
 // EmailHandler handles email-related HTTP requests
@@ -510,4 +513,164 @@ func (h *EmailHandler) UpdateEmailDeliverySettings(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Email delivery settings updated successfully",
 	})
+}
+
+// Lambda-compatible handler methods
+
+// HandleSendReceipt handles receipt email sending for Lambda
+func (h *EmailHandler) HandleSendReceipt(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	var sendReq SendReceiptRequest
+	if err := json.Unmarshal(req.Body, &sendReq); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request body", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(sendReq.ReceiptID); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid receipt ID", "message": "Receipt ID must be a valid UUID"}`),
+		}, nil
+	}
+
+	emailAudit, err := h.emailService.SendReceiptEmail(ctx, sendReq.ReceiptID, sendReq.RecipientEmail)
+	if err != nil {
+		if isNotFoundError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusNotFound,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Receipt not found", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		if isValidationError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusBadRequest,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Validation failed", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to send receipt email", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(emailAudit)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleSendBulk handles bulk email sending for Lambda
+func (h *EmailHandler) HandleSendBulk(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	var bulkReq SendBulkEmailRequest
+	if err := json.Unmarshal(req.Body, &bulkReq); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request body", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	// Validate receipt IDs
+	for _, receiptID := range bulkReq.ReceiptIDs {
+		if _, err := uuid.Parse(receiptID); err != nil {
+			return &lambda.Response{
+				StatusCode: http.StatusBadRequest,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Invalid receipt ID", "message": "Receipt ID ` + receiptID + ` must be a valid UUID"}`),
+			}, nil
+		}
+	}
+
+	results, err := h.emailService.SendBulkReceiptEmails(ctx, bulkReq.ReceiptIDs, bulkReq.RecipientEmails)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to send bulk emails", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(results)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleGetStatus handles email status retrieval for Lambda
+func (h *EmailHandler) HandleGetStatus(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	id := req.PathParams["id"]
+	if id == "" {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request", "message": "Email ID is required"}`),
+		}, nil
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid email ID", "message": "Email ID must be a valid UUID"}`),
+		}, nil
+	}
+
+	emailAudit, err := h.emailService.GetEmailStatus(ctx, id)
+	if err != nil {
+		if isNotFoundError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusNotFound,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Email not found", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to get email status", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(emailAudit)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
 }

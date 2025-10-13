@@ -1,0 +1,566 @@
+# Production environment configuration for Serverless Framework
+# This file extends the base serverless.yml for production-specific settings
+
+service: bakery-invoice-api-prod
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: ${opt:region, 'us-east-1'}
+  stage: prod
+  memorySize: 1024  # Higher memory for production performance
+  timeout: 30       # Maximum timeout for production
+  environment:
+    ENVIRONMENT: prod
+    DB_CONNECTION_STRING: ${env:DB_CONNECTION_STRING}
+    STORAGE_TYPE: s3
+    S3_BUCKET: ${env:S3_BUCKET}
+    S3_REGION: ${self:provider.region}
+    SMTP_HOST: ${env:SMTP_HOST}
+    SMTP_PORT: ${env:SMTP_PORT, '587'}
+    SMTP_USERNAME: ${env:SMTP_USERNAME}
+    SMTP_PASSWORD: ${env:SMTP_PASSWORD}
+    SMTP_FROM: ${env:SMTP_FROM}
+    JWT_SECRET: ${env:JWT_SECRET}
+    LOG_LEVEL: warn  # Minimal logging in production
+  
+  # Production-specific IAM permissions (most restrictive)
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+        - s3:DeleteObject
+        - s3:ListBucket
+      Resource:
+        - "arn:aws:s3:::${env:S3_BUCKET}"
+        - "arn:aws:s3:::${env:S3_BUCKET}/*"
+    - Effect: Allow
+      Action:
+        - rds:DescribeDBInstances
+        - rds:Connect
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: 
+        - "arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/bakery-invoice-api-prod-*"
+
+  # Production-specific settings
+  tracing:
+    lambda: true  # Enable X-Ray tracing
+    apiGateway: true
+  
+  # Environment variables for production monitoring
+  environment:
+    ENVIRONMENT: prod
+    DB_CONNECTION_STRING: ${env:DB_CONNECTION_STRING}
+    STORAGE_TYPE: s3
+    S3_BUCKET: ${env:S3_BUCKET}
+    S3_REGION: ${self:provider.region}
+    SMTP_HOST: ${env:SMTP_HOST}
+    SMTP_PORT: ${env:SMTP_PORT, '587'}
+    SMTP_USERNAME: ${env:SMTP_USERNAME}
+    SMTP_PASSWORD: ${env:SMTP_PASSWORD}
+    SMTP_FROM: ${env:SMTP_FROM}
+    JWT_SECRET: ${env:JWT_SECRET}
+    LOG_LEVEL: warn
+    # Monitoring and alerting
+    SENTRY_DSN: ${env:SENTRY_DSN, ''}
+    NEW_RELIC_LICENSE_KEY: ${env:NEW_RELIC_LICENSE_KEY, ''}
+
+functions:
+  customers:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/customers.zip
+    events:
+      - http:
+          path: /api/v1/customers
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/customers/{proxy+}
+          method: any
+          cors: true
+    # Production-specific settings
+    reservedConcurrency: 50
+    provisionedConcurrency: 5  # Keep warm instances
+    deadLetterQueue:
+      targetArn: !GetAtt DeadLetterQueue.Arn
+
+  products:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/products.zip
+    events:
+      - http:
+          path: /api/v1/products
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/products/{proxy+}
+          method: any
+          cors: true
+    reservedConcurrency: 50
+    provisionedConcurrency: 5
+    deadLetterQueue:
+      targetArn: !GetAtt DeadLetterQueue.Arn
+
+  receipts:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/receipts.zip
+    events:
+      - http:
+          path: /api/v1/receipts
+          method: any
+          cors: true
+      - http:
+          path: /api/v1/receipts/{proxy+}
+          method: any
+          cors: true
+    reservedConcurrency: 100  # Higher for core functionality
+    provisionedConcurrency: 10
+    deadLetterQueue:
+      targetArn: !GetAtt DeadLetterQueue.Arn
+
+  email:
+    handler: bootstrap
+    package:
+      artifact: ../../bin/email.zip
+    events:
+      - http:
+          path: /api/v1/email/{proxy+}
+          method: any
+          cors: true
+    reservedConcurrency: 25
+    provisionedConcurrency: 2
+    deadLetterQueue:
+      targetArn: !GetAtt DeadLetterQueue.Arn
+
+resources:
+  Resources:
+    # S3 Bucket for production with enhanced security
+    ProdFileStorageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${env:S3_BUCKET}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: aws:kms
+                KMSMasterKeyID: !Ref S3KMSKey
+        VersioningConfiguration:
+          Status: Enabled
+        LifecycleConfiguration:
+          Rules:
+            - Id: DeleteIncompleteMultipartUploads
+              Status: Enabled
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 1
+            - Id: TransitionToIA
+              Status: Enabled
+              Transition:
+                Days: 30
+                StorageClass: STANDARD_IA
+            - Id: TransitionToGlacier
+              Status: Enabled
+              Transition:
+                Days: 90
+                StorageClass: GLACIER
+        NotificationConfiguration:
+          CloudWatchConfigurations:
+            - Event: s3:ObjectCreated:*
+              CloudWatchConfiguration:
+                LogGroupName: !Ref S3AccessLogGroup
+
+    # KMS Key for S3 encryption
+    S3KMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: KMS Key for Bakery Invoice API S3 bucket encryption
+        KeyPolicy:
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              Action: "kms:*"
+              Resource: "*"
+
+    # RDS Instance for production (high availability)
+    ProdDatabaseInstance:
+      Type: AWS::RDS::DBInstance
+      Properties:
+        DBInstanceIdentifier: bakery-invoice-prod
+        DBInstanceClass: db.t3.small  # Larger instance for production
+        Engine: postgres
+        EngineVersion: '15.4'
+        MasterUsername: ${env:DB_USER}
+        MasterUserPassword: ${env:DB_PASSWORD}
+        AllocatedStorage: 100
+        StorageType: gp2
+        StorageEncrypted: true
+        KmsKeyId: !Ref DatabaseKMSKey
+        VpcSecurityGroups:
+          - !Ref DatabaseSecurityGroup
+        DBSubnetGroupName: !Ref DatabaseSubnetGroup
+        BackupRetentionPeriod: 30  # 30 days backup retention
+        MultiAZ: true  # High availability
+        PubliclyAccessible: false
+        DeletionProtection: true  # Prevent accidental deletion
+        MonitoringInterval: 60
+        MonitoringRoleArn: !GetAtt RDSEnhancedMonitoringRole.Arn
+        EnablePerformanceInsights: true
+        PerformanceInsightsRetentionPeriod: 7
+
+    # KMS Key for RDS encryption
+    DatabaseKMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: KMS Key for Bakery Invoice API RDS encryption
+        KeyPolicy:
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              Action: "kms:*"
+              Resource: "*"
+
+    # Enhanced monitoring role for RDS
+    RDSEnhancedMonitoringRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: monitoring.rds.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+
+    # VPC Configuration for production
+    VPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: 10.0.0.0/16
+        EnableDnsHostnames: true
+        EnableDnsSupport: true
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-vpc
+
+    # Internet Gateway
+    InternetGateway:
+      Type: AWS::EC2::InternetGateway
+      Properties:
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-igw
+
+    InternetGatewayAttachment:
+      Type: AWS::EC2::VPCGatewayAttachment
+      Properties:
+        InternetGatewayId: !Ref InternetGateway
+        VpcId: !Ref VPC
+
+    # Public Subnets for NAT Gateways
+    PublicSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        CidrBlock: 10.0.1.0/24
+        AvailabilityZone: ${self:provider.region}a
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-public-1
+
+    PublicSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        CidrBlock: 10.0.2.0/24
+        AvailabilityZone: ${self:provider.region}b
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-public-2
+
+    # Private Subnets for RDS and Lambda
+    PrivateSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        CidrBlock: 10.0.3.0/24
+        AvailabilityZone: ${self:provider.region}a
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-private-1
+
+    PrivateSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        CidrBlock: 10.0.4.0/24
+        AvailabilityZone: ${self:provider.region}b
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-private-2
+
+    # NAT Gateways for outbound internet access
+    NatGateway1EIP:
+      Type: AWS::EC2::EIP
+      DependsOn: InternetGatewayAttachment
+      Properties:
+        Domain: vpc
+
+    NatGateway2EIP:
+      Type: AWS::EC2::EIP
+      DependsOn: InternetGatewayAttachment
+      Properties:
+        Domain: vpc
+
+    NatGateway1:
+      Type: AWS::EC2::NatGateway
+      Properties:
+        AllocationId: !GetAtt NatGateway1EIP.AllocationId
+        SubnetId: !Ref PublicSubnet1
+
+    NatGateway2:
+      Type: AWS::EC2::NatGateway
+      Properties:
+        AllocationId: !GetAtt NatGateway2EIP.AllocationId
+        SubnetId: !Ref PublicSubnet2
+
+    # Route Tables
+    PublicRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref VPC
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-public-routes
+
+    DefaultPublicRoute:
+      Type: AWS::EC2::Route
+      DependsOn: InternetGatewayAttachment
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref InternetGateway
+
+    PublicSubnet1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        SubnetId: !Ref PublicSubnet1
+
+    PublicSubnet2RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        SubnetId: !Ref PublicSubnet2
+
+    PrivateRouteTable1:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref VPC
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-private-routes-1
+
+    DefaultPrivateRoute1:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable1
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref NatGateway1
+
+    PrivateSubnet1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable1
+        SubnetId: !Ref PrivateSubnet1
+
+    PrivateRouteTable2:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref VPC
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-private-routes-2
+
+    DefaultPrivateRoute2:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable2
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref NatGateway2
+
+    PrivateSubnet2RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable2
+        SubnetId: !Ref PrivateSubnet2
+
+    # Database Subnet Group
+    DatabaseSubnetGroup:
+      Type: AWS::RDS::DBSubnetGroup
+      Properties:
+        DBSubnetGroupDescription: Subnet group for production RDS database
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-db-subnet-group
+
+    # Security Groups
+    DatabaseSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for production RDS database
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            SourceSecurityGroupId: !Ref LambdaSecurityGroup
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-db-sg
+
+    LambdaSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for production Lambda functions
+        VpcId: !Ref VPC
+        SecurityGroupEgress:
+          - IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            DestinationSecurityGroupId: !Ref DatabaseSecurityGroup
+        Tags:
+          - Key: Name
+            Value: bakery-invoice-prod-lambda-sg
+
+    # Dead Letter Queue for failed Lambda invocations
+    DeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: bakery-invoice-prod-dlq
+        MessageRetentionPeriod: 1209600  # 14 days
+        KmsMasterKeyId: alias/aws/sqs
+
+    # CloudWatch Log Groups
+    S3AccessLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/s3/bakery-invoice-prod-access
+        RetentionInDays: 30
+
+    # CloudWatch Alarms
+    DatabaseCPUAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmDescription: RDS CPU utilization is too high
+        MetricName: CPUUtilization
+        Namespace: AWS/RDS
+        Statistic: Average
+        Period: 300
+        EvaluationPeriods: 2
+        Threshold: 80
+        ComparisonOperator: GreaterThanThreshold
+        Dimensions:
+          - Name: DBInstanceIdentifier
+            Value: !Ref ProdDatabaseInstance
+        AlarmActions:
+          - !Ref SNSAlarmTopic
+
+    DatabaseConnectionAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmDescription: RDS connection count is too high
+        MetricName: DatabaseConnections
+        Namespace: AWS/RDS
+        Statistic: Average
+        Period: 300
+        EvaluationPeriods: 2
+        Threshold: 40
+        ComparisonOperator: GreaterThanThreshold
+        Dimensions:
+          - Name: DBInstanceIdentifier
+            Value: !Ref ProdDatabaseInstance
+        AlarmActions:
+          - !Ref SNSAlarmTopic
+
+    # SNS Topic for alarms
+    SNSAlarmTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: bakery-invoice-prod-alarms
+        DisplayName: Bakery Invoice Production Alarms
+
+  Outputs:
+    ApiGatewayRestApiId:
+      Value: !Ref ApiGatewayRestApi
+      Export:
+        Name: ${self:service}-restApiId
+
+    ApiGatewayRestApiRootResourceId:
+      Value: !GetAtt ApiGatewayRestApi.RootResourceId
+      Export:
+        Name: ${self:service}-rootResourceId
+
+    DatabaseEndpoint:
+      Value: !GetAtt ProdDatabaseInstance.Endpoint.Address
+      Export:
+        Name: ${self:service}-database-endpoint
+
+    S3BucketName:
+      Value: !Ref ProdFileStorageBucket
+      Export:
+        Name: ${self:service}-s3Bucket
+
+plugins:
+  - serverless-plugin-warmup
+  - serverless-plugin-aws-alerts
+
+custom:
+  # Warmup configuration for production (minimal to save costs)
+  warmup:
+    enabled: true
+    events:
+      - schedule: rate(15 minutes)  # Less frequent warmup
+    timeout: 20
+    prewarm: true
+
+  # AWS Alerts configuration
+  alerts:
+    stages:
+      - prod
+    topics:
+      alarm:
+        topic: ${self:service}-prod-alerts
+        notifications:
+          - protocol: email
+            endpoint: ${env:ALERT_EMAIL}
+    alarms:
+      - functionErrors
+      - functionThrottles
+      - functionInvocations
+      - functionDuration

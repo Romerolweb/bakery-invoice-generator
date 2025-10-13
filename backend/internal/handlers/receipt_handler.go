@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +12,7 @@ import (
 
 	"bakery-invoice-api/internal/models"
 	"bakery-invoice-api/internal/services"
+	"bakery-invoice-api/pkg/lambda"
 )
 
 // ReceiptHandler handles receipt-related HTTP requests
@@ -679,4 +682,241 @@ func (h *ReceiptHandler) GetTopCustomersByRevenue(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, customers)
+}
+
+// Lambda-compatible handler methods
+
+// HandleCreate handles receipt creation for Lambda
+func (h *ReceiptHandler) HandleCreate(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	var createReq services.CreateReceiptRequest
+	if err := json.Unmarshal(req.Body, &createReq); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request body", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	receipt, err := h.receiptService.CreateReceipt(ctx, &createReq)
+	if err != nil {
+		if isValidationError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusBadRequest,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Validation failed", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to create receipt", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(receipt)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusCreated,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleList handles receipt listing for Lambda
+func (h *ReceiptHandler) HandleList(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	filters := &services.ReceiptFilters{}
+
+	// Parse query parameters
+	if customerID := req.QueryParams["customer_id"]; customerID != "" {
+		filters.CustomerID = &customerID
+	}
+
+	if isTaxInvoiceStr := req.QueryParams["is_tax_invoice"]; isTaxInvoiceStr != "" {
+		if val, err := strconv.ParseBool(isTaxInvoiceStr); err == nil {
+			filters.IsTaxInvoice = &val
+		}
+	}
+
+	if paymentMethod := req.QueryParams["payment_method"]; paymentMethod != "" {
+		filters.PaymentMethod = &paymentMethod
+	}
+
+	if minAmountStr := req.QueryParams["min_amount"]; minAmountStr != "" {
+		if val, err := strconv.ParseFloat(minAmountStr, 64); err == nil {
+			filters.MinAmount = &val
+		}
+	}
+
+	if maxAmountStr := req.QueryParams["max_amount"]; maxAmountStr != "" {
+		if val, err := strconv.ParseFloat(maxAmountStr, 64); err == nil {
+			filters.MaxAmount = &val
+		}
+	}
+
+	if startDate := req.QueryParams["start_date"]; startDate != "" {
+		if t, err := time.Parse(time.RFC3339, startDate); err == nil {
+			filters.StartDate = &t
+		}
+	}
+
+	if endDate := req.QueryParams["end_date"]; endDate != "" {
+		if t, err := time.Parse(time.RFC3339, endDate); err == nil {
+			filters.EndDate = &t
+		}
+	}
+
+	limit := 100
+	if limitStr := req.QueryParams["limit"]; limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+	filters.Limit = &limit
+
+	offset := 0
+	if offsetStr := req.QueryParams["offset"]; offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+	filters.Offset = &offset
+
+	receipts, err := h.receiptService.ListReceipts(ctx, filters)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to list receipts", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(receipts)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleGet handles receipt retrieval for Lambda
+func (h *ReceiptHandler) HandleGet(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	id := req.PathParams["id"]
+	if id == "" {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request", "message": "Receipt ID is required"}`),
+		}, nil
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid receipt ID", "message": "Receipt ID must be a valid UUID"}`),
+		}, nil
+	}
+
+	receipt, err := h.receiptService.GetReceipt(ctx, id)
+	if err != nil {
+		if isNotFoundError(err) {
+			return &lambda.Response{
+				StatusCode: http.StatusNotFound,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"error": "Receipt not found", "message": "` + err.Error() + `"}`),
+			}, nil
+		}
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to get receipt", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(receipt)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
+}
+
+// HandleSalesReport handles sales report generation for Lambda
+func (h *ReceiptHandler) HandleSalesReport(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
+	startDateStr := req.QueryParams["start_date"]
+	endDateStr := req.QueryParams["end_date"]
+
+	if startDateStr == "" || endDateStr == "" {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid request", "message": "Both start_date and end_date are required"}`),
+		}, nil
+	}
+
+	startDate, err := time.Parse(time.RFC3339, startDateStr)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid start_date", "message": "start_date must be in RFC3339 format"}`),
+		}, nil
+	}
+
+	endDate, err := time.Parse(time.RFC3339, endDateStr)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Invalid end_date", "message": "end_date must be in RFC3339 format"}`),
+		}, nil
+	}
+
+	report, err := h.receiptService.GetSalesReport(ctx, startDate, endDate)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to generate sales report", "message": "` + err.Error() + `"}`),
+		}, nil
+	}
+
+	responseBody, err := json.Marshal(report)
+	if err != nil {
+		return &lambda.Response{
+			StatusCode: http.StatusInternalServerError,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       []byte(`{"error": "Failed to marshal response"}`),
+		}, nil
+	}
+
+	return &lambda.Response{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       responseBody,
+	}, nil
 }

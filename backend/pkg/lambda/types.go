@@ -1,5 +1,9 @@
 package lambda
 
+import (
+	"context"
+)
+
 // Request represents a generic HTTP request for serverless functions
 type Request struct {
 	Method      string            `json:"method"`
@@ -18,4 +22,4 @@ type Response struct {
 }
 
 // HandlerFunc is a framework-agnostic handler interface
-type HandlerFunc func(req *Request) (*Response, error)
+type HandlerFunc func(ctx context.Context, req *Request) (*Response, error)

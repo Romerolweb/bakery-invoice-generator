@@ -1,0 +1,132 @@
+# Gitleaks configuration for Bakery Invoice Generator
+# This file configures secret detection rules
+
+title = "Gitleaks Configuration for Bakery Invoice Generator"
+
+# Global settings
+[extend]
+# Use the default gitleaks rules as a base
+useDefault = true
+
+# Additional rules specific to this project
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws", "credentials"]
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Access Key"
+regex = '''[A-Za-z0-9/+=]{40}'''
+tags = ["aws", "credentials"]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret Key"
+regex = '''(?i)(jwt[_-]?secret|secret[_-]?key)["\s]*[:=]["\s]*[A-Za-z0-9+/=]{32,}'''
+tags = ["jwt", "secret"]
+
+[[rules]]
+id = "database-url"
+description = "Database Connection String"
+regex = '''(?i)(database[_-]?url|db[_-]?url|connection[_-]?string)["\s]*[:=]["\s]*[A-Za-z0-9+/:@.-]+'''
+tags = ["database", "credentials"]
+
+[[rules]]
+id = "smtp-password"
+description = "SMTP Password"
+regex = '''(?i)(smtp[_-]?password|mail[_-]?password)["\s]*[:=]["\s]*[A-Za-z0-9!@#$%^&*()_+-=]{8,}'''
+tags = ["smtp", "password"]
+
+[[rules]]
+id = "api-key-generic"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|apikey)["\s]*[:=]["\s]*[A-Za-z0-9]{20,}'''
+tags = ["api", "key"]
+
+# Allowlist - files and patterns to ignore
+[allowlist]
+description = "Allowlisted files and patterns"
+
+# Ignore example files and documentation
+paths = [
+    '''.env.example''',
+    '''.env.*.example''',
+    '''README.md''',
+    '''docs/''',
+    '''*.md''',
+    '''package-lock.json''',
+    '''go.sum''',
+    '''yarn.lock''',
+]
+
+# Ignore test files with dummy secrets
+regexes = [
+    '''test[_-]?secret''',
+    '''dummy[_-]?key''',
+    '''example[_-]?token''',
+    '''fake[_-]?password''',
+    '''placeholder[_-]?secret''',
+    '''your[_-]?secret[_-]?here''',
+    '''change[_-]?me''',
+    '''CHANGE[_-]?ME''',
+    '''dev[_-]?secret[_-]?key''',
+    '''development[_-]?secret''',
+]
+
+# Ignore specific known safe patterns
+commits = [
+    # Add specific commit hashes here if needed
+]
+
+# Stop words that indicate a false positive
+stopwords = [
+    "example",
+    "test",
+    "dummy",
+    "fake",
+    "placeholder",
+    "sample",
+    "template",
+    "demo",
+]
+
+# File extensions to scan
+[allowlist.files]
+# Only scan text files, ignore binaries
+extensions = [
+    "go",
+    "js",
+    "ts",
+    "tsx",
+    "jsx",
+    "json",
+    "yaml",
+    "yml",
+    "toml",
+    "env",
+    "md",
+    "txt",
+    "sh",
+    "sql",
+    "dockerfile",
+]
+
+# Entropy settings for detecting high-entropy strings
+[entropy]
+# Enable entropy detection
+enabled = true
+
+# Minimum entropy threshold (0.0 to 8.0)
+# Higher values = fewer false positives, but might miss some secrets
+threshold = 3.5
+
+# Groups to apply entropy detection to
+groups = [
+    "aws",
+    "jwt",
+    "api",
+    "database",
+    "smtp",
+]
