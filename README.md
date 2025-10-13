@@ -13,6 +13,7 @@ For the fastest setup, use our automated script:
 git clone <repository-url>
 cd bakery-invoice-generator
 ./setup.sh             # Automated setup (installs deps, creates env files, sets permissions)
+make pre-commit-setup   # Setup pre-commit hooks for code quality
 ./dev.sh               # Start development server
 ```
 
@@ -20,6 +21,27 @@ Or validate existing configuration:
 ```bash
 ./validate-config.sh   # Check configuration consistency
 ```
+
+### 🔧 Code Quality Setup
+
+This project uses pre-commit hooks to ensure code quality, security, and consistency:
+
+```bash
+# Quick setup (recommended)
+make pre-commit-setup
+
+# Or use the setup script directly
+./scripts/setup-pre-commit.sh
+```
+
+**What gets checked automatically:**
+- 🔒 **Security**: Secret detection with Gitleaks
+- 🐹 **Go**: Formatting, linting, testing, and build checks
+- 🟨 **TypeScript**: ESLint, Prettier, type checking
+- 📝 **Documentation**: Markdown linting and formatting
+- 📁 **Files**: Trailing whitespace, line endings, large files
+
+See [Pre-commit Setup Guide](docs/PRE_COMMIT_SETUP.md) for detailed documentation.
 
 ### Prerequisites
 
@@ -87,11 +109,13 @@ Or validate existing configuration:
 4. **Access the application:**
    Open [http://localhost:${PORT}](http://localhost:9002) in your browser (uses PORT from .env.dev)
 
-## 🧪 Testing
+## 🧪 Testing & Code Quality
 
 ### Run All Tests
 ```bash
-npm test
+npm test                # Frontend tests
+make test              # All tests (frontend + backend)
+make test-backend      # Backend tests only
 ```
 
 ### Run Tests with UI
@@ -99,19 +123,30 @@ npm test
 npm run test:ui
 ```
 
-### Type Checking
+### Code Quality Checks
 ```bash
+# Type checking
 npm run typecheck
+make typecheck
+
+# Linting
+npm run lint           # Frontend linting
+make lint             # All linting (frontend + backend)
+make lint-fix         # Auto-fix linting issues
+
+# Code formatting
+npm run pretty        # Frontend formatting
+make format          # All formatting (frontend + backend)
+
+# Pre-commit hooks (runs all checks)
+make pre-commit-run   # Run all pre-commit hooks manually
 ```
 
-### Linting
+### Security & Validation
 ```bash
-npm run lint
-```
-
-### Code Formatting
-```bash
-npm run pretty
+make security-scan    # Run security scans
+make validate        # Run all validation checks
+make health          # Check project health
 ```
 
 ## 🏗️ Building for Production
@@ -424,13 +459,33 @@ The project enforces code quality through:
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Make changes and add tests
-4. Run quality checks: `npm run lint && npm run typecheck && npm test`
-5. Commit changes: `git commit -m "Add your feature"`
-6. Push to branch: `git push origin feature/your-feature`
-7. Create a Pull Request
+1. **Fork the repository**
+2. **Setup development environment:**
+   ```bash
+   git clone <your-fork-url>
+   cd bakery-invoice-generator
+   make setup              # Install dependencies and setup pre-commit
+   ```
+3. **Create a feature branch:** `git checkout -b feature/your-feature`
+4. **Make changes and add tests**
+5. **Quality checks run automatically on commit** (via pre-commit hooks)
+   - Or run manually: `make validate`
+6. **Commit changes:** `git commit -m "feat: add your feature"`
+   - Use [conventional commit format](docs/PRE_COMMIT_SETUP.md#commit-message-format)
+7. **Push to branch:** `git push origin feature/your-feature`
+8. **Create a Pull Request**
+
+### Code Quality Standards
+
+This project enforces high code quality standards through:
+- **Pre-commit hooks** - Automatic checks on every commit
+- **Comprehensive linting** - Go (40+ linters) and TypeScript/ESLint
+- **Security scanning** - Gitleaks for secret detection
+- **Type safety** - TypeScript strict mode
+- **Testing** - Vitest for frontend, Go testing for backend
+- **Documentation** - Markdown linting and formatting
+
+See [Pre-commit Setup Guide](docs/PRE_COMMIT_SETUP.md) for detailed information.
 
 ## 📝 License
 
