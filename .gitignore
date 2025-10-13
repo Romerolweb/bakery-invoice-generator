@@ -52,3 +52,9 @@ next-env.d.ts
 # Puppeteer cache
 .cache/puppeteer
 .kiro/*
+
+# Pre-commit cache
+.pre-commit-cache/
+
+# Git message template (local)
+.gitmessage.local
