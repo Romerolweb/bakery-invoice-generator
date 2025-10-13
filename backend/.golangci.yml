@@ -1,0 +1,355 @@
+# golangci-lint configuration for Bakery Invoice API
+# See https://golangci-lint.run/usage/configuration/ for more options
+
+run:
+  # Timeout for analysis
+  timeout: 5m
+  
+  # Exit code when at least one issue was found
+  issues-exit-code: 1
+  
+  # Include test files
+  tests: true
+  
+  # Skip directories
+  skip-dirs:
+    - bin
+    - data
+    - logs
+    - vendor
+    - .git
+  
+  # Skip files
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*_generated\\.go$"
+
+# Output configuration
+output:
+  # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
+  format: colored-line-number
+  
+  # Print lines of code with issue
+  print-issued-lines: true
+  
+  # Print linter name in the end of issue text
+  print-linter-name: true
+  
+  # Make issues output unique by line
+  uniq-by-line: true
+  
+  # Add a prefix to the output file references
+  path-prefix: ""
+  
+  # Sort results by: file, line, column, severity, linter
+  sort-results: true
+
+# Linters configuration
+linters:
+  # Disable all linters as default is true
+  disable-all: true
+  
+  # Enable specific linters
+  enable:
+    # Enabled by default linters:
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Static analysis checks
+    - typecheck     # Type checking
+    - unused        # Check for unused constants, variables, functions and types
+    
+    # Additional useful linters:
+    - bodyclose     # Check whether HTTP response body is closed successfully
+    - contextcheck  # Check whether the function uses a non-inherited context
+    - cyclop        # Check function and package cyclomatic complexity
+    - dupl          # Tool for code clone detection
+    - durationcheck # Check for two durations multiplied together
+    - errorlint     # Find code that will cause problems with the error wrapping scheme
+    - exhaustive    # Check exhaustiveness of enum switch statements
+    - exportloopref # Check for pointers to enclosing loop variables
+    - forbidigo     # Forbid identifiers
+    - funlen        # Tool for detection of long functions
+    - gochecknoglobals # Check that no global variables exist
+    - gochecknoinits   # Check that no init functions are present
+    - gocognit      # Compute and check the cognitive complexity of functions
+    - goconst       # Find repeated strings that could be replaced by a constant
+    - gocritic      # Provides diagnostics that check for bugs, performance and style issues
+    - gocyclo       # Compute and check the cyclomatic complexity of functions
+    - godot         # Check if comments end in a period
+    - gofmt         # Check whether code was gofmt-ed
+    - gofumpt       # Check whether code was gofumpt-ed
+    - goheader      # Check is file header matches to pattern
+    - goimports     # Check import statements are formatted according to the 'goimport' command
+    - gomnd         # Detect magic numbers
+    - gomoddirectives # Manage the use of 'replace', 'retract', and 'excludes' directives in go.mod
+    - gomodguard    # Allow and block list linter for direct Go module dependencies
+    - goprintffuncname # Check that printf-like functions are named with `f` at the end
+    - gosec         # Inspect source code for security problems
+    - lll           # Report long lines
+    - makezero      # Find slice declarations with non-zero initial length
+    - nakedret      # Find naked returns in functions greater than a specified function length
+    - nestif        # Report deeply nested if statements
+    - nilerr        # Find the code that returns nil even if it checks that the error is not nil
+    - nilnil        # Check that there is no simultaneous return of `nil` error and an invalid value
+    - noctx         # Find sending http request without context.Context
+    - nolintlint    # Report ill-formed or insufficient nolint directives
+    - prealloc      # Find slice declarations that could potentially be preallocated
+    - predeclared   # Find code that shadows one of Go's predeclared identifiers
+    - revive        # Fast, configurable, extensible, flexible, and beautiful linter for Go
+    - rowserrcheck  # Check whether Err of rows is checked successfully
+    - sqlclosecheck # Check that sql.Rows and sql.Stmt are closed
+    - tenv          # Detect using os.Setenv instead of t.Setenv since Go1.17
+    - testpackage   # Make tests use a separate _test package
+    - tparallel     # Detect inappropriate usage of t.Parallel() method in your Go test codes
+    - unconvert     # Remove unnecessary type conversions
+    - unparam       # Report unused function parameters
+    - wastedassign  # Find wasted assignment statements
+    - whitespace    # Tool for detection of leading and trailing whitespace
+
+# Linters settings
+linters-settings:
+  # Settings for cyclop (cyclomatic complexity)
+  cyclop:
+    max-complexity: 15
+    package-average: 10.0
+    skip-tests: true
+
+  # Settings for dupl (code duplication)
+  dupl:
+    threshold: 100
+
+  # Settings for errcheck
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  # Settings for exhaustive
+  exhaustive:
+    check-generated: false
+    default-signifies-exhaustive: false
+
+  # Settings for forbidigo
+  forbidigo:
+    forbid:
+      - ^print.*$
+      - 'fmt\.Print.*'
+
+  # Settings for funlen (function length)
+  funlen:
+    lines: 100
+    statements: 50
+
+  # Settings for gocognit (cognitive complexity)
+  gocognit:
+    min-complexity: 15
+
+  # Settings for goconst
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+
+  # Settings for gocritic
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+
+  # Settings for gocyclo (cyclomatic complexity)
+  gocyclo:
+    min-complexity: 15
+
+  # Settings for godot
+  godot:
+    scope: declarations
+    capital: false
+
+  # Settings for gofumpt
+  gofumpt:
+    lang-version: "1.24"
+    extra-rules: false
+
+  # Settings for goheader
+  goheader:
+    values:
+      const:
+        COMPANY: Bakery Invoice Generator
+      regexp:
+        YEAR: 202[0-9]
+    template: |-
+      Copyright (c) {{ YEAR }} {{ COMPANY }}
+      SPDX-License-Identifier: MIT
+
+  # Settings for goimports
+  goimports:
+    local-prefixes: bakery-invoice-api
+
+  # Settings for gomnd (magic numbers)
+  gomnd:
+    settings:
+      mnd:
+        checks: argument,case,condition,operation,return,assign
+        ignored-numbers: 0,1,2,3
+        ignored-files: _test.go
+        ignored-functions: strings.SplitN
+
+  # Settings for gomodguard
+  gomodguard:
+    allowed:
+      modules: []
+      domains: []
+    blocked:
+      modules: []
+      versions: []
+
+  # Settings for gosec
+  gosec:
+    severity: "low"
+    confidence: "low"
+    excludes:
+      - G304 # Potential file inclusion via variable
+
+  # Settings for lll (line length)
+  lll:
+    line-length: 120
+
+  # Settings for nakedret
+  nakedret:
+    max-func-lines: 30
+
+  # Settings for nestif
+  nestif:
+    min-complexity: 4
+
+  # Settings for nolintlint
+  nolintlint:
+    allow-leading-space: true
+    allow-unused: false
+    require-explanation: false
+    require-specific: false
+
+  # Settings for prealloc
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
+
+  # Settings for revive
+  revive:
+    min-confidence: 0
+    rules:
+      - name: atomic
+      - name: line-length-limit
+        arguments: [120]
+      - name: argument-limit
+        arguments: [4]
+      - name: cyclomatic
+        arguments: [15]
+      - name: max-public-structs
+        arguments: [3]
+      - name: file-header
+        disabled: true
+
+  # Settings for testpackage
+  testpackage:
+    skip-regexp: (export|internal)_test\.go
+
+  # Settings for tenv
+  tenv:
+    all: false
+
+  # Settings for unparam
+  unparam:
+    check-exported: false
+
+  # Settings for unused
+  unused:
+    check-exported: false
+
+  # Settings for whitespace
+  whitespace:
+    multi-if: false
+    multi-func: false
+
+# Issues configuration
+issues:
+  # List of regexps of issue texts to exclude
+  exclude:
+    # Exclude some linters from running on tests files
+    - "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*print(f|ln)?|os\\.(Un)?Setenv). is not checked"
+    - "should have a package comment, unless it's in another file for this package"
+    
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gomnd
+        - gocritic
+        - funlen
+        - dupl
+        - lll
+        
+    # Exclude some linters from running on generated files
+    - path: ".*\\.pb\\.go"
+      linters:
+        - lll
+        - gocritic
+        
+    # Exclude magic number detection in configuration files
+    - path: "(config|configuration)\\.go"
+      linters:
+        - gomnd
+        
+    # Exclude line length in long URLs or strings
+    - linters:
+        - lll
+      source: "^//go:generate "
+
+  # Independently from option `exclude` we use default exclude patterns
+  exclude-use-default: false
+  
+  # Maximum issues count per one linter
+  max-issues-per-linter: 0
+  
+  # Maximum count of issues with the same text
+  max-same-issues: 0
+  
+  # Show only new issues: if there are unstaged changes or untracked files,
+  # only those changes are analyzed, else only changes in HEAD~ are analyzed
+  new: false
+  
+  # Show only new issues created after git revision `REV`
+  new-from-rev: ""
+  
+  # Show only new issues created in git patch with set file path
+  new-from-patch: ""
+  
+  # Fix found issues (if it's supported by the linter)
+  fix: false
+
+severity:
+  # Default severity for issues
+  default-severity: error
+  
+  # If set to true severity-rules regular expressions become case sensitive
+  case-sensitive: false
+  
+  # Default value is empty list
+  rules:
+    - linters:
+        - dupl
+      severity: info
+    - linters:
+        - gocritic
+      severity: info
