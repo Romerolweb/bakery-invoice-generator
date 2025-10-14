@@ -544,7 +544,7 @@ func (h *CustomerHandler) HandleList(ctx context.Context, req *lambda.Request) (
 			limit = l
 		}
 	}
-	filters.Limit = &limit
+	filters.Limit = limit
 
 	offset := 0
 	if offsetStr := req.QueryParams["offset"]; offsetStr != "" {
@@ -552,7 +552,7 @@ func (h *CustomerHandler) HandleList(ctx context.Context, req *lambda.Request) (
 			offset = o
 		}
 	}
-	filters.Offset = &offset
+	filters.Offset = offset
 
 	customers, err := h.customerService.ListCustomers(ctx, filters)
 	if err != nil {

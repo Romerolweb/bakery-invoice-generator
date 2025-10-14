@@ -667,7 +667,7 @@ func (h *ProductHandler) HandleList(ctx context.Context, req *lambda.Request) (*
 			limit = l
 		}
 	}
-	filters.Limit = &limit
+	filters.Limit = limit
 
 	offset := 0
 	if offsetStr := req.QueryParams["offset"]; offsetStr != "" {
@@ -675,7 +675,7 @@ func (h *ProductHandler) HandleList(ctx context.Context, req *lambda.Request) (*
 			offset = o
 		}
 	}
-	filters.Offset = &offset
+	filters.Offset = offset
 
 	products, err := h.productService.ListProducts(ctx, filters)
 	if err != nil {

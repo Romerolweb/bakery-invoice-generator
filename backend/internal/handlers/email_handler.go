@@ -537,7 +537,7 @@ func (h *EmailHandler) HandleSendReceipt(ctx context.Context, req *lambda.Reques
 		}, nil
 	}
 
-	emailAudit, err := h.emailService.SendReceiptEmail(ctx, sendReq.ReceiptID, sendReq.RecipientEmail)
+	err := h.emailService.SendReceiptEmail(ctx, sendReq.ReceiptID, sendReq.RecipientEmail)
 	if err != nil {
 		if isNotFoundError(err) {
 			return &lambda.Response{
@@ -560,25 +560,16 @@ func (h *EmailHandler) HandleSendReceipt(ctx context.Context, req *lambda.Reques
 		}, nil
 	}
 
-	responseBody, err := json.Marshal(emailAudit)
-	if err != nil {
-		return &lambda.Response{
-			StatusCode: http.StatusInternalServerError,
-			Headers:    map[string]string{"Content-Type": "application/json"},
-			Body:       []byte(`{"error": "Failed to marshal response"}`),
-		}, nil
-	}
-
 	return &lambda.Response{
 		StatusCode: http.StatusOK,
 		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       responseBody,
+		Body:       []byte(`{"message": "Receipt email sent successfully"}`),
 	}, nil
 }
 
 // HandleSendBulk handles bulk email sending for Lambda
 func (h *EmailHandler) HandleSendBulk(ctx context.Context, req *lambda.Request) (*lambda.Response, error) {
-	var bulkReq SendBulkEmailRequest
+	var bulkReq SendBulkReceiptsRequest
 	if err := json.Unmarshal(req.Body, &bulkReq); err != nil {
 		return &lambda.Response{
 			StatusCode: http.StatusBadRequest,
@@ -598,7 +589,7 @@ func (h *EmailHandler) HandleSendBulk(ctx context.Context, req *lambda.Request) 
 		}
 	}
 
-	results, err := h.emailService.SendBulkReceiptEmails(ctx, bulkReq.ReceiptIDs, bulkReq.RecipientEmails)
+	err := h.emailService.SendBulkReceiptEmails(ctx, bulkReq.ReceiptIDs, bulkReq.RecipientEmails)
 	if err != nil {
 		return &lambda.Response{
 			StatusCode: http.StatusInternalServerError,
@@ -607,19 +598,10 @@ func (h *EmailHandler) HandleSendBulk(ctx context.Context, req *lambda.Request) 
 		}, nil
 	}
 
-	responseBody, err := json.Marshal(results)
-	if err != nil {
-		return &lambda.Response{
-			StatusCode: http.StatusInternalServerError,
-			Headers:    map[string]string{"Content-Type": "application/json"},
-			Body:       []byte(`{"error": "Failed to marshal response"}`),
-		}, nil
-	}
-
 	return &lambda.Response{
 		StatusCode: http.StatusOK,
 		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       responseBody,
+		Body:       []byte(`{"message": "Bulk emails sent successfully"}`),
 	}, nil
 }
 

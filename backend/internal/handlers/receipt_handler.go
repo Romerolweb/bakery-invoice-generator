@@ -745,7 +745,8 @@ func (h *ReceiptHandler) HandleList(ctx context.Context, req *lambda.Request) (*
 	}
 
 	if paymentMethod := req.QueryParams["payment_method"]; paymentMethod != "" {
-		filters.PaymentMethod = &paymentMethod
+		pm := models.PaymentMethod(paymentMethod)
+		filters.PaymentMethod = &pm
 	}
 
 	if minAmountStr := req.QueryParams["min_amount"]; minAmountStr != "" {
@@ -778,7 +779,7 @@ func (h *ReceiptHandler) HandleList(ctx context.Context, req *lambda.Request) (*
 			limit = l
 		}
 	}
-	filters.Limit = &limit
+	filters.Limit = limit
 
 	offset := 0
 	if offsetStr := req.QueryParams["offset"]; offsetStr != "" {
@@ -786,7 +787,7 @@ func (h *ReceiptHandler) HandleList(ctx context.Context, req *lambda.Request) (*
 			offset = o
 		}
 	}
-	filters.Offset = &offset
+	filters.Offset = offset
 
 	receipts, err := h.receiptService.ListReceipts(ctx, filters)
 	if err != nil {
