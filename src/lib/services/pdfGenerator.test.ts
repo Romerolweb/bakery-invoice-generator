@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach, Mocked } from "vitest";
 import { PdfGenerator } from "@/lib/services/pdfGenerator";
 import { IPdfReceiptTemplate } from "./pdfTemplates/IPdfReceiptTemplate";
 import {
-  promises as fsPromises,
   createWriteStream,
   unlinkSync,
   accessSync,
+  WriteStream,
 } from "fs"; // Import sync versions too
 import PDFDocument from "pdfkit";
 import { logger } from "@/lib/services/logging";
-import { Customer, SellerProfile, Receipt } from "@/lib/types";
+import { Receipt } from "@/lib/types";
 import stream from "stream";
 
 // Mock the entire 'fs' module
@@ -60,7 +60,6 @@ describe("PdfGenerator", () => {
   const mockFilePath = "/mock/path/to/test-receipt.pdf";
 
   // Mock the fs methods we'll use
-  const mockedMkdir = vi.mocked(fsPromises.mkdir);
   const mockedCreateWriteStream = vi.mocked(createWriteStream);
   const mockedAccessSync = vi.mocked(accessSync);
   const mockedUnlinkSync = vi.mocked(unlinkSync);
@@ -116,7 +115,7 @@ describe("PdfGenerator", () => {
 
     // Setup mock for PDFDocument constructor using the correctly typed mock
     MockedPDFDocument.mockClear(); 
-    MockedPDFDocument.mockImplementation(() => mockPDFDocumentInstance as unknown);
+    MockedPDFDocument.mockImplementation(() => mockPDFDocumentInstance as unknown as PDFKit.PDFDocument);
 
     // Reset mocks on the instance itself
     Object.values(mockPDFDocumentInstance).forEach((mockFn) => {
@@ -153,7 +152,7 @@ describe("PdfGenerator", () => {
     (pdfGenerator as unknown as { _initialize: (receiptId: string, operationId: string) => void })._initialize(mockReceiptId, mockOperationId);
     // Mock the stream setup
     const mockStream = new stream.PassThrough();
-    mockedCreateWriteStream.mockReturnValue(mockStream as unknown);
+    mockedCreateWriteStream.mockReturnValue(mockStream as unknown as WriteStream);
     (pdfGenerator as unknown as { _stream: unknown })._stream = mockStream;
     (pdfGenerator as unknown as { _doc: unknown })._doc = mockPDFDocumentInstance as unknown; // Ensure doc is set
 
@@ -170,7 +169,7 @@ describe("PdfGenerator", () => {
     (pdfGenerator as unknown as { _initialize: (receiptId: string, operationId: string) => void })._initialize(mockReceiptId, mockOperationId);
     // Mock the stream setup
     const mockStream = new stream.PassThrough();
-    mockedCreateWriteStream.mockReturnValue(mockStream as unknown);
+    mockedCreateWriteStream.mockReturnValue(mockStream as unknown as WriteStream);
     (pdfGenerator as unknown as { _stream: unknown })._stream = mockStream;
     (pdfGenerator as unknown as { _doc: unknown })._doc = mockPDFDocumentInstance as unknown; // Ensure doc is set
 
