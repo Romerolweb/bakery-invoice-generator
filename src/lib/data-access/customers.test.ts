@@ -7,7 +7,6 @@ import {
   deleteCustomer,
 } from "./customers";
 import * as fs from "fs/promises";
-import path from "path";
 import { Customer } from "../types";
 
 // Mock modules before importing
@@ -60,8 +59,8 @@ describe("Customer Data Access", () => {
 
     it("should return an empty array if there is an error", async () => {
       mockFs.mkdir.mockResolvedValue(undefined);
-      const enoentError = new Error("File not found");
-      (enoentError as any).code = "ENOENT";
+      const enoentError = new Error("File not found") as NodeJS.ErrnoException;
+      enoentError.code = "ENOENT";
       mockFs.readFile.mockRejectedValue(enoentError);
       const customers = await getAllCustomers();
       expect(customers).toEqual([]);
