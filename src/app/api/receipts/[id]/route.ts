@@ -3,10 +3,10 @@ import { getReceiptById } from '@/lib/actions/receipts';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const receiptId = params.id;
+    const { id: receiptId } = await params;
     
     if (!receiptId) {
       return NextResponse.json(

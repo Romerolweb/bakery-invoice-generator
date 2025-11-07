@@ -204,9 +204,9 @@ function generateReceiptHTML(receipt: Receipt): string {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const receiptId = params.id;
+  const { id: receiptId } = await params;
 
   if (!receiptId) {
     return new NextResponse("Receipt ID is required", { status: 400 });

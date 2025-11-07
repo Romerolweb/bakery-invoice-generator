@@ -2,20 +2,22 @@ import { ReceiptWebView } from '../../../components/receipts/ReceiptWebView';
 import './print.css';
 
 interface ReceiptViewPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function ReceiptViewPage({ params }: ReceiptViewPageProps) {
+export default async function ReceiptViewPage({ params }: ReceiptViewPageProps) {
+  const { id } = await params;
   return (
     <div className="min-h-screen bg-white">
-      <ReceiptWebView receiptId={params.id} />
+      <ReceiptWebView receiptId={id} />
     </div>
   );
 }
 
 export async function generateMetadata({ params }: ReceiptViewPageProps) {
+  const { id } = await params;
   return {
-    title: `Receipt ${params.id} - Bakery Invoice Generator`,
-    description: `View and print receipt ${params.id}`,
+    title: `Receipt ${id} - Bakery Invoice Generator`,
+    description: `View and print receipt ${id}`,
   };
 }
