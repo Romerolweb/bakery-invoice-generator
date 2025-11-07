@@ -28,6 +28,9 @@ yarn-error.log*
 logs/
 changes.log
 
+# Generated PDFs
+src/lib/data/receipt-pdfs/
+
 # Environment variables
 .env*.local
 .env
