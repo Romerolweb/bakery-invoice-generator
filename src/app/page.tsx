@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -146,32 +146,6 @@ export default function NewInvoicePage() {
     loadData();
   }, [toast]); // Dependency array includes toast
 
-  // Recalculate totals when line items or GST setting change
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name?.startsWith("line_items") || name === "include_gst") {
-        console.debug(
-          CLIENT_LOG_PREFIX,
-          `Form field changed (${name}), recalculating totals...`,
-        ); // Use console.debug
-        calculateTotals(value as ReceiptFormData);
-      }
-    });
-    // Trigger initial calculation once products are loaded
-    if (products.length > 0 && !isLoadingData) {
-      console.debug(
-        CLIENT_LOG_PREFIX,
-        "Performing initial total calculation...",
-      ); // Use console.debug
-      calculateTotals(form.getValues());
-    }
-    return () => {
-      console.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch."); // Use console.debug
-      subscription.unsubscribe();
-    };
-    // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
-  }, [form, products, isLoadingData, calculateTotals]);
-
   const calculateTotals = useCallback((formData: ReceiptFormData) => {
     let subtotal = 0;
     let gstAmount = 0;
@@ -203,6 +177,32 @@ export default function NewInvoicePage() {
     console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
     setCalculatedTotals(newTotals);
   }, [products]);
+
+  // Recalculate totals when line items or GST setting change
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name?.startsWith("line_items") || name === "include_gst") {
+        console.debug(
+          CLIENT_LOG_PREFIX,
+          `Form field changed (${name}), recalculating totals...`,
+        ); // Use console.debug
+        calculateTotals(value as ReceiptFormData);
+      }
+    });
+    // Trigger initial calculation once products are loaded
+    if (products.length > 0 && !isLoadingData) {
+      console.debug(
+        CLIENT_LOG_PREFIX,
+        "Performing initial total calculation...",
+      ); // Use console.debug
+      calculateTotals(form.getValues());
+    }
+    return () => {
+      console.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch."); // Use console.debug
+      subscription.unsubscribe();
+    };
+    // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
+  }, [form, products, isLoadingData, calculateTotals]);
 
   const onSubmit = async (data: ReceiptFormData) => {
     console.info(

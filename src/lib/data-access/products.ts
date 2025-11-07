@@ -30,7 +30,7 @@ async function readProductsFile(): Promise<Product[]> {
     await logger.error(
       funcPrefix,
       `Error reading products file: ${productsFilePath}`,
-      error,
+      error as Error,
     );
     throw new Error(`Failed to read products data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw other errors
   }
@@ -50,7 +50,7 @@ async function writeProductsFile(products: Product[]): Promise<void> {
     await logger.error(
       funcPrefix,
       `Error writing products file: ${productsFilePath}`,
-      error,
+      error as Error,
     );
     throw new Error(`Failed to write products data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw error
   }
