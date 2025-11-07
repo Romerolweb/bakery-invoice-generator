@@ -20,7 +20,7 @@ function generateReceiptHTML(receipt: Receipt): string {
     `;
   });
 
-  const customerName = customer.customer_type === 'business' ? customer.business_name : `${customer.first_name} ${customer.last_name}`;
+  const customerName = customer.customer_type === 'business' ? customer.business_name : `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim();
 
   return `
     <!DOCTYPE html>
