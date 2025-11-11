@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { formatDate } from "@/lib/utils"; // Assuming formatDate is in utils
 import { Receipt, LineItem, SellerProfile, Customer } from "@/lib/types";
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic';
+
 // Helper function to generate basic HTML for the receipt
 function generateReceiptHTML(receipt: Receipt): string {
   const seller: SellerProfile = receipt.seller_profile_snapshot;

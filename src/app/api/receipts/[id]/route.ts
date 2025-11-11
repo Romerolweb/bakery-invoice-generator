@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getReceiptById } from '@/lib/actions/receipts';
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

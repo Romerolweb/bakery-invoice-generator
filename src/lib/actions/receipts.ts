@@ -16,6 +16,7 @@ import { getCustomerById } from "@/lib/data-access/customers";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "@/lib/services/logging";
 import { recordChange } from "@/lib/recordChanges";
+import { revalidatePath } from 'next/cache';
 
 const ACTION_LOG_PREFIX = "ReceiptActions";
 
@@ -234,6 +235,11 @@ export async function createReceipt(
       "src/lib/actions/receipts.ts",
       `Saved receipt data ${newReceipt.receipt_id}`
     );
+
+    // Revalidate pages that display receipts
+    revalidatePath('/receipts');
+    revalidatePath(`/receipt/${newReceipt.receipt_id}`);
+    revalidatePath(`/receipt-view/${newReceipt.receipt_id}`);
 
     // Return success result with the created receipt
     return {
