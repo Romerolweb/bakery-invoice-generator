@@ -1,7 +1,7 @@
 // src/app/receipts/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import type { Receipt } from "@/lib/types";
 import { getAllReceipts } from "@/lib/actions/receipts";

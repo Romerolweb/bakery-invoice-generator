@@ -37,7 +37,7 @@ async function readReceiptsFile(): Promise<Receipt[]> {
     await logger.error(
       funcPrefix,
       `Error reading receipts file: ${receiptsFilePath}`,
-      error,
+      error as Error,
     );
     throw new Error(`Failed to read receipts data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw other errors
   }
@@ -63,7 +63,7 @@ async function writeReceiptsFile(receipts: Receipt[]): Promise<void> {
     await logger.error(
       funcPrefix,
       `Error writing receipts file: ${receiptsFilePath}`,
-      error,
+      error as Error,
     );
     throw new Error(`Failed to write receipts data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw error
   }
@@ -163,7 +163,7 @@ export async function getReceiptPdfPath(
       await logger.error(
         funcPrefix,
         `Error accessing PDF file at ${filePath}`,
-        error,
+        error as Error,
       );
     }
     return null; // Return null if file doesn't exist or other access error
@@ -202,7 +202,7 @@ export async function getReceiptPdfContent(
     await logger.error(
       funcPrefix,
       `Error reading PDF file content at ${filePath}`,
-      error,
+      error as Error,
     );
     return null;
   }

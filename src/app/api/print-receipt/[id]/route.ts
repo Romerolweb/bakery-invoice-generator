@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { formatDate } from "@/lib/utils"; // Assuming formatDate is in utils
 import { Receipt, LineItem, SellerProfile, Customer } from "@/lib/types";
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic';
+
 // Helper function to generate basic HTML for the receipt
 function generateReceiptHTML(receipt: Receipt): string {
   const seller: SellerProfile = receipt.seller_profile_snapshot;
@@ -20,7 +23,7 @@ function generateReceiptHTML(receipt: Receipt): string {
     `;
   });
 
-  const customerName = customer.customer_type === 'business' ? customer.business_name : `${customer.first_name} ${customer.last_name}`;
+  const customerName = customer.customer_type === 'business' ? customer.business_name : `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim();
 
   return `
     <!DOCTYPE html>
@@ -204,9 +207,9 @@ function generateReceiptHTML(receipt: Receipt): string {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const receiptId = params.id;
+  const { id: receiptId } = await params;
 
   if (!receiptId) {
     return new NextResponse("Receipt ID is required", { status: 400 });

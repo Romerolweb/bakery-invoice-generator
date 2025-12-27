@@ -15,17 +15,17 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Formats an ISO date string to DD/MM/YYYY format.
  * @param dateString - The ISO date string to format.
- * @returns A formatted date string (DD/MM/YYYY) or an empty string if input is invalid.
+ * @returns A formatted date string (DD/MM/YYYY), 'N/A' if input is null/undefined, or 'Invalid Date' if parsing fails.
  */
 export function formatDate(dateString: string | undefined | null): string {
   if (!dateString) {
-    return 'N/A'; // Or handle as an error, or return empty string
+    return 'N/A';
   }
   try {
     const date = parseISO(dateString);
     return format(date, 'dd/MM/yyyy');
   } catch (error) {
     console.error("Error formatting date:", dateString, error);
-    return 'Invalid Date'; // Or handle as an error
+    return 'Invalid Date'; // Returns error message for invalid date strings
   }
 }

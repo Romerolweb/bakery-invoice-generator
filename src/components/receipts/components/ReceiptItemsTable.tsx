@@ -33,10 +33,10 @@ export function ReceiptItemsTable({ items, showGST }: ReceiptItemsTableProps) {
                 {item.quantity}
               </td>
               <td className="border border-gray-300 px-4 py-2 text-right">
-                ${item.unit_price.toFixed(2)}
+                ${(item.unit_price ?? 0).toFixed(2)}
               </td>
               <td className="border border-gray-300 px-4 py-2 text-right">
-                ${item.line_total.toFixed(2)}
+                ${(item.line_total ?? 0).toFixed(2)}
               </td>
             </tr>
           ))}
