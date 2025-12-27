@@ -1,0 +1,8 @@
+name: 'Run Type Checking'
+description: 'Reusable action to run TypeScript type checking'
+runs:
+  using: 'composite'
+  steps:
+    - name: Run TypeScript Type Check
+      shell: bash
+      run: npm run typecheck

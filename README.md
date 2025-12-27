@@ -1,5 +1,10 @@
 # Invoice Generator App
 
+[![CI/CD Pipeline](https://github.com/Romerolweb/bakery-invoice-generator/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/Romerolweb/bakery-invoice-generator/actions/workflows/test.yml)
+[![Code Quality](https://github.com/Romerolweb/bakery-invoice-generator/workflows/Code%20Quality/badge.svg)](https://github.com/Romerolweb/bakery-invoice-generator/actions/workflows/code-quality.yml)
+[![Build](https://github.com/Romerolweb/bakery-invoice-generator/workflows/Build/badge.svg)](https://github.com/Romerolweb/bakery-invoice-generator/actions/workflows/build.yml)
+[![Release](https://github.com/Romerolweb/bakery-invoice-generator/workflows/Release/badge.svg)](https://github.com/Romerolweb/bakery-invoice-generator/actions/workflows/release.yml)
+
 This is a modern Invoice Generator application built with Next.js, React, TypeScript, and Shadcn UI. It allows you to create professional invoices by managing customers and products, calculating totals including GST, and generating PDF receipts using a pure PDFKit-based system.
 
 The project is designed with modern practices, including TypeScript for type safety, separation of concerns for maintainability and testability, and a template-based PDF generation architecture.
@@ -437,6 +442,26 @@ The project enforces code quality through:
 5. Commit changes: `git commit -m "Add your feature"`
 6. Push to branch: `git push origin feature/your-feature`
 7. Create a Pull Request
+
+### CI/CD Pipelines
+
+This project uses GitHub Actions for continuous integration and deployment. The pipelines automatically:
+
+- ✅ Run linters and type checks on every push/PR
+- ✅ Execute the full test suite
+- ✅ Build the application to verify it compiles
+- ✅ Create releases when version tags are pushed
+- 🚀 Deploy to Vercel (can be activated manually)
+
+For detailed information about the CI/CD setup, pipeline architecture, and how to work with releases and deployments, see:
+
+📖 **[CI/CD Pipelines Documentation](docs/ci-cd-pipelines.md)**
+
+The documentation includes:
+- Complete pipeline architecture with Mermaid diagrams
+- Detailed workflow descriptions
+- Setup instructions for Vercel deployment
+- Best practices and troubleshooting guides
 
 ## 📝 License
 
