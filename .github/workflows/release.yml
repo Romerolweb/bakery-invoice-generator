@@ -36,7 +36,12 @@ jobs:
       - name: Create Release Archive
         run: |
           mkdir -p release-artifacts
-          tar -czf release-artifacts/bakery-invoice-generator-${{ steps.get_version.outputs.VERSION }}.tar.gz .next/ package.json package-lock.json README.md
+          if [ -d ".next" ]; then
+            tar -czf release-artifacts/bakery-invoice-generator-${{ steps.get_version.outputs.VERSION }}.tar.gz .next/ package.json package-lock.json README.md
+          else
+            echo "Warning: .next directory not found, creating archive without build artifacts"
+            tar -czf release-artifacts/bakery-invoice-generator-${{ steps.get_version.outputs.VERSION }}.tar.gz package.json package-lock.json README.md
+          fi
           
       - name: Generate Changelog
         id: changelog

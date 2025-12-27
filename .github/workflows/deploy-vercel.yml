@@ -20,6 +20,9 @@ jobs:
   deploy:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write  # Needed to comment on PRs
     
     steps:
       - name: Checkout code
@@ -49,7 +52,11 @@ jobs:
       - name: Deploy to Vercel
         id: deploy
         run: |
-          DEPLOYMENT_URL=$(vercel deploy ${{ github.event.inputs.environment == 'production' && '--prod' || '--prebuilt' }} --token=${{ secrets.VERCEL_TOKEN }})
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            DEPLOYMENT_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          else
+            DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          fi
           echo "DEPLOYMENT_URL=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
           echo "Deployed to: $DEPLOYMENT_URL"
         env:

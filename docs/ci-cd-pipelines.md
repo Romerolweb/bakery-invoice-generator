@@ -137,6 +137,8 @@ sequenceDiagram
 ![CI/CD Pipeline](https://github.com/Romerolweb/bakery-invoice-generator/workflows/CI%2FCD%20Pipeline/badge.svg)
 ```
 
+Note: The badge URL automatically encodes spaces in the workflow name.
+
 ### 2. Code Quality (`code-quality.yml`)
 
 **Purpose**: Dedicated workflow for code quality checks.
