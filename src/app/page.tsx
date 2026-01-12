@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
 
-import type { Customer, Product, Receipt } from "@/lib/types";
+import type { Customer, Product } from "@/lib/types";
 import { getCustomers } from "@/lib/actions/customers";
 import { getProducts } from "@/lib/actions/products";
 import { createReceipt } from "@/lib/actions/receipts"; // Use createReceipt
@@ -60,7 +60,7 @@ import {
   PlusCircle,
   Trash2,
   CalendarIcon,
-  Download,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -146,33 +146,7 @@ export default function NewInvoicePage() {
     loadData();
   }, [toast]); // Dependency array includes toast
 
-  // Recalculate totals when line items or GST setting change
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name?.startsWith("line_items") || name === "include_gst") {
-        console.debug(
-          CLIENT_LOG_PREFIX,
-          `Form field changed (${name}), recalculating totals...`,
-        ); // Use console.debug
-        calculateTotals(value as ReceiptFormData);
-      }
-    });
-    // Trigger initial calculation once products are loaded
-    if (products.length > 0 && !isLoadingData) {
-      console.debug(
-        CLIENT_LOG_PREFIX,
-        "Performing initial total calculation...",
-      ); // Use console.debug
-      calculateTotals(form.getValues());
-    }
-    return () => {
-      console.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch."); // Use console.debug
-      subscription.unsubscribe();
-    };
-    // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
-  }, [form, products, isLoadingData]);
-
-  const calculateTotals = (formData: ReceiptFormData) => {
+  const calculateTotals = useCallback((formData: ReceiptFormData) => {
     let subtotal = 0;
     let gstAmount = 0;
 
@@ -202,7 +176,33 @@ export default function NewInvoicePage() {
     };
     console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
     setCalculatedTotals(newTotals);
-  };
+  }, [products]);
+
+  // Recalculate totals when line items or GST setting change
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name?.startsWith("line_items") || name === "include_gst") {
+        console.debug(
+          CLIENT_LOG_PREFIX,
+          `Form field changed (${name}), recalculating totals...`,
+        ); // Use console.debug
+        calculateTotals(value as ReceiptFormData);
+      }
+    });
+    // Trigger initial calculation once products are loaded
+    if (products.length > 0 && !isLoadingData) {
+      console.debug(
+        CLIENT_LOG_PREFIX,
+        "Performing initial total calculation...",
+      ); // Use console.debug
+      calculateTotals(form.getValues());
+    }
+    return () => {
+      console.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch."); // Use console.debug
+      subscription.unsubscribe();
+    };
+    // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
+  }, [form, products, isLoadingData, calculateTotals]);
 
   const onSubmit = async (data: ReceiptFormData) => {
     console.info(
@@ -231,52 +231,26 @@ export default function NewInvoicePage() {
         const receiptId = result.receipt.receipt_id;
         const shortId = receiptId.substring(0, 8);
 
-        // Handle PDF status based on the result
-        if (result.pdfGenerated && result.pdfPath) {
-          console.info(
-            CLIENT_LOG_PREFIX,
-            `Invoice ${shortId}... created AND PDF generated. Server Path (internal): ${result.pdfPath}`,
-          ); // Use console.info
-          toast({
-            title: "Invoice Created & PDF Ready",
-            description: `Invoice ${shortId}... generated successfully.`,
-            action: (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  window.open(`/api/download-pdf?id=${receiptId}`, "_blank")
-                }
-              >
-                <Download className="mr-2 h-4 w-4" /> Download PDF
-              </Button>
-            ),
-            duration: 9000, // Longer duration for action button
-          });
-        } else if (result.pdfError) {
-          console.warn(
-            CLIENT_LOG_PREFIX,
-            `Invoice ${shortId}... created, but PDF generation FAILED: ${result.pdfError}`,
-          ); // Use console.warn
-          toast({
-            title: "Invoice Created (PDF Failed)",
-            description: `Invoice ${shortId}... saved, but PDF generation failed: ${result.pdfError}`,
-            variant: "destructive",
-            duration: 15000, // Keep visible longer for error details
-          });
-        } else {
-          // This case should be less common now with the refactored action result
-          console.warn(
-            CLIENT_LOG_PREFIX,
-            `Invoice ${shortId}... created, but PDF status is unknown or generation was not attempted due to prior error.`,
-          ); // Use console.warn
-          toast({
-            title: "Invoice Created (PDF Status Uncertain)",
-            description: `Invoice ${shortId}... saved, but the PDF status is unclear. Check history later.`,
-            variant: "default", // Use default variant
-            duration: 7000,
-          });
-        }
+        console.info(
+          CLIENT_LOG_PREFIX,
+          `Invoice ${shortId}... created successfully.`,
+        ); // Use console.info
+        toast({
+          title: "Invoice Created Successfully",
+          description: `Invoice ${shortId}... has been created.`,
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                window.open(`/receipt/${receiptId}`, "_blank") // Changed from /receipts/ to /receipt/
+              }
+            >
+              <Eye className="mr-2 h-4 w-4" /> View Receipt
+            </Button>
+          ),
+          duration: 9000, // Longer duration for action button
+        });
 
         // Reset form only on successful data save
         console.info(CLIENT_LOG_PREFIX, "Resetting form and totals..."); // Use console.info
@@ -616,7 +590,7 @@ export default function NewInvoicePage() {
                               "text-muted-foreground/50",
                           )}
                         >
-                          Force "Tax Invoice" Label
+                          Force &quot;Tax Invoice&quot; Label
                         </Label>
                         <FormDescription
                           className={cn(

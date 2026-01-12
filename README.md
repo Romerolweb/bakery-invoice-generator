@@ -1,8 +1,8 @@
 # Invoice Generator App
 
-This is a modern Invoice Generator application built with Next.js, React, TypeScript, and Shadcn UI. It allows you to create professional invoices by managing customers and products, calculating totals including GST, and generating PDF receipts using a pure PDFKit-based system.
+This is a modern Invoice Generator application built with Next.js, React, TypeScript, and Shadcn UI. It allows you to create professional invoices by managing customers and products, calculating totals including GST, and generating web-based receipts for viewing and printing.
 
-The project is designed with modern practices, including TypeScript for type safety, separation of concerns for maintainability and testability, and a template-based PDF generation architecture.
+The project is designed with modern practices, including TypeScript for type safety, separation of concerns for maintainability and testability, and a responsive web-based invoice viewing system.
 
 ## 🚀 Quick Start
 
@@ -46,7 +46,6 @@ Or validate existing configuration:
    # or create manually with default values:
    echo "PORT=9002" > .env.dev
    echo "NODE_ENV=development" >> .env.dev
-   echo "PDF_GENERATOR=pdfkit" >> .env.dev
    ```
 
 4. **Start the development server:**
@@ -78,7 +77,6 @@ Or validate existing configuration:
    # or create manually with default values:
    echo "PORT=9002" > .env.dev
    echo "NODE_ENV=development" >> .env.dev
-   echo "PDF_GENERATOR=pdfkit" >> .env.dev
    ```
 
 3. **Start with Docker Compose:**
@@ -135,7 +133,7 @@ npm run start:script
 The Dockerfile uses multi-stage builds for optimized production images:
 ```bash
 # Build with production environment variables
-docker build --build-arg PORT=3000 --build-arg PDF_GENERATOR=pdfkit -t invoice-generator .
+docker build --build-arg PORT=3000 -t invoice-generator .
 # Run with environment variables
 docker run -p ${PORT:-3000}:${PORT:-3000} -e PORT=${PORT:-3000} invoice-generator
 ```
@@ -148,20 +146,17 @@ The application uses environment variables for configuration. Create the appropr
 ```bash
 PORT=9002                # Development server port
 NODE_ENV=development     # Environment mode
-PDF_GENERATOR=pdfkit     # PDF generation engine
 ```
 
 ### Production (.env.prod)
 ```bash
 PORT=3000               # Production server port
 NODE_ENV=production     # Environment mode
-PDF_GENERATOR=pdfkit    # PDF generation engine
 ```
 
 ### Available Variables
 - **PORT**: Server port (default: 9002 for dev, 3000 for prod)
 - **NODE_ENV**: Environment mode (development/production)
-- **PDF_GENERATOR**: PDF generation engine (currently supports: pdfkit)
 
 ## 🚀 Startup Methods
 
@@ -254,13 +249,13 @@ export DEBUG=*
 echo "DEBUG=*" >> .env.dev
 ```
 
-### PDF Generation Debug
+### Receipt Viewing Debug
 
-Check PDF generation status:
+Check web receipt viewing status:
 1. Navigate to `/receipts` page
 2. Create a new receipt
-3. Monitor browser console for PDF generation logs
-4. Check `src/lib/data/receipt-pdfs/` for generated files
+3. Click "View Receipt" to open the web view
+4. Monitor browser console for any loading or display issues
 
 ### Port Configuration
 
@@ -281,7 +276,7 @@ chmod +x dev.sh start.sh
 
 - **Copy template**: `cp .env.example .env.dev` or `cp .env.example .env.prod`
 - **Check current config**: `cat .env.dev` or `cat .env.prod`
-- **Validate environment**: `source .env.dev && echo "Port: $PORT, PDF: $PDF_GENERATOR"`
+- **Validate environment**: `source .env.dev && echo "Port: $PORT, Environment: $NODE_ENV"`
 
 ## 📚 Technologies Used
 
@@ -326,47 +321,47 @@ src/
 ├── lib/
 │   ├── actions/          # Server actions (data operations)
 │   ├── data/             # JSON data storage
-│   │   └── receipt-pdfs/ # Generated PDF files
 │   ├── data-access/      # Data access layer
 │   ├── services/         # Business logic services
-│   │   └── pdfTemplates/ # PDF template system
-│   └── fonts/            # Font files for PDFKit
+│   └── fonts/            # Font files for display
 └── hooks/                # Custom React hooks
 ```
 
-### PDF Generation Architecture
+### Web Receipt Architecture
 
-The application uses a template-based PDF generation system:
+The application uses a web-based receipt viewing system:
 
 #### Key Components
 
-1. **IPdfReceiptTemplate Interface** (`src/lib/services/pdfTemplates/IPdfReceiptTemplate.ts`)
-   - Defines the contract for PDF templates
-   - Ensures consistent template implementations
+1. **ReceiptWebView Component** (`src/components/receipts/ReceiptWebView.tsx`)
+   - Main component for displaying receipts in web format
+   - Handles receipt data fetching and error states
+   - Provides responsive design for various screen sizes
 
-2. **DefaultReceiptTemplate** (`src/lib/services/pdfTemplates/DefaultReceiptTemplate.ts`)
-   - Default implementation of the PDF template
-   - Handles layout, styling, and content rendering
+2. **ReceiptContent Component** (`src/components/receipts/components/ReceiptContent.tsx`)
+   - Renders the formatted receipt layout
+   - Handles business and individual customer display
+   - Calculates and displays GST and totals
 
-3. **PdfGenerator Service** (`src/lib/services/pdfGenerator.ts`)
-   - Orchestrates PDF creation process
-   - Uses dependency injection for template selection
-   - Handles file operations and error management
+3. **PrintToolbar Component** (`src/components/receipts/components/PrintToolbar.tsx`)
+   - Provides print and close functionality
+   - Hidden during print mode for clean output
+   - Allows easy window management
 
-4. **Template Registry** (`src/lib/services/pdfTemplates/templateRegistry.ts`)
-   - Centralized template configuration
-   - Allows easy switching between template implementations
+4. **Receipt Components** (`src/components/receipts/components/`)
+   - Modular components for different receipt sections
+   - Includes customer info, seller info, items table, and totals
+   - Reusable across different receipt views
 
-#### Template System Flow
+#### Receipt Viewing Flow
 
 ```mermaid
 graph TD
-    A[Receipt Action] --> B[PdfGenerator.generate()]
-    B --> C[Template Registry]
-    C --> D[Selected Template Constructor]
-    D --> E[Template Instance]
-    E --> F[PDFKit Document]
-    F --> G[Generated PDF File]
+    A[Receipt Action] --> B[Open Receipt URL]
+    B --> C[ReceiptWebView Component]
+    C --> D[Fetch Receipt Data]
+    D --> E[Display Receipt Content]
+    E --> F[Print/Close Options]
 ```
 
 ### Data Flow
@@ -374,14 +369,13 @@ graph TD
 1. **User Input** → Forms on frontend pages
 2. **Server Actions** → Handle form submissions and business logic
 3. **Data Access Layer** → Manages JSON file operations
-4. **PDF Generation** → Creates PDF receipts using template system
-5. **File Storage** → Saves PDFs to persistent storage
+4. **Web Receipt Display** → Shows receipts in browser for viewing and printing
+5. **Data Storage** → Saves receipt data to JSON files
 
 ### Configuration
 
 #### Environment Variables
 - `PORT` - Application port (default: 9002)
-- `PDF_GENERATOR` - PDF engine selection (default: "pdfkit")
 - `NODE_ENV` - Environment mode (development/production)
 
 #### Template Configuration

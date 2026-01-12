@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Customer } from "@/lib/types";
 import * as CustomerDataAccess from "@/lib/data-access/customers";
 import { logger } from "@/lib/services/logging";
+import { revalidatePath } from 'next/cache';
 
 const ACTION_LOG_PREFIX = "CustomerActions";
 
@@ -122,6 +123,9 @@ export async function addCustomer(
         funcPrefix,
         `Customer added successfully: ${newCustomer.id}`,
       );
+      // Revalidate pages that display customers
+      revalidatePath('/customers');
+      revalidatePath('/');
       return { success: true, customer: newCustomer };
     } else {
       await logger.error(
@@ -172,7 +176,7 @@ export async function updateCustomer(
   );
   try {
     // Prepare data for update (remove ID from the data payload itself)
-    const { id: _id, ...dataToUpdate } = validationResult.data;
+    const { ...dataToUpdate } = validationResult.data;
 
     // Ensure ABN/Business Name are null/undefined if individual
     const finalDataToUpdate =
@@ -187,6 +191,9 @@ export async function updateCustomer(
 
     if (updatedCustomer) {
       await logger.info(funcPrefix, "Customer updated successfully.");
+      // Revalidate pages that display customers
+      revalidatePath('/customers');
+      revalidatePath('/');
       return { success: true, customer: updatedCustomer };
     } else {
       await logger.warn(
@@ -222,6 +229,9 @@ export async function deleteCustomer(id: string): Promise<ActionResult> {
     const deleted = await CustomerDataAccess.deleteCustomer(id);
     if (deleted) {
       await logger.info(funcPrefix, "Customer deleted successfully.");
+      // Revalidate pages that display customers
+      revalidatePath('/customers');
+      revalidatePath('/');
       return { success: true };
     } else {
       await logger.warn(

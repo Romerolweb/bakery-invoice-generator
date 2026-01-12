@@ -8,7 +8,6 @@ services:
     environment:
       NODE_ENV: development
       PORT: ${PORT:-9002}
-      PDF_GENERATOR: ${PDF_GENERATOR:-pdfkit}
       # For example: DATABASE_URL: ${DATABASE_URL}
     env_file:
       - .env.dev
@@ -41,6 +40,18 @@ services:
           path: next.config.ts
         - action: rebuild
           path: tsconfig.json
+
+  mongo:
+    image: mongo:4.2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: NotSecret1234!
+      MONGO_INITDB_DATABASE: bliss
+    volumes:
+      - ./scripts/mongo/init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./_mongo:/data/db
+    ports:
+      - '27017:27017'
 
 volumes:
   pdf_data: # Defines the named volume for storing generated PDFs

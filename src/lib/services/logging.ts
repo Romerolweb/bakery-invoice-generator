@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import path from "path";
 
 type LogData =
-  | Record<string, any>
+  | Record<string, unknown>
   | string
   | number
   | boolean
@@ -86,9 +86,11 @@ async function log(
       dataStringForConsole = `\nError: ${data.stack || data.message}`;
     } else {
       try {
-        dataStringForConsole = `\nData: ${typeof data === "object" ? JSON.stringify(data, null, 2) : data}`;
-      } catch (e) {
-        dataStringForConsole = "\nData: [Could not stringify data]";
+        dataStringForConsole = `
+Data: ${typeof data === "object" ? JSON.stringify(data, null, 2) : data}`;
+      } catch {
+        dataStringForConsole = `
+Data: [Could not stringify data]`;
       }
     }
   }
@@ -110,7 +112,7 @@ async function log(
       } else {
         try {
           dataStringForFile = ` | Data: ${typeof data === "object" ? JSON.stringify(data) : data}`;
-        } catch (e) {
+        } catch {
           dataStringForFile = " | Data: [Could not stringify data]";
         }
       }

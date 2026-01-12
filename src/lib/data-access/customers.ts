@@ -20,8 +20,8 @@ async function readCustomersFile(): Promise<Customer[]> {
       `Successfully read customers file: ${customersFilePath}`,
     );
     return JSON.parse(data) as Customer[];
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
       await logger.warn(
         funcPrefix,
         `Customers file not found at ${customersFilePath}, returning empty array.`,
@@ -31,9 +31,9 @@ async function readCustomersFile(): Promise<Customer[]> {
     await logger.error(
       funcPrefix,
       `Error reading customers file: ${customersFilePath}`,
-      error,
+      error as Error,
     );
-    throw new Error(`Failed to read customers data: ${error.message}`); // Re-throw other errors
+    throw new Error(`Failed to read customers data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw other errors
   }
 }
 
@@ -47,13 +47,13 @@ async function writeCustomersFile(customers: Customer[]): Promise<void> {
       funcPrefix,
       `Successfully wrote customers file: ${customersFilePath}`,
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     await logger.error(
       funcPrefix,
       `Error writing customers file: ${customersFilePath}`,
-      error,
+      error as Error,
     );
-    throw new Error(`Failed to write customers data: ${error.message}`); // Re-throw error
+    throw new Error(`Failed to write customers data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw error
   }
 }
 

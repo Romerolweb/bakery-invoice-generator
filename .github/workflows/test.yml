@@ -1,9 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
+  push: # Runs on pushes to any branch
   pull_request:
     branches:
       - main
@@ -19,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4 # Updated to v4
         with:
-          node-version: '18' # Ensure this is on a new line and properly indented
+          node-version: '22.x' # Updated to latest LTS (Node 22.x)
           cache: 'npm' # Ensure this is on a new line and properly indented
 
       - name: Install dependencies
