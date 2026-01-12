@@ -31,7 +31,11 @@ jobs:
 
       - name: Get version from tag
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          # Extract and sanitize version from tag
+          RAW_VERSION="${GITHUB_REF#refs/tags/}"
+          SANITIZED_VERSION=$(echo "$RAW_VERSION" | sed 's/[^a-zA-Z0-9._-]//g')
+          echo "VERSION=$SANITIZED_VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Release Archive
         run: |

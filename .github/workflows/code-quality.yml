@@ -34,8 +34,8 @@ jobs:
         uses: ./.github/actions/typecheck
         continue-on-error: false
 
-      - name: Check Code Formatting
+      - name: Check Code Formatting (Informational)
         run: |
-          echo "Checking code formatting with Prettier..."
-          npx prettier --check "./**/*.{js,jsx,mjs,cjs,ts,tsx,json}" || echo "Some files need formatting. Run 'npm run pretty' to fix."
+          echo "Checking code formatting with Prettier (informational only)..."
+          npx prettier --check "./**/*.{js,jsx,mjs,cjs,ts,tsx,json}" || echo "⚠️ Some files need formatting. Run 'npm run pretty' to fix."
         continue-on-error: true

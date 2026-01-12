@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    name: Test Suite
+    name: CI Checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
