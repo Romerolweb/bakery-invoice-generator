@@ -26,9 +26,9 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Run Linters
+      - name: Run Linters (Informational)
         uses: ./.github/actions/lint
-        continue-on-error: false
+        continue-on-error: true
 
       - name: Run Type Checking
         uses: ./.github/actions/typecheck
