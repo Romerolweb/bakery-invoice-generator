@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Build
 
 on:
   push:
@@ -11,8 +11,8 @@ on:
       - master
 
 jobs:
-  test:
-    name: CI Checks
+  build:
+    name: Build Application
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,15 +26,12 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Run Linters (Informational)
-        uses: ./.github/actions/lint
-        continue-on-error: true
-
-      - name: Run Type Checking
-        uses: ./.github/actions/typecheck
-
-      - name: Run Tests
-        uses: ./.github/actions/test
-
-      - name: Build Application
+      - name: Build Next.js Application
         uses: ./.github/actions/build
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .next/
+          retention-days: 7

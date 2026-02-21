@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Code Quality
 
 on:
   push:
@@ -11,8 +11,8 @@ on:
       - master
 
 jobs:
-  test:
-    name: CI Checks
+  code-quality:
+    name: Code Quality Checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,15 +26,16 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Run Linters (Informational)
+      - name: Run ESLint (Informational)
         uses: ./.github/actions/lint
         continue-on-error: true
 
-      - name: Run Type Checking
+      - name: Run TypeScript Type Check
         uses: ./.github/actions/typecheck
+        continue-on-error: false
 
-      - name: Run Tests
-        uses: ./.github/actions/test
-
-      - name: Build Application
-        uses: ./.github/actions/build
+      - name: Check Code Formatting (Informational)
+        run: |
+          echo "Checking code formatting with Prettier (informational only)..."
+          npx prettier --check "./**/*.{js,jsx,mjs,cjs,ts,tsx,json}" || echo "⚠️ Some files need formatting. Run 'npm run pretty' to fix."
+        continue-on-error: true

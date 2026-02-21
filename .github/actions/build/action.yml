@@ -1,0 +1,8 @@
+name: 'Build Application'
+description: 'Reusable action to build the Next.js application'
+runs:
+  using: 'composite'
+  steps:
+    - name: Build Next.js Application
+      shell: bash
+      run: npm run build

@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0, v2.1.3, etc.
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js Environment
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '22'
+
+      - name: Run Tests
+        uses: ./.github/actions/test
+
+      - name: Build Application
+        uses: ./.github/actions/build
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          # Extract and sanitize version from tag
+          RAW_VERSION="${GITHUB_REF#refs/tags/}"
+          SANITIZED_VERSION=$(echo "$RAW_VERSION" | sed 's/[^a-zA-Z0-9._-]//g')
+          echo "VERSION=$SANITIZED_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release Archive
+        run: |
+          mkdir -p release-artifacts
+          if [ -d ".next" ]; then
+            tar -czf release-artifacts/bakery-invoice-generator-${{ steps.get_version.outputs.VERSION }}.tar.gz .next/ package.json package-lock.json README.md
+          else
+            echo "Warning: .next directory not found, creating archive without build artifacts"
+            tar -czf release-artifacts/bakery-invoice-generator-${{ steps.get_version.outputs.VERSION }}.tar.gz package.json package-lock.json README.md
+          fi
+          
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "First release"
+            CHANGELOG="First release of Bakery Invoice Generator"
+          else
+            echo "Generating changelog from $PREVIOUS_TAG to ${{ steps.get_version.outputs.VERSION }}"
+            CHANGELOG=$(git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # Save changelog to file
+          echo "$CHANGELOG" > CHANGELOG.md
+          
+          # Set output for GitHub release
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## Changes in this Release
+            
+            ${{ steps.changelog.outputs.CHANGELOG }}
+            
+            ## Installation
+            
+            ```bash
+            # Extract the release
+            tar -xzf bakery-invoice-generator-${{ steps.get_version.outputs.VERSION }}.tar.gz
+            
+            # Install dependencies
+            npm ci
+            
+            # Run the application
+            npm start
+            ```
+          files: |
+            release-artifacts/*.tar.gz
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.VERSION, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
