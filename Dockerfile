@@ -23,18 +23,16 @@ FROM node:22-alpine AS production
 
 ENV NODE_ENV=production
 ENV PORT=${PORT:-3000}
-# Set a default for PDF_GENERATOR if not provided
-ENV PDF_GENERATOR=${PDF_GENERATOR:-pdfkit}
 
 # Install Puppeteer dependencies for Alpine
 # Based on https://pptr.dev/troubleshooting#chrome-doesnt-launch-on-linux
 RUN apk add --no-cache \
+    ca-certificates \
     chromium \
-    nss \
     freetype \
     freetype-dev \
     harfbuzz \
-    ca-certificates \
+    nss \
     ttf-freefont
 
 WORKDIR /app

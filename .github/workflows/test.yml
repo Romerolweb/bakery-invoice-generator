@@ -24,7 +24,11 @@ jobs:
       - name: Setup Node.js Environment
         uses: ./.github/actions/setup-node
         with:
-          node-version: '18'
+          node-version: '22.x' # Updated to latest LTS (Node 22.x)
+          cache: 'npm' # Ensure this is on a new line and properly indented
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run Linters (Informational)
         uses: ./.github/actions/lint

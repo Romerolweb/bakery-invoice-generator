@@ -45,12 +45,6 @@ validate_env_file() {
         echo "❌ NODE_ENV variable not set"
     fi
     
-    # Check PDF_GENERATOR
-    if [ -n "$PDF_GENERATOR" ]; then
-        echo "✅ PDF_GENERATOR=$PDF_GENERATOR"
-    else
-        echo "❌ PDF_GENERATOR variable not set"
-    fi
 }
 
 # Check essential files
