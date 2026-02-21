@@ -247,7 +247,7 @@ The project includes custom reusable GitHub Actions located in `.github/actions/
 **Purpose**: Configure Node.js environment with dependency caching and installation.
 
 **Inputs**:
-- `node-version` (optional): Node.js version to use (default: '18')
+- `node-version` (optional): Node.js version to use (default: '22')
 - `install-dependencies` (optional): Whether to install dependencies (default: 'true')
 
 **Usage**:
@@ -255,7 +255,7 @@ The project includes custom reusable GitHub Actions located in `.github/actions/
 - name: Setup Node.js Environment
   uses: ./.github/actions/setup-node
   with:
-    node-version: '18'
+    node-version: '22'
 ```
 
 ### 2. Lint (`lint`)
