@@ -15,7 +15,6 @@ import { getSellerProfile } from "@/lib/data-access/seller";
 import { getCustomerById } from "@/lib/data-access/customers";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "@/lib/services/logging";
-import { recordChange } from "@/lib/recordChanges";
 import { revalidatePath } from 'next/cache';
 
 const ACTION_LOG_PREFIX = "ReceiptActions";
@@ -55,10 +54,6 @@ export async function createReceipt(
     date: data.date_of_purchase,
     itemCount: data.line_items.length,
   });
-  recordChange(
-    "src/lib/actions/receipts.ts",
-    `Starting createReceipt for customer ${data.customer_id}`,
-  );
 
   try {
     // --- Step 1: Fetch required data ---
@@ -75,20 +70,12 @@ export async function createReceipt(
       funcPrefix,
       `Fetched ${products.length} products, seller profile ${sellerProfile ? "found" : "not found"}, customer ${customer ? "found" : "not found"}.`,
     );
-    recordChange(
-      "src/lib/actions/receipts.ts",
-      `Fetched ${products.length} products, seller profile ${sellerProfile ? "found" : "not found"}, customer ${customer ? "found" : "not found"}`,
-    );
 
     // --- Step 2: Validate fetched data ---
     if (!products || products.length === 0) {
       await logger.warn(
         funcPrefix,
         "Validation failed: No products found in data access.",
-      );
-      recordChange(
-        "src/lib/actions/receipts.ts",
-        "Validation failed: No products found.",
       );
       return {
         success: false,
@@ -100,10 +87,6 @@ export async function createReceipt(
         funcPrefix,
         "Validation failed: Seller profile not found.",
       );
-      recordChange(
-        "src/lib/actions/receipts.ts",
-        "Validation failed: Seller profile not found.",
-      );
       return {
         success: false,
         message: "Cannot create invoice: Seller profile is not configured.",
@@ -113,10 +96,6 @@ export async function createReceipt(
       await logger.warn(
         funcPrefix,
         `Validation failed: Customer not found for ID: ${data.customer_id}`,
-      );
-      recordChange(
-        "src/lib/actions/receipts.ts",
-        `Validation failed: Customer ${data.customer_id} not found.`,
       );
       return {
         success: false,
@@ -139,10 +118,6 @@ export async function createReceipt(
         await logger.error(
           funcPrefix,
           `Data inconsistency: Product with ID ${item.product_id} from input not found in fetched products.`,
-        );
-        recordChange(
-          "src/lib/actions/receipts.ts",
-          `Validation failed: Product ${item.product_id} not found.`,
         );
         return {
           success: false,
@@ -180,10 +155,6 @@ export async function createReceipt(
       funcPrefix,
       `Calculated Totals: Subtotal=${subtotalExclGST}, GST=${GSTAmount}, Total=${totalIncGST}, IsTaxInvoice=${isTaxInvoice}`,
     );
-    recordChange(
-      "src/lib/actions/receipts.ts",
-      `Calculated totals: Sub=${subtotalExclGST}, GST=${GSTAmount}, Total=${totalIncGST}`,
-    );
 
     // --- Step 4: Create Receipt Object ---
     newReceipt = {
@@ -202,10 +173,6 @@ export async function createReceipt(
       funcPrefix,
       `Constructed new receipt object with ID: ${newReceipt.receipt_id}`,
     );
-    recordChange(
-      "src/lib/actions/receipts.ts",
-      `Created receipt object ${newReceipt.receipt_id}`,
-    );
 
     // --- Step 5: Save Receipt Data ---
     await logger.debug(
@@ -218,10 +185,6 @@ export async function createReceipt(
         funcPrefix,
         "Data access layer failed to save the receipt.",
       );
-      recordChange(
-        "src/lib/actions/receipts.ts",
-        `Failed to save receipt data ${newReceipt.receipt_id}`
-      );
       return {
         success: false,
         message: "Failed to save invoice data.",
@@ -230,10 +193,6 @@ export async function createReceipt(
     await logger.info(
       funcPrefix,
       `Receipt data saved successfully for ID: ${newReceipt.receipt_id}`,
-    );
-    recordChange(
-      "src/lib/actions/receipts.ts",
-      `Saved receipt data ${newReceipt.receipt_id}`
     );
 
     // Revalidate pages that display receipts
@@ -257,10 +216,6 @@ export async function createReceipt(
       "An unexpected error occurred during invoice creation",
       error instanceof Error ? error : new Error(String(error))
     );
-    recordChange(
-      "src/lib/actions/receipts.ts",
-      `Unexpected error during invoice creation: ${errorMessage}`,
-    );
     return {
       success: false,
       message: `An unexpected error occurred during invoice creation: ${errorMessage}`,
@@ -282,17 +237,9 @@ export async function getAllReceipts(): Promise<Receipt[]> {
       funcPrefix,
       `Retrieved and sorted ${receipts.length} receipts.`,
     );
-    recordChange(
-      "src/lib/actions/receipts.ts",
-      `Retrieved ${receipts.length} receipts.`,
-    );
     return receipts;
   } catch (error) {
     await logger.error(funcPrefix, "Error getting all receipts", error instanceof Error ? error : new Error(String(error)));
-    recordChange(
-      "src/lib/actions/receipts.ts",
-      `Error retrieving receipts: ${error instanceof Error ? error.message : "Unknown"}`,
-    );
     return [];
   }
 }
@@ -304,24 +251,12 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
     const receipt = await getReceiptByIdData(id);
     if (receipt) {
       await logger.info(funcPrefix, `Receipt with ID ${id} found.`);
-      recordChange(
-        "src/lib/actions/receipts.ts",
-        `Retrieved receipt ${id}.`
-      );
     } else {
       await logger.warn(funcPrefix, `Receipt with ID ${id} not found.`);
-      recordChange(
-        "src/lib/actions/receipts.ts",
-        `Receipt ${id} not found.`
-      );
     }
     return receipt;
   } catch (error) {
     await logger.error(funcPrefix, `Error getting receipt by ID ${id}`, error instanceof Error ? error : new Error(String(error)));
-    recordChange(
-      "src/lib/actions/receipts.ts",
-      `Error retrieving receipt ${id}: ${error instanceof Error ? error.message : "Unknown"}`
-    );
     return null;
   }
 }
