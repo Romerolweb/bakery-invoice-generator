@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   env: {
     PORT: process.env.PORT ?? '9002',
   },
+  serverExternalPackages: ["better-sqlite3"],
   typescript: {
     ignoreBuildErrors: true,
   },

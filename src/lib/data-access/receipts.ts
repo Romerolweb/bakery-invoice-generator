@@ -1,83 +1,47 @@
-// src/lib/data-access/receipts.ts
-import fs from "fs/promises"; // Use fs/promises
+import fs from "fs/promises";
 import path from "path";
-import type { Receipt } from "@/lib/types";
+import type { Receipt, LineItem } from "@/lib/types";
 import { logger } from "@/lib/services/logging";
+import { db } from "@/lib/db";
+import { receipts, receiptItems } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 const DATA_ACCESS_LOG_PREFIX = "ReceiptDataAccess";
 const dataDirectory = path.join(process.cwd(), "src", "lib", "data");
-const receiptsFilePath = path.join(dataDirectory, "receipts.json");
-const pdfDirectory = path.join(dataDirectory, "receipt-pdfs"); // Define PDF directory path
+const pdfDirectory = path.join(dataDirectory, "receipt-pdfs");
 
-// Reads the receipts data file
-async function readReceiptsFile(): Promise<Receipt[]> {
-  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:readReceiptsFile`;
-  try {
-    // Ensure the directory exists before reading
-    await fs.mkdir(dataDirectory, { recursive: true });
-    await logger.debug(
-      funcPrefix,
-      `Ensured data directory exists: ${dataDirectory}`,
-    );
-
-    const data = await fs.readFile(receiptsFilePath, "utf8");
-    await logger.debug(
-      funcPrefix,
-      `Successfully read receipts file: ${receiptsFilePath}`,
-    );
-    return JSON.parse(data) as Receipt[];
-  } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
-      await logger.warn(
-        funcPrefix,
-        `Receipts file not found at ${receiptsFilePath}, returning empty array.`,
-      );
-      return []; // File doesn't exist, return empty array
-    }
-    await logger.error(
-      funcPrefix,
-      `Error reading receipts file: ${receiptsFilePath}`,
-      error as Error,
-    );
-    throw new Error(`Failed to read receipts data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw other errors
-  }
-}
-
-// Writes the receipts data file
-async function writeReceiptsFile(receipts: Receipt[]): Promise<void> {
-  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:writeReceiptsFile`;
-  try {
-    // Ensure the directory exists before writing
-    await fs.mkdir(dataDirectory, { recursive: true });
-    await logger.debug(
-      funcPrefix,
-      `Ensured data directory exists: ${dataDirectory}`,
-    );
-
-    await fs.writeFile(receiptsFilePath, JSON.stringify(receipts, null, 2));
-    await logger.debug(
-      funcPrefix,
-      `Successfully wrote receipts file: ${receiptsFilePath}`,
-    );
-  } catch (error: unknown) {
-    await logger.error(
-      funcPrefix,
-      `Error writing receipts file: ${receiptsFilePath}`,
-      error as Error,
-    );
-    throw new Error(`Failed to write receipts data: ${error instanceof Error ? error.message : String(error)}`); // Re-throw error
-  }
+// Helper to map DB result to Receipt interface
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapDbReceiptToInterface(dbReceipt: any): Receipt {
+  // Destructure to remove the raw relation property 'lineItems' from the result
+  // and map it to 'line_items' as expected by the interface
+  const { lineItems, ...rest } = dbReceipt;
+  return {
+    ...rest,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    line_items: lineItems.map((item: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, receipt_id, ...itemRest } = item;
+        return itemRest as LineItem;
+    }),
+  };
 }
 
 export async function getAllReceipts(): Promise<Receipt[]> {
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getAllReceipts`;
   await logger.debug(funcPrefix, "Attempting to get all receipts.");
   try {
-    return await readReceiptsFile();
+    const result = await db.query.receipts.findMany({
+      with: {
+        lineItems: true,
+      },
+    });
+
+    return result.map(mapDbReceiptToInterface);
   } catch (error) {
     await logger.error(funcPrefix, "Error retrieving all receipts",
       error instanceof Error ? error : new Error(String(error)));
-    return []; // Return empty array on error
+    return [];
   }
 }
 
@@ -85,18 +49,24 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptById:${id}`;
   await logger.debug(funcPrefix, "Attempting to get receipt by ID.");
   try {
-    const receipts = await readReceiptsFile();
-    const receipt = receipts.find((receipt) => receipt.receipt_id === id);
-    if (receipt) {
+    const result = await db.query.receipts.findFirst({
+      where: eq(receipts.receipt_id, id),
+      with: {
+        lineItems: true,
+      },
+    });
+
+    if (result) {
       await logger.debug(funcPrefix, "Receipt found.");
+      return mapDbReceiptToInterface(result);
     } else {
       await logger.debug(funcPrefix, "Receipt not found.");
+      return null;
     }
-    return receipt || null;
   } catch (error) {
     await logger.error(funcPrefix, "Error retrieving receipt by ID",
       error instanceof Error ? error : new Error(String(error)));
-    return null; // Return null on error
+    return null;
   }
 }
 
@@ -109,18 +79,34 @@ export async function createReceipt(
     `Attempting to create receipt with ID: ${newReceipt.receipt_id}`,
   );
   try {
-    const receipts = await readReceiptsFile();
-    // Optional: Check if receipt ID already exists to prevent duplicates
-    if (receipts.some((r) => r.receipt_id === newReceipt.receipt_id)) {
+    // Check if receipt exists
+    const existing = await db.select().from(receipts).where(eq(receipts.receipt_id, newReceipt.receipt_id));
+    if (existing.length > 0) {
       await logger.warn(
         funcPrefix,
         `Receipt with ID ${newReceipt.receipt_id} already exists. Creation aborted.`,
       );
-      // Depending on requirements, you might want to throw an error or return the existing one
       return null;
     }
-    receipts.push(newReceipt);
-    await writeReceiptsFile(receipts);
+
+    // Transaction to insert receipt and line items (Sync for better-sqlite3)
+    db.transaction((tx) => {
+      // Insert receipt
+      // Extract line_items to separate variable
+      const { line_items, ...receiptData } = newReceipt;
+
+      tx.insert(receipts).values(receiptData).run();
+
+      // Insert line items
+      if (line_items && line_items.length > 0) {
+        const itemsToInsert = line_items.map(item => ({
+          ...item,
+          receipt_id: newReceipt.receipt_id
+        }));
+        tx.insert(receiptItems).values(itemsToInsert).run();
+      }
+    });
+
     await logger.info(
       funcPrefix,
       `Receipt created successfully: ${newReceipt.receipt_id}`,
@@ -129,15 +115,10 @@ export async function createReceipt(
   } catch (error) {
     await logger.error(funcPrefix, "Error creating new receipt",
       error instanceof Error ? error : new Error(String(error)));
-    return null; // Return null on error
+    return null;
   }
 }
 
-/**
- * Checks if the PDF file for a given receipt ID exists.
- * Returns the full path if it exists, otherwise returns null.
- * Logs errors but doesn't throw unless it's a critical configuration issue.
- */
 export async function getReceiptPdfPath(
   receiptId: string,
 ): Promise<string | null> {
@@ -145,35 +126,28 @@ export async function getReceiptPdfPath(
   const filePath = path.join(pdfDirectory, `${receiptId}.pdf`);
   await logger.debug(funcPrefix, `Checking for PDF file at path: ${filePath}`);
   try {
-    // Ensure directory exists before checking access
     await fs.mkdir(pdfDirectory, { recursive: true });
-    // Check if the file exists and is accessible
-    await fs.access(filePath, fs.constants.F_OK); // F_OK checks existence
+    await fs.access(filePath, fs.constants.F_OK);
     await logger.info(funcPrefix, `PDF found at path: ${filePath}`);
     return filePath;
   } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
-      // File does not exist - this is an expected case if PDF is not ready/failed
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (error instanceof Error && 'code' in error && (error as any).code === "ENOENT") {
       await logger.info(
         funcPrefix,
         `PDF file not found at ${filePath}. It might be generating or failed.`,
       );
     } else {
-      // Log other errors (e.g., permission issues) but still return null
       await logger.error(
         funcPrefix,
         `Error accessing PDF file at ${filePath}`,
         error as Error,
       );
     }
-    return null; // Return null if file doesn't exist or other access error
+    return null;
   }
 }
 
-/**
- * Reads the content of a PDF file for a given receipt ID.
- * Returns the content as a Buffer if successful, otherwise returns null.
- */
 export async function getReceiptPdfContent(
   receiptId: string,
 ): Promise<Buffer | null> {
@@ -184,13 +158,10 @@ export async function getReceiptPdfContent(
     `Attempting to read PDF content from: ${filePath}`,
   );
   try {
-    // First, check if the file exists using getReceiptPdfPath logic
     const existingPath = await getReceiptPdfPath(receiptId);
     if (!existingPath) {
-      // Logged within getReceiptPdfPath
       return null;
     }
-    // If path exists, attempt to read the file content
     const pdfBuffer = await fs.readFile(filePath);
     await logger.info(
       funcPrefix,
@@ -198,7 +169,6 @@ export async function getReceiptPdfContent(
     );
     return pdfBuffer;
   } catch (error: unknown) {
-    // Catch potential errors during readFile itself (though access check reduces likelihood)
     await logger.error(
       funcPrefix,
       `Error reading PDF file content at ${filePath}`,
