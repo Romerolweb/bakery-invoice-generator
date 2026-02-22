@@ -58,6 +58,15 @@ function isLevelEnabled(level: LogLevel): boolean {
   return messageLevelIndex >= currentLevelIndex;
 }
 
+// Helper to defer execution to the next event loop tick
+const defer = (fn: () => void | Promise<void>) => {
+  if (typeof setImmediate !== "undefined") {
+    setImmediate(fn);
+  } else {
+    setTimeout(fn, 0);
+  }
+};
+
 // The core logging function
 async function log(
   level: LogLevel,
@@ -72,70 +81,78 @@ async function log(
   const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss.SSS");
   const logPrefix = `[${timestamp}] [${level}]${prefix ? ` [${prefix}]` : ""}:`;
 
-  // --- Console Logging (works on server and client) ---
-  const consoleLogMethod =
-    level === LogLevel.ERROR
-      ? console.error
-      : level === LogLevel.WARN
-        ? console.warn
-        : console.log; // INFO and DEBUG use console.log
-
-  let dataStringForConsole = "";
-  if (data) {
-    if (data instanceof Error) {
-      dataStringForConsole = `\nError: ${data.stack || data.message}`;
-    } else {
-      try {
-        dataStringForConsole = `
-Data: ${typeof data === "object" ? JSON.stringify(data, null, 2) : data}`;
-      } catch {
-        dataStringForConsole = `
-Data: [Could not stringify data]`;
-      }
-    }
-  }
-  consoleLogMethod(`${logPrefix} ${message}${dataStringForConsole}`);
-
-  // --- File Logging (Server-Side Only) ---
-  if (
-    typeof window === "undefined" &&
-    config.logToFile &&
-    config.logLevelsToFile.includes(level)
-  ) {
-    await ensureLogDirectoryExists();
-    if (!config.logToFile) return; // Check again in case ensure failed
-
-    let dataStringForFile = "";
-    if (data) {
-      if (data instanceof Error) {
-        dataStringForFile = `\nError: ${data.stack || data.message}`;
-      } else {
-        try {
-          dataStringForFile = ` | Data: ${typeof data === "object" ? JSON.stringify(data) : data}`;
-        } catch {
-          dataStringForFile = " | Data: [Could not stringify data]";
-        }
-      }
-    }
-
-    const fileLogMessage = `${logPrefix} ${message}${dataStringForFile}\n`;
-
+  // Defer expensive stringification and I/O to make logging non-blocking
+  defer(async () => {
     try {
-      // Dynamically import 'fs' for server-side use
-      const fs = await import("fs");
-      fs.appendFile(config.logFilePath, fileLogMessage, (err) => {
-        if (err) {
-          console.error("[Logger] Error writing to log file:", err);
+      // --- Console Logging (works on server and client) ---
+      const consoleLogMethod =
+        level === LogLevel.ERROR
+          ? console.error
+          : level === LogLevel.WARN
+            ? console.warn
+            : console.log; // INFO and DEBUG use console.log
+
+      let dataStringForConsole = "";
+      if (data) {
+        if (data instanceof Error) {
+          dataStringForConsole = `\nError: ${data.stack || data.message}`;
+        } else {
+          try {
+            dataStringForConsole = `
+Data: ${typeof data === "object" ? JSON.stringify(data, null, 2) : data}`;
+          } catch {
+            dataStringForConsole = `
+Data: [Could not stringify data]`;
+          }
         }
-      });
-    } catch (fsError) {
-      console.error(
-        "[Logger] Error importing or using fs for file logging:",
-        fsError,
-      );
-      config.logToFile = false; // Disable further file logging attempts if fs fails
+      }
+      consoleLogMethod(`${logPrefix} ${message}${dataStringForConsole}`);
+
+      // --- File Logging (Server-Side Only) ---
+      if (
+        typeof window === "undefined" &&
+        config.logToFile &&
+        config.logLevelsToFile.includes(level)
+      ) {
+        await ensureLogDirectoryExists();
+        if (!config.logToFile) return; // Check again in case ensure failed
+
+        let dataStringForFile = "";
+        if (data) {
+          if (data instanceof Error) {
+            dataStringForFile = `\nError: ${data.stack || data.message}`;
+          } else {
+            try {
+              dataStringForFile = ` | Data: ${typeof data === "object" ? JSON.stringify(data) : data}`;
+            } catch {
+              dataStringForFile = " | Data: [Could not stringify data]";
+            }
+          }
+        }
+
+        const fileLogMessage = `${logPrefix} ${message}${dataStringForFile}\n`;
+
+        try {
+          // Dynamically import 'fs' for server-side use
+          const fs = await import("fs");
+          fs.appendFile(config.logFilePath, fileLogMessage, (err) => {
+            if (err) {
+              console.error("[Logger] Error writing to log file:", err);
+            }
+          });
+        } catch (fsError) {
+          console.error(
+            "[Logger] Error importing or using fs for file logging:",
+            fsError,
+          );
+          config.logToFile = false; // Disable further file logging attempts if fs fails
+        }
+      }
+    } catch (error) {
+      // Fallback: simple console error if the deferred logging fails
+      console.error("[Logger] Error in deferred logging:", error);
     }
-  }
+  });
 }
 
 // Exported logger functions interface remains the same
