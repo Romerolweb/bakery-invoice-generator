@@ -51,7 +51,8 @@ describe("Customer Data Access", () => {
 
   describe("getAllCustomers", () => {
     it("should return all customers", async () => {
-      const mockCustomer: Customer = {
+      // Drizzle expects nulls for optional fields in DB
+      const dbCustomer = {
         id: "1",
         customer_type: "individual",
         first_name: "John",
@@ -59,17 +60,19 @@ describe("Customer Data Access", () => {
         email: "john.doe@example.com",
         phone: "1234567890",
         address: "1 Test St",
-        // Use casting to bypass strict TS check for null vs undefined match against DB result
-        business_name: null as unknown as string,
-        abn: null as unknown as string,
+        business_name: null,
+        abn: null,
       };
 
-      await db.insert(customers).values(mockCustomer as any);
+      // Insert valid DB record
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await db.insert(customers).values(dbCustomer as any);
 
       const result = await getAllCustomers();
       expect(result).toHaveLength(1);
-      // Retrieve object will have nulls, mockCustomer has nulls (casted). Should match.
-      expect(result[0]).toEqual(expect.objectContaining(mockCustomer));
+
+      // We expect the result to match the DB record structure
+      expect(result[0]).toEqual(expect.objectContaining(dbCustomer));
     });
 
     it("should return an empty array if no customers exist", async () => {
@@ -80,7 +83,7 @@ describe("Customer Data Access", () => {
 
   describe("getCustomerById", () => {
     it("should return a customer by ID", async () => {
-      const mockCustomer: Customer = {
+      const dbCustomer = {
         id: "1",
         customer_type: "individual",
         first_name: "John",
@@ -88,14 +91,15 @@ describe("Customer Data Access", () => {
         email: "john.doe@example.com",
         phone: "1234567890",
         address: "1 Test St",
-        business_name: null as unknown as string,
-        abn: null as unknown as string,
+        business_name: null,
+        abn: null,
       };
 
-      await db.insert(customers).values(mockCustomer as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await db.insert(customers).values(dbCustomer as any);
 
       const customer = await getCustomerById("1");
-      expect(customer).toEqual(expect.objectContaining(mockCustomer));
+      expect(customer).toEqual(expect.objectContaining(dbCustomer));
     });
 
     it("should return null if customer is not found", async () => {
@@ -113,8 +117,7 @@ describe("Customer Data Access", () => {
         email: "jane.smith@example.com",
         phone: "0987654321",
         address: "3 New Rd",
-        business_name: null as unknown as string,
-        abn: null as unknown as string,
+        // business_name and abn are undefined in input
       };
 
       const newCustomer = await createCustomer(newCustomerData);
@@ -126,13 +129,18 @@ describe("Customer Data Access", () => {
       // Verify in DB
       const result = await db.select().from(customers).where(eq(customers.id, newCustomer!.id));
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual(expect.objectContaining(newCustomerData));
+      expect(result[0]).toEqual(expect.objectContaining({
+        ...newCustomerData,
+        // DB will have nulls for undefined fields
+        business_name: null,
+        abn: null,
+      }));
     });
   });
 
   describe("updateCustomer", () => {
     it("should update an existing customer", async () => {
-      const mockCustomer: Customer = {
+      const dbCustomer = {
         id: "1",
         customer_type: "individual",
         first_name: "John",
@@ -140,16 +148,17 @@ describe("Customer Data Access", () => {
         email: "john.doe@example.com",
         phone: "1234567890",
         address: "1 Test St",
-        business_name: null as unknown as string,
-        abn: null as unknown as string,
+        business_name: null,
+        abn: null,
       };
 
-      await db.insert(customers).values(mockCustomer as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await db.insert(customers).values(dbCustomer as any);
 
       const updatedData = { first_name: "Johnny" };
       const updatedCustomer = await updateCustomer("1", updatedData);
 
-      expect(updatedCustomer).toEqual(expect.objectContaining({ ...mockCustomer, ...updatedData }));
+      expect(updatedCustomer).toEqual(expect.objectContaining({ ...dbCustomer, ...updatedData }));
 
       // Verify in DB
       const result = await db.select().from(customers).where(eq(customers.id, "1"));
@@ -164,7 +173,7 @@ describe("Customer Data Access", () => {
 
   describe("deleteCustomer", () => {
     it("should delete an existing customer", async () => {
-      const mockCustomer: Customer = {
+      const dbCustomer = {
         id: "1",
         customer_type: "individual",
         first_name: "John",
@@ -172,11 +181,12 @@ describe("Customer Data Access", () => {
         email: "john.doe@example.com",
         phone: "1234567890",
         address: "1 Test St",
-        business_name: null as unknown as string,
-        abn: null as unknown as string,
+        business_name: null,
+        abn: null,
       };
 
-      await db.insert(customers).values(mockCustomer as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await db.insert(customers).values(dbCustomer as any);
 
       const deleted = await deleteCustomer("1");
       expect(deleted).toBe(true);
