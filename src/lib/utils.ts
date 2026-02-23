@@ -29,3 +29,18 @@ export function formatDate(dateString: string | undefined | null): string {
     return 'Invalid Date'; // Returns error message for invalid date strings
   }
 }
+
+/**
+ * Escapes special HTML characters in a string to prevent XSS.
+ * @param str - The string to escape.
+ * @returns The escaped string.
+ */
+export function escapeHTML(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
