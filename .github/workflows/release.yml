@@ -85,7 +85,7 @@ jobs:
             tar -xzf bakery-invoice-generator-${{ steps.get_version.outputs.VERSION }}.tar.gz
             
             # Install dependencies
-            npm ci
+            npm ci --legacy-peer-deps
             
             # Run the application
             npm start

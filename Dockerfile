@@ -1,5 +1,5 @@
 # Dockerfile
-# Base image with Node.js 18
+# Base image with Node.js 22
 FROM node:22-alpine AS base
 
 # Set working directory
@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy application code
 COPY . .
