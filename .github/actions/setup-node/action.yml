@@ -21,4 +21,4 @@ runs:
     - name: Install dependencies
       if: inputs.install-dependencies == 'true'
       shell: bash
-      run: npm ci
+      run: npm ci --legacy-peer-deps
