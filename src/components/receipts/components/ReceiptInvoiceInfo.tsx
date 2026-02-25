@@ -7,7 +7,11 @@ interface ReceiptInvoiceInfoProps {
 export function ReceiptInvoiceInfo({ receiptId, date, isInvoice }: ReceiptInvoiceInfoProps) {
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleDateString();
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return dateString;
+      }
+      return date.toLocaleDateString();
     } catch {
       return dateString;
     }
