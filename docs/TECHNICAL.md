@@ -17,8 +17,8 @@ This document provides detailed technical information for developers working on 
 ### Technology Stack
 
 #### Frontend
-- **Next.js 15.3.3** with App Router
-- **React 18** with Server Components
+- **Next.js 16 (Canary)** with App Router
+- **React 19 (RC/Canary)** with Server Components
 - **TypeScript 5.8+** for type safety
 - **Tailwind CSS** for styling
 - **Shadcn UI** for component library

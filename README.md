@@ -286,8 +286,8 @@ chmod +x dev.sh start.sh
 ## 📚 Technologies Used
 
 ### Core Framework
-- **Next.js 15.3.3** - React framework with App Router
-- **React 18** - UI library
+- **Next.js 16 (Canary)** - React framework with App Router
+- **React 19 (RC/Canary)** - UI library
 - **TypeScript 5.8+** - Type-safe JavaScript
 
 ### UI & Styling
