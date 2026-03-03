@@ -60,12 +60,12 @@ describe("ReceiptTotals", () => {
   });
 
   it("handles null/undefined values by defaulting to 0.00", () => {
-    // @ts-ignore - testing runtime behavior for null/undefined
+    // Casting to any to test runtime behavior for null/undefined despite TypeScript rules
     render(
       <ReceiptTotals
-        subtotal={null}
-        gstAmount={undefined}
-        total={null}
+        subtotal={null as any}
+        gstAmount={undefined as any}
+        total={null as any}
         showGST={true}
       />,
     );
