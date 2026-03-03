@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -87,6 +87,14 @@ export default function NewInvoicePage() {
   const { toast } = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const productsMap = useMemo(() => {
+    const map: Record<string, Product> = {};
+    products.forEach((p) => {
+      map[p.id] = p;
+    });
+    return map;
+  }, [products]);
+
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [calculatedTotals, setCalculatedTotals] = useState<{
@@ -151,7 +159,7 @@ export default function NewInvoicePage() {
     let gstAmount = 0;
 
     formData.line_items.forEach((item) => {
-      const product = products.find((p) => p.id === item.product_id);
+      const product = productsMap[item.product_id];
       if (product && item.quantity > 0) {
         const lineTotalExclGST = product.unit_price * item.quantity;
         subtotal += lineTotalExclGST;
@@ -176,7 +184,7 @@ export default function NewInvoicePage() {
     };
     console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
     setCalculatedTotals(newTotals);
-  }, [products]);
+  }, [productsMap]);
 
   // Recalculate totals when line items or GST setting change
   useEffect(() => {
@@ -201,8 +209,8 @@ export default function NewInvoicePage() {
       console.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch."); // Use console.debug
       subscription.unsubscribe();
     };
-    // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
-  }, [form, products, isLoadingData, calculateTotals]);
+    // Dependencies: form for watch, productsMap for initial calc trigger, isLoadingData to wait
+  }, [form, productsMap, isLoadingData, calculateTotals]);
 
   const onSubmit = async (data: ReceiptFormData) => {
     console.info(
@@ -427,9 +435,7 @@ export default function NewInvoicePage() {
                     const selectedProductId = form.watch(
                       `line_items.${index}.product_id`,
                     );
-                    const selectedProduct = products.find(
-                      (p) => p.id === selectedProductId,
-                    );
+                    const selectedProduct = productsMap[selectedProductId];
                     const quantity =
                       form.watch(`line_items.${index}.quantity`) || 0;
                     const unitPrice = selectedProduct?.unit_price ?? 0;
