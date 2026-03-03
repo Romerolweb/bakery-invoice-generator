@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from "date-fns";
 
 /**
  * Combines and merges Tailwind CSS classes and other class values.
@@ -19,14 +19,14 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatDate(dateString: string | undefined | null): string {
   if (!dateString) {
-    return 'N/A';
+    return "N/A";
   }
   try {
     const date = parseISO(dateString);
-    return format(date, 'dd/MM/yyyy');
+    return format(date, "dd/MM/yyyy");
   } catch (error) {
     console.error("Error formatting date:", dateString, error);
-    return 'Invalid Date'; // Returns error message for invalid date strings
+    return "Invalid Date"; // Returns error message for invalid date strings
   }
 }
 
@@ -36,11 +36,11 @@ export function formatDate(dateString: string | undefined | null): string {
  * @returns The escaped string.
  */
 export function escapeHTML(str: string): string {
-  if (!str) return '';
+  if (!str) return "";
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

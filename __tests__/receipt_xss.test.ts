@@ -46,7 +46,9 @@ describe("Receipt XSS Protection", () => {
 
     // Check seller name
     expect(html).not.toContain("Seller <script>alert('xss')</script>");
-    expect(html).toContain("Seller &lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;");
+    expect(html).toContain(
+      "Seller &lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;",
+    );
 
     // Check seller address
     expect(html).not.toContain("<img src=x onerror=alert(1)>");
@@ -54,11 +56,15 @@ describe("Receipt XSS Protection", () => {
 
     // Check customer name
     expect(html).not.toContain("Customer <script>alert('xss')</script>");
-    expect(html).toContain("Customer &lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;");
+    expect(html).toContain(
+      "Customer &lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;",
+    );
 
     // Check customer address
     expect(html).not.toContain("<iframe src=javascript:alert(1)></iframe>");
-    expect(html).toContain("&lt;iframe src=javascript:alert(1)&gt;&lt;/iframe&gt;");
+    expect(html).toContain(
+      "&lt;iframe src=javascript:alert(1)&gt;&lt;/iframe&gt;",
+    );
 
     // Check product name
     expect(html).not.toContain("Product <img src=x onerror=alert(1)>");

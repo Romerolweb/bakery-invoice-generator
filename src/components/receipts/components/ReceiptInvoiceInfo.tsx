@@ -4,7 +4,11 @@ interface ReceiptInvoiceInfoProps {
   isInvoice: boolean;
 }
 
-export function ReceiptInvoiceInfo({ receiptId, date, isInvoice }: ReceiptInvoiceInfoProps) {
+export function ReceiptInvoiceInfo({
+  receiptId,
+  date,
+  isInvoice,
+}: ReceiptInvoiceInfoProps) {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -18,9 +22,14 @@ export function ReceiptInvoiceInfo({ receiptId, date, isInvoice }: ReceiptInvoic
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 border-y" data-testid="receipt-invoice-info">
+    <div
+      className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 border-y"
+      data-testid="receipt-invoice-info"
+    >
       <div>
-        <span className="font-semibold">{isInvoice ? 'Invoice' : 'Receipt'} #: </span>
+        <span className="font-semibold">
+          {isInvoice ? "Invoice" : "Receipt"} #:{" "}
+        </span>
         <span>{receiptId}</span>
       </div>
       <div>

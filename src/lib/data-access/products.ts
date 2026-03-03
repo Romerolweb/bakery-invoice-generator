@@ -13,8 +13,11 @@ export async function getAllProducts(): Promise<Product[]> {
     const result = await db.select().from(products);
     return result as Product[];
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving all products",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error retrieving all products",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return [];
   }
 }
@@ -32,13 +35,18 @@ export async function getProductById(id: string): Promise<Product | null> {
     }
     return (product as Product) || null;
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving product by ID",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error retrieving product by ID",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return null;
   }
 }
 
-export async function saveAllProducts(productsData: Product[]): Promise<boolean> {
+export async function saveAllProducts(
+  productsData: Product[],
+): Promise<boolean> {
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:saveAllProducts`;
   await logger.debug(
     funcPrefix,
@@ -57,8 +65,11 @@ export async function saveAllProducts(productsData: Product[]): Promise<boolean>
     await logger.info(funcPrefix, "Products saved successfully.");
     return true;
   } catch (error) {
-    await logger.error(funcPrefix, "Error saving products",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error saving products",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return false;
   }
 }
@@ -71,7 +82,10 @@ export async function createProduct(product: Product): Promise<Product | null> {
   );
   try {
     // Check if product exists first
-    const existing = await db.select().from(products).where(eq(products.id, product.id));
+    const existing = await db
+      .select()
+      .from(products)
+      .where(eq(products.id, product.id));
     if (existing.length > 0) {
       await logger.warn(
         funcPrefix,
@@ -87,8 +101,11 @@ export async function createProduct(product: Product): Promise<Product | null> {
     );
     return result[0] as Product;
   } catch (error) {
-    await logger.error(funcPrefix, "Error creating product",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error creating product",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return null;
   }
 }
@@ -100,7 +117,8 @@ export async function updateProduct(
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:updateProduct:${id}`;
   await logger.debug(funcPrefix, "Attempting to update product.");
   try {
-    const result = await db.update(products)
+    const result = await db
+      .update(products)
       .set(updatedData)
       .where(eq(products.id, id))
       .returning();
@@ -113,8 +131,11 @@ export async function updateProduct(
     await logger.info(funcPrefix, "Product updated successfully.");
     return result[0] as Product;
   } catch (error) {
-    await logger.error(funcPrefix, "Error updating product",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error updating product",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return null;
   }
 }
@@ -123,7 +144,10 @@ export async function deleteProduct(id: string): Promise<boolean> {
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:deleteProduct:${id}`;
   await logger.debug(funcPrefix, "Attempting to delete product.");
   try {
-    const result = await db.delete(products).where(eq(products.id, id)).returning({ id: products.id });
+    const result = await db
+      .delete(products)
+      .where(eq(products.id, id))
+      .returning({ id: products.id });
 
     if (result.length === 0) {
       await logger.warn(funcPrefix, "Product not found for deletion.");
@@ -133,8 +157,11 @@ export async function deleteProduct(id: string): Promise<boolean> {
     await logger.info(funcPrefix, "Product deleted successfully.");
     return true;
   } catch (error) {
-    await logger.error(funcPrefix, "Error deleting product",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error deleting product",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return false;
   }
 }
