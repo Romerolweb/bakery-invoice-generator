@@ -54,7 +54,11 @@ export async function getSellerProfile(): Promise<SellerProfile | null> {
     }
     return profile;
   } catch (error) {
-    await logger.error(funcPrefix, "Error getting seller profile", error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error getting seller profile",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return null;
   }
 }

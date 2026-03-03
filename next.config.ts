@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   env: {
-    PORT: process.env.PORT ?? '9002',
+    PORT: process.env.PORT ?? "9002",
   },
   serverExternalPackages: ["better-sqlite3"],
   typescript: {
@@ -32,9 +32,9 @@ const nextConfig: NextConfig = {
     // Handle font files and other assets that PDFKit might need
     config.module.rules.push({
       test: /\.(afm|ttf|otf|woff|woff2)$/,
-      type: 'asset/resource',
+      type: "asset/resource",
       generator: {
-        filename: 'static/fonts/[name][ext]',
+        filename: "static/fonts/[name][ext]",
       },
     });
 

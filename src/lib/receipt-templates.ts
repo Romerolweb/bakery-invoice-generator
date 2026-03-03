@@ -18,9 +18,10 @@ export function generateReceiptHTML(receipt: Receipt): string {
     `;
   });
 
-  const rawCustomerName = customer.customer_type === 'business'
-    ? (customer.business_name ?? '')
-    : `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim();
+  const rawCustomerName =
+    customer.customer_type === "business"
+      ? (customer.business_name ?? "")
+      : `${customer.first_name ?? ""} ${customer.last_name ?? ""}`.trim();
   const customerName = escapeHTML(rawCustomerName);
 
   return `
@@ -29,7 +30,7 @@ export function generateReceiptHTML(receipt: Receipt): string {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Receipt ${escapeHTML(receipt.receipt_id.slice(0,8))}</title>
+      <title>Receipt ${escapeHTML(receipt.receipt_id.slice(0, 8))}</title>
       <style>
         body {
           font-family: Arial, sans-serif;
@@ -137,7 +138,7 @@ export function generateReceiptHTML(receipt: Receipt): string {
     <body>
       <div class="receipt-container">
         <div class="header">
-          <h1>${receipt.is_tax_invoice ? 'Tax Invoice' : 'Receipt'}</h1>
+          <h1>${receipt.is_tax_invoice ? "Tax Invoice" : "Receipt"}</h1>
           <p>${escapeHTML(seller.name)}</p>
         </div>
 
@@ -146,9 +147,9 @@ export function generateReceiptHTML(receipt: Receipt): string {
             <h3>Seller Information</h3>
             <address>
               <strong>${escapeHTML(seller.name)}</strong><br>
-              ${escapeHTML(seller.business_address).replace(/\n/g, '<br>')}<br>
+              ${escapeHTML(seller.business_address).replace(/\n/g, "<br>")}<br>
               Email: ${escapeHTML(seller.contact_email)}<br>
-              ${seller.phone ? `Phone: ${escapeHTML(seller.phone)}<br>` : ''}
+              ${seller.phone ? `Phone: ${escapeHTML(seller.phone)}<br>` : ""}
               ABN: ${escapeHTML(seller.ABN_or_ACN)}
             </address>
           </div>
@@ -156,17 +157,17 @@ export function generateReceiptHTML(receipt: Receipt): string {
             <h3>Bill To</h3>
             <address>
               <strong>${customerName}</strong><br>
-              ${customer.address ? `${escapeHTML(customer.address).replace(/\n/g, '<br>')}<br>` : ''}
-              ${customer.email ? `Email: ${escapeHTML(customer.email)}<br>` : ''}
-              ${customer.phone ? `Phone: ${escapeHTML(customer.phone)}<br>` : ''}
-              ${customer.abn ? `ABN: ${escapeHTML(customer.abn)}` : ''}
+              ${customer.address ? `${escapeHTML(customer.address).replace(/\n/g, "<br>")}<br>` : ""}
+              ${customer.email ? `Email: ${escapeHTML(customer.email)}<br>` : ""}
+              ${customer.phone ? `Phone: ${escapeHTML(customer.phone)}<br>` : ""}
+              ${customer.abn ? `ABN: ${escapeHTML(customer.abn)}` : ""}
             </address>
           </div>
         </div>
 
         <div class="info-section">
             <div>
-                <p><strong>Receipt #:</strong> ${escapeHTML(receipt.receipt_id.slice(0,12))}...</p>
+                <p><strong>Receipt #:</strong> ${escapeHTML(receipt.receipt_id.slice(0, 12))}...</p>
             </div>
             <div>
                 <p><strong>Date:</strong> ${formatDate(receipt.date_of_purchase)}</p>

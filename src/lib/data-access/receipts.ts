@@ -20,9 +20,9 @@ function mapDbReceiptToInterface(dbReceipt: any): Receipt {
     ...rest,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     line_items: lineItems.map((item: any) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { id, receipt_id, ...itemRest } = item;
-        return itemRest as LineItem;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, receipt_id, ...itemRest } = item;
+      return itemRest as LineItem;
     }),
   };
 }
@@ -39,8 +39,11 @@ export async function getAllReceipts(): Promise<Receipt[]> {
 
     return result.map(mapDbReceiptToInterface);
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving all receipts",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error retrieving all receipts",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return [];
   }
 }
@@ -64,8 +67,11 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
       return null;
     }
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving receipt by ID",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error retrieving receipt by ID",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return null;
   }
 }
@@ -80,7 +86,10 @@ export async function createReceipt(
   );
   try {
     // Check if receipt exists
-    const existing = await db.select().from(receipts).where(eq(receipts.receipt_id, newReceipt.receipt_id));
+    const existing = await db
+      .select()
+      .from(receipts)
+      .where(eq(receipts.receipt_id, newReceipt.receipt_id));
     if (existing.length > 0) {
       await logger.warn(
         funcPrefix,
@@ -99,9 +108,9 @@ export async function createReceipt(
 
       // Insert line items
       if (line_items && line_items.length > 0) {
-        const itemsToInsert = line_items.map(item => ({
+        const itemsToInsert = line_items.map((item) => ({
           ...item,
-          receipt_id: newReceipt.receipt_id
+          receipt_id: newReceipt.receipt_id,
         }));
         tx.insert(receiptItems).values(itemsToInsert).run();
       }
@@ -113,8 +122,11 @@ export async function createReceipt(
     );
     return newReceipt;
   } catch (error) {
-    await logger.error(funcPrefix, "Error creating new receipt",
-      error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error creating new receipt",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return null;
   }
 }
@@ -132,7 +144,11 @@ export async function getReceiptPdfPath(
     return filePath;
   } catch (error: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (error instanceof Error && 'code' in error && (error as any).code === "ENOENT") {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as any).code === "ENOENT"
+    ) {
       await logger.info(
         funcPrefix,
         `PDF file not found at ${filePath}. It might be generating or failed.`,

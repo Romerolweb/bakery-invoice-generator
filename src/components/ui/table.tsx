@@ -64,7 +64,9 @@ const TableRow = React.forwardRef<
       className,
     )}
     {...otherProps} // Spread other attributes like key, etc.
-  >{children}</tr> // Render children directly inside the tr tags
+  >
+    {children}
+  </tr> // Render children directly inside the tr tags
 ));
 TableRow.displayName = "TableRow";
 

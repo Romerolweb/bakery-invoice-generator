@@ -1,10 +1,7 @@
 // src/lib/actions/receipts.ts
 "use server";
 
-import {
-  Receipt,
-  LineItem,
-} from "@/lib/types";
+import { Receipt, LineItem } from "@/lib/types";
 import {
   createReceipt as createReceiptData,
   getAllReceipts as getAllReceiptsData,
@@ -14,8 +11,9 @@ import { getAllProducts } from "@/lib/data-access/products";
 import { getSellerProfile } from "@/lib/data-access/seller";
 import { getCustomerById } from "@/lib/data-access/customers";
 import { v4 as uuidv4 } from "uuid";
+import { z } from "zod";
 import { logger } from "@/lib/services/logging";
-import { revalidatePath } from 'next/cache';
+import { revalidatePath } from "next/cache";
 
 const ACTION_LOG_PREFIX = "ReceiptActions";
 
@@ -26,21 +24,30 @@ interface CreateReceiptResult {
   success: boolean; // Overall success (including data saving)
   message?: string; // General message or data saving error message
   receipt?: { receipt_id: string }; // Return minimal receipt info if data saved
+  errors?: Record<string, string[]>; // For validation errors
 }
+
+// --- Schemas for Validation ---
+const submissionLineItemSchema = z.object({
+  product_id: z.string().uuid("Invalid product ID format"),
+  quantity: z.number().int().min(1, "Quantity must be at least 1"),
+});
+
+const createReceiptSchema = z.object({
+  customer_id: z.string().uuid("Invalid customer ID format"),
+  date_of_purchase: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)"),
+  line_items: z
+    .array(submissionLineItemSchema)
+    .min(1, "At least one line item is required"),
+  include_gst: z.boolean(),
+  force_tax_invoice: z.boolean(),
+});
 
 // Input parameters for the action
-interface SubmissionLineItem {
-  product_id: string;
-  quantity: number;
-}
-
-interface CreateReceiptParams {
-  customer_id: string;
-  date_of_purchase: string; // Expecting 'yyyy-MM-dd' from the form
-  line_items: SubmissionLineItem[];
-  include_gst: boolean;
-  force_tax_invoice: boolean;
-}
+type SubmissionLineItem = z.infer<typeof submissionLineItemSchema>;
+type CreateReceiptParams = z.infer<typeof createReceiptSchema>;
 
 export async function createReceipt(
   data: CreateReceiptParams,
@@ -49,10 +56,25 @@ export async function createReceipt(
   const funcPrefix = `${ACTION_LOG_PREFIX}:createReceipt:${operationId}`;
   let newReceipt: Receipt | null = null;
 
+  // --- Step 0: Server-side validation ---
+  const validationResult = createReceiptSchema.safeParse(data);
+  if (!validationResult.success) {
+    const errors = validationResult.error.flatten().fieldErrors;
+    await logger.warn(funcPrefix, "Validation failed.", errors);
+    return {
+      success: false,
+      message: "Validation failed. Please check the fields.",
+      errors,
+    };
+  }
+
+  // Use validated data
+  const validatedData = validationResult.data;
+
   await logger.info(funcPrefix, "Starting createReceipt action execution.", {
-    customerId: data.customer_id,
-    date: data.date_of_purchase,
-    itemCount: data.line_items.length,
+    customerId: validatedData.customer_id,
+    date: validatedData.date_of_purchase,
+    itemCount: validatedData.line_items.length,
   });
 
   try {
@@ -64,7 +86,7 @@ export async function createReceipt(
     const [products, sellerProfile, customer] = await Promise.all([
       getAllProducts(),
       getSellerProfile(),
-      getCustomerById(data.customer_id),
+      getCustomerById(validatedData.customer_id),
     ]);
     await logger.debug(
       funcPrefix,
@@ -95,11 +117,11 @@ export async function createReceipt(
     if (!customer) {
       await logger.warn(
         funcPrefix,
-        `Validation failed: Customer not found for ID: ${data.customer_id}`,
+        `Validation failed: Customer not found for ID: ${validatedData.customer_id}`,
       );
       return {
         success: false,
-        message: `Cannot create invoice: Customer with ID ${data.customer_id} not found.`,
+        message: `Cannot create invoice: Customer with ID ${validatedData.customer_id} not found.`,
       };
     }
 
@@ -112,7 +134,7 @@ export async function createReceipt(
     let subtotalExclGST = 0;
     let GSTAmount = 0;
 
-    for (const item of data.line_items) {
+    for (const item of validatedData.line_items) {
       const product = products.find((p) => p.id === item.product_id);
       if (!product) {
         await logger.error(
@@ -136,12 +158,12 @@ export async function createReceipt(
       });
 
       subtotalExclGST += lineTotal;
-      if (data.include_gst && product.GST_applicable) {
+      if (validatedData.include_gst && product.GST_applicable) {
         GSTAmount += lineTotal * 0.1;
       }
     }
 
-    if (!data.include_gst) {
+    if (!validatedData.include_gst) {
       GSTAmount = 0;
     }
 
@@ -150,7 +172,8 @@ export async function createReceipt(
     const totalIncGST = parseFloat((subtotalExclGST + GSTAmount).toFixed(2));
 
     const isTaxInvoice =
-      data.force_tax_invoice || (data.include_gst && totalIncGST >= 82.5);
+      validatedData.force_tax_invoice ||
+      (validatedData.include_gst && totalIncGST >= 82.5);
     await logger.debug(
       funcPrefix,
       `Calculated Totals: Subtotal=${subtotalExclGST}, GST=${GSTAmount}, Total=${totalIncGST}, IsTaxInvoice=${isTaxInvoice}`,
@@ -159,8 +182,8 @@ export async function createReceipt(
     // --- Step 4: Create Receipt Object ---
     newReceipt = {
       receipt_id: uuidv4(),
-      customer_id: data.customer_id,
-      date_of_purchase: data.date_of_purchase,
+      customer_id: validatedData.customer_id,
+      date_of_purchase: validatedData.date_of_purchase,
       line_items: lineItems,
       subtotal_excl_GST: subtotalExclGST,
       GST_amount: GSTAmount,
@@ -196,7 +219,7 @@ export async function createReceipt(
     );
 
     // Revalidate pages that display receipts
-    revalidatePath('/receipts');
+    revalidatePath("/receipts");
     revalidatePath(`/receipt/${newReceipt.receipt_id}`);
     revalidatePath(`/receipt-view/${newReceipt.receipt_id}`);
 
@@ -214,7 +237,7 @@ export async function createReceipt(
     await logger.error(
       funcPrefix,
       "An unexpected error occurred during invoice creation",
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
     return {
       success: false,
@@ -239,7 +262,11 @@ export async function getAllReceipts(): Promise<Receipt[]> {
     );
     return receipts;
   } catch (error) {
-    await logger.error(funcPrefix, "Error getting all receipts", error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error getting all receipts",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return [];
   }
 }
@@ -256,7 +283,11 @@ export async function getReceiptById(id: string): Promise<Receipt | null> {
     }
     return receipt;
   } catch (error) {
-    await logger.error(funcPrefix, `Error getting receipt by ID ${id}`, error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      `Error getting receipt by ID ${id}`,
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return null;
   }
 }

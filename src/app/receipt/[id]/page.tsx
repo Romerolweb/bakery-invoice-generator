@@ -1,11 +1,13 @@
-import { ReceiptWebView } from '../../../components/receipts/ReceiptWebView';
-import './print.css';
+import { ReceiptWebView } from "../../../components/receipts/ReceiptWebView";
+import "./print.css";
 
 interface ReceiptViewPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ReceiptViewPage({ params }: ReceiptViewPageProps) {
+export default async function ReceiptViewPage({
+  params,
+}: ReceiptViewPageProps) {
   const { id } = await params;
   return (
     <div className="min-h-screen bg-white">
