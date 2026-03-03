@@ -1,5 +1,4 @@
 import { ReceiptWebView } from '../../../components/receipts/ReceiptWebView';
-import './print.css';
 
 interface ReceiptViewPageProps {
   params: Promise<{ id: string }>;
