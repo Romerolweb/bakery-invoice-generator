@@ -1,4 +1,4 @@
-import { formatDate, escapeHTML } from "@/lib/utils";
+import { formatDate, escapeHTML } from "@/lib/formatters";
 import { Receipt, LineItem, SellerProfile, Customer } from "@/lib/types";
 
 // Helper function to generate basic HTML for the receipt
