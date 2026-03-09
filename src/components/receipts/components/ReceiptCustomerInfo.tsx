@@ -1,15 +1,20 @@
-import type { Customer } from '@/lib/types';
+import type { Customer } from "@/lib/types";
 
 interface ReceiptCustomerInfoProps {
   customer: Customer;
 }
 
-export function ReceiptCustomerInfo({ customer }: Readonly<ReceiptCustomerInfoProps>) {
+export function ReceiptCustomerInfo({
+  customer,
+}: Readonly<ReceiptCustomerInfoProps>) {
   const getCustomerName = () => {
-    if (customer.customer_type === 'business') {
-      return customer.business_name ?? 'Business Customer';
+    if (customer.customer_type === "business") {
+      return customer.business_name ?? "Business Customer";
     }
-    return `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim() || 'Individual Customer';
+    return (
+      `${customer.first_name ?? ""} ${customer.last_name ?? ""}`.trim() ||
+      "Individual Customer"
+    );
   };
 
   return (

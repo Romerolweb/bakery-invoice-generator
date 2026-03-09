@@ -3,7 +3,8 @@ import Database from "better-sqlite3";
 import path from "path";
 import * as schema from "./schema";
 
-const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), "src/lib/data/local.db");
+const dbPath =
+  process.env.DATABASE_URL || path.join(process.cwd(), "src/lib/data/local.db");
 
 // Singleton pattern for DB connection to avoid multiple connections in dev hot-reloads
 // eslint-disable-next-line no-var

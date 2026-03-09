@@ -20,7 +20,11 @@ export async function getSellerProfile(): Promise<SellerProfile | null> {
     }
     return null;
   } catch (error) {
-    await logger.error(funcPrefix, "Error retrieving seller profile", error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error retrieving seller profile",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return null;
   }
 }
@@ -36,7 +40,8 @@ export async function updateSellerProfile(
 
     if (existing.length > 0) {
       // Update existing
-      await db.update(sellerProfiles)
+      await db
+        .update(sellerProfiles)
         .set(profile)
         .where(eq(sellerProfiles.id, existing[0].id));
     } else {
@@ -47,7 +52,11 @@ export async function updateSellerProfile(
     await logger.info(funcPrefix, "Seller profile updated successfully.");
     return true;
   } catch (error) {
-    await logger.error(funcPrefix, "Error updating seller profile", error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error updating seller profile",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return false;
   }
 }
@@ -60,7 +69,11 @@ export async function deleteSellerProfile(): Promise<boolean> {
     await logger.info(funcPrefix, "Seller profile deleted successfully.");
     return true;
   } catch (error) {
-    await logger.error(funcPrefix, "Error deleting seller profile", error instanceof Error ? error : new Error(String(error)));
+    await logger.error(
+      funcPrefix,
+      "Error deleting seller profile",
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return false;
   }
 }
