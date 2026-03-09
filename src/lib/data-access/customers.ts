@@ -16,11 +16,8 @@ export async function getAllCustomers(): Promise<Customer[]> {
     // The schema defines customer_type as text with enum check, but TypeScript sees it as string unless cast.
     return result as Customer[];
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error retrieving all customers",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error retrieving all customers",
+      error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 }
@@ -29,10 +26,7 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getCustomerById:${id}`;
   await logger.debug(funcPrefix, "Attempting to get customer by ID.");
   try {
-    const result = await db
-      .select()
-      .from(customers)
-      .where(eq(customers.id, id));
+    const result = await db.select().from(customers).where(eq(customers.id, id));
     const customer = result[0];
     if (customer) {
       await logger.debug(funcPrefix, "Customer found.");
@@ -41,11 +35,8 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
     }
     return (customer as Customer) || null;
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error retrieving customer by ID",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error retrieving customer by ID",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -63,19 +54,16 @@ export async function createCustomer(
     const result = await db.insert(customers).values(newCustomer).returning();
 
     if (result && result.length > 0) {
-      await logger.info(
+        await logger.info(
         funcPrefix,
         `Customer created successfully with ID: ${newId}`,
-      );
-      return result[0] as Customer;
+        );
+        return result[0] as Customer;
     }
     return null;
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error creating customer",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error creating customer",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -87,8 +75,7 @@ export async function updateCustomer(
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:updateCustomer:${id}`;
   await logger.debug(funcPrefix, "Attempting to update customer.");
   try {
-    const result = await db
-      .update(customers)
+    const result = await db.update(customers)
       .set(updatedData)
       .where(eq(customers.id, id))
       .returning();
@@ -101,11 +88,8 @@ export async function updateCustomer(
     await logger.info(funcPrefix, "Customer updated successfully.");
     return result[0] as Customer;
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error updating customer",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error updating customer",
+      error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -114,10 +98,7 @@ export async function deleteCustomer(id: string): Promise<boolean> {
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:deleteCustomer:${id}`;
   await logger.debug(funcPrefix, "Attempting to delete customer.");
   try {
-    const result = await db
-      .delete(customers)
-      .where(eq(customers.id, id))
-      .returning({ id: customers.id });
+    const result = await db.delete(customers).where(eq(customers.id, id)).returning({ id: customers.id });
 
     if (result.length === 0) {
       await logger.warn(funcPrefix, "Customer not found for deletion.");
@@ -127,11 +108,8 @@ export async function deleteCustomer(id: string): Promise<boolean> {
     await logger.info(funcPrefix, "Customer deleted successfully.");
     return true;
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error deleting customer",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error deleting customer",
+      error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }

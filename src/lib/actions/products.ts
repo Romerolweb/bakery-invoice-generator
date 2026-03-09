@@ -6,7 +6,7 @@ import { Product } from "@/lib/types";
 import * as ProductDataAccess from "@/lib/data-access/products";
 import { logger } from "@/lib/services/logging";
 import { v4 as uuidv4 } from "uuid"; // Import UUID generator
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from 'next/cache';
 
 const ACTION_LOG_PREFIX = "ProductActions";
 
@@ -51,11 +51,7 @@ export async function getProducts(): Promise<Product[]> {
     await logger.info(funcPrefix, `Retrieved ${products.length} products.`);
     return products;
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error fetching products",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error fetching products", error instanceof Error ? error : new Error(String(error)));
     return []; // Return empty array on error
   }
 }
@@ -96,8 +92,8 @@ export async function addProduct(
         `Product added successfully: ${createdProduct.id}`,
       );
       // Revalidate pages that display products
-      revalidatePath("/products");
-      revalidatePath("/");
+      revalidatePath('/products');
+      revalidatePath('/');
       return { success: true, product: createdProduct };
     } else {
       await logger.error(
@@ -156,8 +152,8 @@ export async function updateProduct(
     if (updatedProduct) {
       await logger.info(funcPrefix, "Product updated successfully.");
       // Revalidate pages that display products
-      revalidatePath("/products");
-      revalidatePath("/");
+      revalidatePath('/products');
+      revalidatePath('/');
       return { success: true, product: updatedProduct };
     } else {
       await logger.warn(
@@ -193,8 +189,8 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
     if (deleted) {
       await logger.info(funcPrefix, "Product deleted successfully.");
       // Revalidate pages that display products
-      revalidatePath("/products");
-      revalidatePath("/");
+      revalidatePath('/products');
+      revalidatePath('/');
       return { success: true };
     } else {
       await logger.warn(
@@ -238,11 +234,7 @@ export async function getProductById(
     await logger.info(funcPrefix, `Retrieved product by ID.`);
     return product;
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error fetching product by ID",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error fetching product by ID", error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

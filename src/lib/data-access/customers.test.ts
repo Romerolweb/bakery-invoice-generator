@@ -41,9 +41,7 @@ describe("Customer Data Access", () => {
   beforeAll(async () => {
     // Run migrations on the mocked (in-memory) database
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await migrate(db as any, {
-      migrationsFolder: path.join(process.cwd(), "src/lib/db/migrations"),
-    });
+    await migrate(db as any, { migrationsFolder: path.join(process.cwd(), "src/lib/db/migrations") });
   });
 
   beforeEach(async () => {
@@ -78,8 +76,8 @@ describe("Customer Data Access", () => {
     });
 
     it("should return an empty array if no customers exist", async () => {
-      const result = await getAllCustomers();
-      expect(result).toEqual([]);
+        const result = await getAllCustomers();
+        expect(result).toEqual([]);
     });
   });
 
@@ -129,19 +127,14 @@ describe("Customer Data Access", () => {
       expect(newCustomer).toEqual(expect.objectContaining(newCustomerData));
 
       // Verify in DB
-      const result = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.id, newCustomer!.id));
+      const result = await db.select().from(customers).where(eq(customers.id, newCustomer!.id));
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual(
-        expect.objectContaining({
-          ...newCustomerData,
-          // DB will have nulls for undefined fields
-          business_name: null,
-          abn: null,
-        }),
-      );
+      expect(result[0]).toEqual(expect.objectContaining({
+        ...newCustomerData,
+        // DB will have nulls for undefined fields
+        business_name: null,
+        abn: null,
+      }));
     });
   });
 
@@ -165,22 +158,15 @@ describe("Customer Data Access", () => {
       const updatedData = { first_name: "Johnny" };
       const updatedCustomer = await updateCustomer("1", updatedData);
 
-      expect(updatedCustomer).toEqual(
-        expect.objectContaining({ ...dbCustomer, ...updatedData }),
-      );
+      expect(updatedCustomer).toEqual(expect.objectContaining({ ...dbCustomer, ...updatedData }));
 
       // Verify in DB
-      const result = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.id, "1"));
+      const result = await db.select().from(customers).where(eq(customers.id, "1"));
       expect(result[0].first_name).toBe("Johnny");
     });
 
     it("should return null if customer is not found", async () => {
-      const updatedCustomer = await updateCustomer("999", {
-        first_name: "Ghost",
-      });
+      const updatedCustomer = await updateCustomer("999", { first_name: "Ghost" });
       expect(updatedCustomer).toBeNull();
     });
   });
@@ -206,10 +192,7 @@ describe("Customer Data Access", () => {
       expect(deleted).toBe(true);
 
       // Verify in DB
-      const result = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.id, "1"));
+      const result = await db.select().from(customers).where(eq(customers.id, "1"));
       expect(result).toHaveLength(0);
     });
 

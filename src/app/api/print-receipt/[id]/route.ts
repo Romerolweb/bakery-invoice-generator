@@ -4,11 +4,11 @@ import { Receipt } from "@/lib/types";
 import { generateReceiptHTML } from "@/lib/receipt-templates";
 
 // Disable caching for this route
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: receiptId } = await params;
 
@@ -19,11 +19,7 @@ export async function GET(
   try {
     const receiptResult = await getReceiptById(receiptId);
 
-    if (
-      !receiptResult ||
-      !receiptResult.receipt_id ||
-      !receiptResult.date_of_purchase
-    ) {
+    if (!receiptResult || !receiptResult.receipt_id || !receiptResult.date_of_purchase) {
       return new NextResponse("Receipt not found or error fetching receipt", {
         status: 404,
       });

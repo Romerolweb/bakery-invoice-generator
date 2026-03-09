@@ -7,10 +7,10 @@ export default defineConfig({
   test: {
     globals: true, // Use global APIs like describe, it, expect
     environment: "jsdom", // Simulate browser environment for things like window, document
-    setupFiles: ["./vitest.setup.ts"], // Setup file for testing library
+    setupFiles: ['./vitest.setup.ts'], // Setup file for testing library
     include: [
       "**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
-      "**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"
     ],
     alias: {
       "@": path.resolve(__dirname, "./src"), // Match tsconfig paths

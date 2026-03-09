@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import type { Receipt } from "@/lib/types";
-import { ReceiptContent } from "./components/ReceiptContent";
-import { PrintToolbar } from "./components/PrintToolbar";
-import { LoadingSpinner } from "./components/LoadingSpinner";
-import { ErrorMessage } from "./components/ErrorMessage";
+import { useState, useEffect } from 'react';
+import type { Receipt } from '@/lib/types';
+import { ReceiptContent } from './components/ReceiptContent';
+import { PrintToolbar } from './components/PrintToolbar';
+import { LoadingSpinner } from './components/LoadingSpinner';
+import { ErrorMessage } from './components/ErrorMessage';
 
 interface ReceiptWebViewProps {
   receiptId: string;
@@ -32,22 +32,22 @@ export function ReceiptWebView({ receiptId }: Readonly<ReceiptWebViewProps>) {
         const result: ApiResponse = await response.json();
 
         if (!result.success) {
-          throw new Error(result.error ?? "Failed to fetch receipt");
+          throw new Error(result.error ?? 'Failed to fetch receipt');
         }
 
         if (!result.data) {
-          throw new Error("No receipt data received");
+          throw new Error('No receipt data received');
         }
 
         setReceipt(result.data);
 
         // Set page title for printing
         document.title = `Invoice ${result.data.receipt_id}`;
+
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error occurred";
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
         setError(errorMessage);
-        console.error("Error fetching receipt:", err);
+        console.error('Error fetching receipt:', err);
       } finally {
         setLoading(false);
       }

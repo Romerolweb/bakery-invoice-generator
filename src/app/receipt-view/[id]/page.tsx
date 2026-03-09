@@ -1,13 +1,11 @@
-import { ReceiptWebView } from "../../../components/receipts/ReceiptWebView"; // Corrected import path
-import "./print.css"; // Specific print styles for this view
+import { ReceiptWebView } from '../../../components/receipts/ReceiptWebView'; // Corrected import path
+import './print.css'; // Specific print styles for this view
 
 interface ReceiptPrintViewPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ReceiptPrintViewPage({
-  params,
-}: ReceiptPrintViewPageProps) {
+export default async function ReceiptPrintViewPage({ params }: ReceiptPrintViewPageProps) {
   const { id } = await params;
   return (
     // Add a wrapper div that can be styled for screen viewing if needed,

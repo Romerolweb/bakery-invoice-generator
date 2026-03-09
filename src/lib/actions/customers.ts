@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Customer } from "@/lib/types";
 import * as CustomerDataAccess from "@/lib/data-access/customers";
 import { logger } from "@/lib/services/logging";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from 'next/cache';
 
 const ACTION_LOG_PREFIX = "CustomerActions";
 
@@ -82,11 +82,7 @@ export async function getCustomers(): Promise<Customer[]> {
     await logger.info(funcPrefix, `Retrieved ${customers.length} customers.`);
     return customers;
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error fetching customers",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error fetching customers", error instanceof Error ? error : new Error(String(error)));
     return []; // Return empty array on error as per previous logic
   }
 }
@@ -128,8 +124,8 @@ export async function addCustomer(
         `Customer added successfully: ${newCustomer.id}`,
       );
       // Revalidate pages that display customers
-      revalidatePath("/customers");
-      revalidatePath("/");
+      revalidatePath('/customers');
+      revalidatePath('/');
       return { success: true, customer: newCustomer };
     } else {
       await logger.error(
@@ -196,8 +192,8 @@ export async function updateCustomer(
     if (updatedCustomer) {
       await logger.info(funcPrefix, "Customer updated successfully.");
       // Revalidate pages that display customers
-      revalidatePath("/customers");
-      revalidatePath("/");
+      revalidatePath('/customers');
+      revalidatePath('/');
       return { success: true, customer: updatedCustomer };
     } else {
       await logger.warn(
@@ -234,8 +230,8 @@ export async function deleteCustomer(id: string): Promise<ActionResult> {
     if (deleted) {
       await logger.info(funcPrefix, "Customer deleted successfully.");
       // Revalidate pages that display customers
-      revalidatePath("/customers");
-      revalidatePath("/");
+      revalidatePath('/customers');
+      revalidatePath('/');
       return { success: true };
     } else {
       await logger.warn(
@@ -286,11 +282,7 @@ export async function getCustomerById(
     }
     return customer;
   } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error fetching customer by ID",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+    await logger.error(funcPrefix, "Error fetching customer by ID", error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

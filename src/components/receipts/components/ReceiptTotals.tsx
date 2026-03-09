@@ -5,12 +5,7 @@ interface ReceiptTotalsProps {
   showGST: boolean;
 }
 
-export function ReceiptTotals({
-  subtotal,
-  gstAmount,
-  total,
-  showGST,
-}: ReceiptTotalsProps) {
+export function ReceiptTotals({ subtotal, gstAmount, total, showGST }: ReceiptTotalsProps) {
   return (
     <div className="flex justify-end" data-testid="receipt-totals">
       <div className="w-64 space-y-2">

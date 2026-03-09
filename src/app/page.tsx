@@ -55,7 +55,13 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, PlusCircle, Trash2, CalendarIcon, Eye } from "lucide-react";
+import {
+  Loader2,
+  PlusCircle,
+  Trash2,
+  CalendarIcon,
+  Eye,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 // Removed logger import: import { logger } from '@/lib/services/logging';
@@ -125,11 +131,7 @@ export default function NewInvoicePage() {
           `Loaded ${customersData.length} customers and ${productsData.length} products.`,
         ); // Use console.log
       } catch (error) {
-        console.error(
-          CLIENT_LOG_PREFIX,
-          "Failed to load initial data",
-          error instanceof Error ? error : new Error(String(error)),
-        ); // Use console.error
+        console.error(CLIENT_LOG_PREFIX, "Failed to load initial data", error instanceof Error ? error : new Error(String(error))); // Use console.error
         toast({
           title: "Error Loading Data",
           description:
@@ -144,40 +146,37 @@ export default function NewInvoicePage() {
     loadData();
   }, [toast]); // Dependency array includes toast
 
-  const calculateTotals = useCallback(
-    (formData: ReceiptFormData) => {
-      let subtotal = 0;
-      let gstAmount = 0;
+  const calculateTotals = useCallback((formData: ReceiptFormData) => {
+    let subtotal = 0;
+    let gstAmount = 0;
 
-      formData.line_items.forEach((item) => {
-        const product = products.find((p) => p.id === item.product_id);
-        if (product && item.quantity > 0) {
-          const lineTotalExclGST = product.unit_price * item.quantity;
-          subtotal += lineTotalExclGST;
-          // Only apply GST if 'include_gst' is checked AND the product is GST applicable
-          if (formData.include_gst && product.GST_applicable) {
-            gstAmount += lineTotalExclGST * 0.1;
-          }
+    formData.line_items.forEach((item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      if (product && item.quantity > 0) {
+        const lineTotalExclGST = product.unit_price * item.quantity;
+        subtotal += lineTotalExclGST;
+        // Only apply GST if 'include_gst' is checked AND the product is GST applicable
+        if (formData.include_gst && product.GST_applicable) {
+          gstAmount += lineTotalExclGST * 0.1;
         }
-      });
-
-      // Ensure GST is zero if the main flag is off
-      if (!formData.include_gst) {
-        gstAmount = 0;
       }
+    });
 
-      // Ensure calculations are rounded to 2 decimal places
-      const total = subtotal + gstAmount;
-      const newTotals = {
-        subtotal: parseFloat(subtotal.toFixed(2)),
-        gst: parseFloat(gstAmount.toFixed(2)),
-        total: parseFloat(total.toFixed(2)),
-      };
-      console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
-      setCalculatedTotals(newTotals);
-    },
-    [products],
-  );
+    // Ensure GST is zero if the main flag is off
+    if (!formData.include_gst) {
+      gstAmount = 0;
+    }
+
+    // Ensure calculations are rounded to 2 decimal places
+    const total = subtotal + gstAmount;
+    const newTotals = {
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      gst: parseFloat(gstAmount.toFixed(2)),
+      total: parseFloat(total.toFixed(2)),
+    };
+    console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
+    setCalculatedTotals(newTotals);
+  }, [products]);
 
   // Recalculate totals when line items or GST setting change
   useEffect(() => {
@@ -243,8 +242,8 @@ export default function NewInvoicePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={
-                () => window.open(`/receipt/${receiptId}`, "_blank") // Changed from /receipts/ to /receipt/
+              onClick={() =>
+                window.open(`/receipt/${receiptId}`, "_blank") // Changed from /receipts/ to /receipt/
               }
             >
               <Eye className="mr-2 h-4 w-4" /> View Receipt

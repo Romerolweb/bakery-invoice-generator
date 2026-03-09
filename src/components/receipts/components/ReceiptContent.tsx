@@ -1,11 +1,11 @@
-import type { Receipt } from "@/lib/types";
-import { ReceiptHeader } from "./ReceiptHeader";
-import { ReceiptSellerInfo } from "./ReceiptSellerInfo";
-import { ReceiptCustomerInfo } from "./ReceiptCustomerInfo";
-import { ReceiptInvoiceInfo } from "./ReceiptInvoiceInfo";
-import { ReceiptItemsTable } from "./ReceiptItemsTable";
-import { ReceiptTotals } from "./ReceiptTotals";
-import { ReceiptFooter } from "./ReceiptFooter";
+import type { Receipt } from '@/lib/types';
+import { ReceiptHeader } from './ReceiptHeader';
+import { ReceiptSellerInfo } from './ReceiptSellerInfo';
+import { ReceiptCustomerInfo } from './ReceiptCustomerInfo';
+import { ReceiptInvoiceInfo } from './ReceiptInvoiceInfo';
+import { ReceiptItemsTable } from './ReceiptItemsTable';
+import { ReceiptTotals } from './ReceiptTotals';
+import { ReceiptFooter } from './ReceiptFooter';
 
 interface ReceiptContentProps {
   receipt: Receipt;

@@ -189,10 +189,7 @@ function CustomersPageContent() {
       const data = await customerService.fetchAll();
       setCustomers(data);
     } catch (error) {
-      console.error(
-        "Client: Failed to fetch customers:",
-        error instanceof Error ? error : new Error(String(error)),
-      );
+      console.error("Client: Failed to fetch customers:", error instanceof Error ? error : new Error(String(error)));
       toast({
         title: "Error",
         description: "Could not load customers. Please try again later.",
@@ -215,111 +212,87 @@ function CustomersPageContent() {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  const handleEditCustomer = useCallback(
-    (customer: Customer) => {
-      setEditingCustomer(customer);
-      formManager.resetForEdit(customer);
-      setIsDialogOpen(true);
-    },
-    [formManager],
-  );
 
-  const handleDeleteCustomer = useCallback(
-    async (id: string) => {
-      // Basic client-side ID validation
-      if (!id) {
-        console.error("Client: handleDeleteCustomer called with invalid ID.");
+  const handleEditCustomer = useCallback((customer: Customer) => {
+    setEditingCustomer(customer);
+    formManager.resetForEdit(customer);
+    setIsDialogOpen(true);
+  }, [formManager]);
+
+  const handleDeleteCustomer = useCallback(async (id: string) => {
+    // Basic client-side ID validation
+    if (!id) {
+      console.error("Client: handleDeleteCustomer called with invalid ID.");
+      toast({ title: "Error", description: "Invalid customer ID.", variant: "destructive" });
+      return;
+    }
+    try {
+      const result = await customerService.remove(id);
+      if (result.success) {
+        toast({ title: "Success", description: "Customer deleted successfully." });
+        setCustomers((prev) => prev.filter((c) => c.id !== id));
+      } else {
         toast({
           title: "Error",
-          description: "Invalid customer ID.",
-          variant: "destructive",
-        });
-        return;
-      }
-      try {
-        const result = await customerService.remove(id);
-        if (result.success) {
-          toast({
-            title: "Success",
-            description: "Customer deleted successfully.",
-          });
-          setCustomers((prev) => prev.filter((c) => c.id !== id));
-        } else {
-          toast({
-            title: "Error",
-            description: result.message ?? "Failed to delete customer.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error(
-          `Client: Failed to delete customer ${id}:`,
-          error instanceof Error ? error : new Error(String(error)),
-        );
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred while deleting.",
+          description: result.message ?? "Failed to delete customer.",
           variant: "destructive",
         });
       }
-    },
-    [customerService, toast],
-  );
+    } catch (error) {
+      console.error(`Client: Failed to delete customer ${id}:`, error instanceof Error ? error : new Error(String(error)));
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting.",
+        variant: "destructive",
+      });
+    }
+  }, [customerService, toast]);
 
-  const onSubmit = useCallback(
-    async (data: CustomerFormData) => {
-      setIsSubmitting(true);
-      formManager.clearErrors();
-      const submissionData =
-        data.customer_type === "individual"
-          ? { ...data, business_name: undefined, abn: undefined }
-          : data;
-      try {
-        let result;
-        const actionType = editingCustomer ? "update" : "add";
+  const onSubmit = useCallback(async (data: CustomerFormData) => {
+    setIsSubmitting(true);
+    formManager.clearErrors();
+    const submissionData =
+      data.customer_type === "individual"
+        ? { ...data, business_name: undefined, abn: undefined }
+        : data;
+    try {
+      let result;
+      const actionType = editingCustomer ? "update" : "add";
 
-        if (editingCustomer && editingCustomer.id) {
-          result = await customerService.update(
-            editingCustomer.id,
-            submissionData,
-          );
-        } else {
-          result = await customerService.add(submissionData);
-        }
+      if (editingCustomer && editingCustomer.id) {
+        result = await customerService.update(editingCustomer.id, submissionData);
+      } else {
+        result = await customerService.add(submissionData);
+      }
 
-        if (result.success && result.customer) {
-          toast({
-            title: "Success",
-            description: `Customer ${actionType}d successfully.`,
-          });
-          setIsDialogOpen(false);
-          await fetchCustomers(); // Refetch to show changes
-        } else {
-          if (result.errors) formManager.setServerErrors(result.errors);
-          toast({
-            title: "Error",
-            description:
-              result.message ||
-              `Failed to ${actionType} customer. Check the highlighted fields.`,
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error(
-          `Client: Failed to ${editingCustomer ? "update" : "add"} customer:`,
-          error instanceof Error ? error : new Error(String(error)),
-        );
+      if (result.success && result.customer) {
+        toast({
+          title: "Success",
+          description: `Customer ${actionType}d successfully.`,
+        });
+        setIsDialogOpen(false);
+        await fetchCustomers(); // Refetch to show changes
+      } else {
+        if (result.errors) formManager.setServerErrors(result.errors);
         toast({
           title: "Error",
-          description: "An unexpected error occurred during submission.",
+          description:
+            result.message ||
+            `Failed to ${actionType} customer. Check the highlighted fields.`,
           variant: "destructive",
         });
-      } finally {
-        setIsSubmitting(false);
       }
-    },
-    [customerService, editingCustomer, fetchCustomers, formManager, toast],
-  );
+    } catch (error) {
+      console.error(`Client: Failed to ${editingCustomer ? "update" : "add"} customer:`, error instanceof Error ? error : new Error(String(error)));
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred during submission.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [customerService, editingCustomer, fetchCustomers, formManager, toast]);
 
   // --- Render ---
   return (
@@ -372,10 +345,7 @@ function CustomersPageContent() {
                       >
                         <FormItem className="flex items-center space-x-2 space-y-0">
                           <FormControl>
-                            <RadioGroupItem
-                              value="individual"
-                              id="individual"
-                            />
+                            <RadioGroupItem value="individual" id="individual" />
                           </FormControl>
                           <FormLabel
                             htmlFor="individual"
@@ -412,11 +382,7 @@ function CustomersPageContent() {
                       <FormItem>
                         <FormLabel>Business Name</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Doe Enterprises Pty Ltd"
-                            {...field}
-                            value={field.value ?? ""}
-                          />
+                          <Input placeholder="Doe Enterprises Pty Ltd" {...field} value={field.value ?? ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -429,11 +395,7 @@ function CustomersPageContent() {
                       <FormItem>
                         <FormLabel>ABN (Optional)</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="11 111 111 111"
-                            {...field}
-                            value={field.value ?? ""}
-                          />
+                          <Input placeholder="11 111 111 111" {...field} value={field.value ?? ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -442,27 +404,20 @@ function CustomersPageContent() {
                 </>
               )}
 
-              <div className={cn("grid gap-4", "md:grid-cols-2")}>
+              <div
+                className={cn(
+                  "grid gap-4",
+                  "md:grid-cols-2"
+                )}
+              >
                 <FormField
                   control={form.control}
                   name="first_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        {customerType === "individual"
-                          ? "First Name"
-                          : "Contact First Name (Optional)"}
-                      </FormLabel>
+                      <FormLabel>{customerType === "individual" ? "First Name" : "Contact First Name (Optional)"}</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder={
-                            customerType === "individual"
-                              ? "John"
-                              : "Alex (Contact)"
-                          }
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder={customerType === "individual" ? "John" : "Alex (Contact)"} {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -473,21 +428,9 @@ function CustomersPageContent() {
                   name="last_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        {customerType === "individual"
-                          ? "Last Name (Optional)"
-                          : "Contact Last Name (Optional)"}
-                      </FormLabel>
+                      <FormLabel>{customerType === "individual" ? "Last Name (Optional)" : "Contact Last Name (Optional)"}</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder={
-                            customerType === "individual"
-                              ? "Doe"
-                              : "Smith (Contact)"
-                          }
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder={customerType === "individual" ? "Doe" : "Smith (Contact)"} {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -634,8 +577,7 @@ function CustomerTable({
               {customers.map((customer) => {
                 let displayName: string;
                 if (customer.customer_type === "individual") {
-                  displayName =
-                    `${customer.first_name ?? ""} ${customer.last_name ?? ""}`.trim();
+                  displayName = `${customer.first_name ?? ""} ${customer.last_name ?? ""}`.trim();
                 } else {
                   displayName = customer.business_name ?? "";
                 }
@@ -675,14 +617,7 @@ function CustomerTable({
 
 export default function CustomersPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center items-center h-screen">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />{" "}
-          <p className="ml-4 text-lg">Loading customers...</p>
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /> <p className="ml-4 text-lg">Loading customers...</p></div>}>
       <CustomersPageContent />
     </Suspense>
   );

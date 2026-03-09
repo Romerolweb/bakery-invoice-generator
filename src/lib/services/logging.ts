@@ -163,21 +163,14 @@ export const logger: {
   error: (prefix: string, message: string, error?: LogData) => Promise<void>;
   debug: (prefix: string, message: string, data?: LogData) => Promise<void>;
 } = {
-  info: (prefix: string, message: string, data?: LogData) =>
-    log(LogLevel.INFO, prefix, message, data),
-  warn: (prefix: string, message: string, data?: LogData) =>
-    log(LogLevel.WARN, prefix, message, data),
+  info: (prefix: string, message: string, data?: LogData) => log(LogLevel.INFO, prefix, message, data),
+  warn: (prefix: string, message: string, data?: LogData) => log(LogLevel.WARN, prefix, message, data),
   error: (prefix: string, message: string, error?: LogData) =>
     log(
       LogLevel.ERROR,
       prefix,
       message,
-      error instanceof Error
-        ? error
-        : error !== undefined
-          ? new Error(String(error))
-          : undefined,
+      error instanceof Error ? error : error !== undefined ? new Error(String(error)) : undefined
     ),
-  debug: (prefix: string, message: string, data?: LogData) =>
-    log(LogLevel.DEBUG, prefix, message, data),
+  debug: (prefix: string, message: string, data?: LogData) => log(LogLevel.DEBUG, prefix, message, data),
 };

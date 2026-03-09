@@ -1,4 +1,4 @@
-import type { LineItem } from "@/lib/types";
+import type { LineItem } from '@/lib/types';
 
 interface ReceiptItemsTableProps {
   items: LineItem[];
@@ -11,23 +11,11 @@ export function ReceiptItemsTable({ items, showGST }: ReceiptItemsTableProps) {
       <table className="w-full border-collapse border border-gray-300">
         <thead>
           <tr className="bg-gray-50">
-            <th className="border border-gray-300 px-4 py-2 text-left">
-              Description
-            </th>
-            {showGST && (
-              <th className="border border-gray-300 px-4 py-2 text-center">
-                GST
-              </th>
-            )}
-            <th className="border border-gray-300 px-4 py-2 text-center">
-              Qty
-            </th>
-            <th className="border border-gray-300 px-4 py-2 text-right">
-              Unit Price
-            </th>
-            <th className="border border-gray-300 px-4 py-2 text-right">
-              Total
-            </th>
+            <th className="border border-gray-300 px-4 py-2 text-left">Description</th>
+            {showGST && <th className="border border-gray-300 px-4 py-2 text-center">GST</th>}
+            <th className="border border-gray-300 px-4 py-2 text-center">Qty</th>
+            <th className="border border-gray-300 px-4 py-2 text-right">Unit Price</th>
+            <th className="border border-gray-300 px-4 py-2 text-right">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -38,7 +26,7 @@ export function ReceiptItemsTable({ items, showGST }: ReceiptItemsTableProps) {
               </td>
               {showGST && (
                 <td className="border border-gray-300 px-4 py-2 text-center">
-                  {item.GST_applicable ? "Yes" : "No"}
+                  {item.GST_applicable ? 'Yes' : 'No'}
                 </td>
               )}
               <td className="border border-gray-300 px-4 py-2 text-center">

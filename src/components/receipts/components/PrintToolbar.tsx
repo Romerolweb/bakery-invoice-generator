@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { Printer, X } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { Printer, X } from 'lucide-react';
 
 interface PrintToolbarProps {
   receiptId: string;
@@ -9,7 +9,7 @@ interface PrintToolbarProps {
 
 export function PrintToolbar({ receiptId }: Readonly<PrintToolbarProps>) {
   const handlePrint = () => {
-    window.open(`/api/print-receipt/${receiptId}`, "_blank"); // New: Open API route in new tab
+    window.open(`/api/print-receipt/${receiptId}`, '_blank'); // New: Open API route in new tab
   };
 
   const handleClose = () => {

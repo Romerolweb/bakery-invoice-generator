@@ -5,9 +5,7 @@ import type { Customer, SellerProfile } from "@/lib/types";
 // --- Customers Table ---
 export const customers = sqliteTable("customers", {
   id: text("id").primaryKey(), // UUID
-  customer_type: text("customer_type", {
-    enum: ["individual", "business"],
-  }).notNull(),
+  customer_type: text("customer_type", { enum: ["individual", "business"] }).notNull(),
   first_name: text("first_name"),
   last_name: text("last_name"),
   business_name: text("business_name"),
@@ -49,20 +47,14 @@ export const receipts = sqliteTable("receipts", {
   is_tax_invoice: integer("is_tax_invoice", { mode: "boolean" }).notNull(),
 
   // Snapshots stored as JSON
-  seller_profile_snapshot: text("seller_profile_snapshot", { mode: "json" })
-    .$type<SellerProfile>()
-    .notNull(),
-  customer_snapshot: text("customer_snapshot", { mode: "json" })
-    .$type<Customer>()
-    .notNull(),
+  seller_profile_snapshot: text("seller_profile_snapshot", { mode: "json" }).$type<SellerProfile>().notNull(),
+  customer_snapshot: text("customer_snapshot", { mode: "json" }).$type<Customer>().notNull(),
 });
 
 // --- Receipt Items Table (Line Items) ---
 export const receiptItems = sqliteTable("receipt_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  receipt_id: text("receipt_id")
-    .notNull()
-    .references(() => receipts.receipt_id, { onDelete: "cascade" }),
+  receipt_id: text("receipt_id").notNull().references(() => receipts.receipt_id, { onDelete: 'cascade' }),
   product_id: text("product_id").notNull(),
   description: text("description").notNull(),
   quantity: integer("quantity").notNull(),
