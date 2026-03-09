@@ -58,7 +58,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle, Trash2, CalendarIcon, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-// Removed logger import: import { logger } from '@/lib/services/logging';
+import { logger } from "@/lib/services/logging";
 
 const lineItemSchema = z.object({
   product_id: z.string().min(1, "Product selection is required"),
@@ -108,10 +108,10 @@ export default function NewInvoicePage() {
   // Fetch initial data
   useEffect(() => {
     async function loadData() {
-      console.log(
+      logger.info(
         CLIENT_LOG_PREFIX,
         "Loading initial customer and product data...",
-      ); // Use console.log
+      );
       setIsLoadingData(true);
       try {
         const [customersData, productsData] = await Promise.all([
@@ -120,16 +120,16 @@ export default function NewInvoicePage() {
         ]);
         setCustomers(customersData);
         setProducts(productsData);
-        console.log(
+        logger.info(
           CLIENT_LOG_PREFIX,
           `Loaded ${customersData.length} customers and ${productsData.length} products.`,
-        ); // Use console.log
+        );
       } catch (error) {
-        console.error(
+        logger.error(
           CLIENT_LOG_PREFIX,
           "Failed to load initial data",
           error instanceof Error ? error : new Error(String(error)),
-        ); // Use console.error
+        );
         toast({
           title: "Error Loading Data",
           description:
@@ -138,7 +138,7 @@ export default function NewInvoicePage() {
         });
       } finally {
         setIsLoadingData(false);
-        console.log(CLIENT_LOG_PREFIX, "Finished loading initial data."); // Use console.log
+        logger.info(CLIENT_LOG_PREFIX, "Finished loading initial data.");
       }
     }
     loadData();
@@ -173,7 +173,7 @@ export default function NewInvoicePage() {
         gst: parseFloat(gstAmount.toFixed(2)),
         total: parseFloat(total.toFixed(2)),
       };
-      console.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals); // Use console.debug
+      logger.debug(CLIENT_LOG_PREFIX, "Calculated Totals:", newTotals);
       setCalculatedTotals(newTotals);
     },
     [products],
@@ -183,33 +183,33 @@ export default function NewInvoicePage() {
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name?.startsWith("line_items") || name === "include_gst") {
-        console.debug(
+        logger.debug(
           CLIENT_LOG_PREFIX,
           `Form field changed (${name}), recalculating totals...`,
-        ); // Use console.debug
+        );
         calculateTotals(value as ReceiptFormData);
       }
     });
     // Trigger initial calculation once products are loaded
     if (products.length > 0 && !isLoadingData) {
-      console.debug(
+      logger.debug(
         CLIENT_LOG_PREFIX,
         "Performing initial total calculation...",
-      ); // Use console.debug
+      );
       calculateTotals(form.getValues());
     }
     return () => {
-      console.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch."); // Use console.debug
+      logger.debug(CLIENT_LOG_PREFIX, "Unsubscribing from form watch.");
       subscription.unsubscribe();
     };
     // Dependencies: form for watch, products for initial calc trigger, isLoadingData to wait
   }, [form, products, isLoadingData, calculateTotals]);
 
   const onSubmit = async (data: ReceiptFormData) => {
-    console.info(
+    logger.info(
       CLIENT_LOG_PREFIX,
       "onSubmit triggered. Starting invoice submission...",
-    ); // Use console.info
+    );
     setIsSubmitting(true);
 
     // Format date correctly before sending to server action
@@ -217,25 +217,25 @@ export default function NewInvoicePage() {
       ...data,
       date_of_purchase: format(data.date_of_purchase, "yyyy-MM-dd"),
     };
-    console.info(CLIENT_LOG_PREFIX, "Formatted submission data:", {
+    logger.info(CLIENT_LOG_PREFIX, "Formatted submission data:", {
       customer_id: submissionData.customer_id,
       date: submissionData.date_of_purchase,
       itemCount: submissionData.line_items.length,
-    }); // Use console.info
+    });
 
     try {
-      console.info(CLIENT_LOG_PREFIX, "Calling createReceipt server action..."); // Use console.info
+      logger.info(CLIENT_LOG_PREFIX, "Calling createReceipt server action...");
       const result = await createReceipt(submissionData);
-      console.info(CLIENT_LOG_PREFIX, "createReceipt action result:", result); // Use console.info
+      logger.info(CLIENT_LOG_PREFIX, "createReceipt action result:", result);
 
       if (result.success && result.receipt) {
         const receiptId = result.receipt.receipt_id;
         const shortId = receiptId.substring(0, 8);
 
-        console.info(
+        logger.info(
           CLIENT_LOG_PREFIX,
           `Invoice ${shortId}... created successfully.`,
-        ); // Use console.info
+        );
         toast({
           title: "Invoice Created Successfully",
           description: `Invoice ${shortId}... has been created.`,
@@ -254,7 +254,7 @@ export default function NewInvoicePage() {
         });
 
         // Reset form only on successful data save
-        console.info(CLIENT_LOG_PREFIX, "Resetting form and totals..."); // Use console.info
+        logger.info(CLIENT_LOG_PREFIX, "Resetting form and totals...");
         form.reset({
           customer_id: "",
           date_of_purchase: new Date(),
@@ -265,11 +265,11 @@ export default function NewInvoicePage() {
         setCalculatedTotals({ subtotal: 0, gst: 0, total: 0 });
       } else {
         // Handle overall failure (likely data saving or validation failed)
-        console.error(
+        logger.error(
           CLIENT_LOG_PREFIX,
           "Error creating invoice (data saving/validation):",
           result.message,
-        ); // Use console.error
+        );
         toast({
           title: "Error Creating Invoice",
           description:
@@ -280,11 +280,11 @@ export default function NewInvoicePage() {
       }
     } catch (error) {
       // Catch unexpected errors during the action call itself
-      console.error(
+      logger.error(
         CLIENT_LOG_PREFIX,
         "Unexpected error during invoice submission process:",
         error,
-      ); // Use console.error
+      );
       toast({
         title: "Error",
         description: `An unexpected error occurred: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -293,7 +293,7 @@ export default function NewInvoicePage() {
       });
     } finally {
       setIsSubmitting(false);
-      console.info(CLIENT_LOG_PREFIX, "Invoice submission process finished."); // Use console.info
+      logger.info(CLIENT_LOG_PREFIX, "Invoice submission process finished.");
     }
   };
 
