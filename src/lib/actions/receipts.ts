@@ -134,8 +134,11 @@ export async function createReceipt(
     let subtotalExclGST = 0;
     let GSTAmount = 0;
 
+    // Create a Map for O(1) product lookups
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
     for (const item of validatedData.line_items) {
-      const product = products.find((p) => p.id === item.product_id);
+      const product = productMap.get(item.product_id);
       if (!product) {
         await logger.error(
           funcPrefix,
