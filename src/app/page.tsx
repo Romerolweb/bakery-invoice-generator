@@ -226,7 +226,11 @@ export default function NewInvoicePage() {
     try {
       logger.info(CLIENT_LOG_PREFIX, "Calling createReceipt server action...");
       const result = await createReceipt(submissionData);
-      logger.info(CLIENT_LOG_PREFIX, "createReceipt action result:", result);
+      logger.info(
+        CLIENT_LOG_PREFIX,
+        "createReceipt action result:",
+        result as any,
+      );
 
       if (result.success && result.receipt) {
         const receiptId = result.receipt.receipt_id;
@@ -283,7 +287,7 @@ export default function NewInvoicePage() {
       logger.error(
         CLIENT_LOG_PREFIX,
         "Unexpected error during invoice submission process:",
-        error,
+        error instanceof Error ? error : new Error(String(error)),
       );
       toast({
         title: "Error",
