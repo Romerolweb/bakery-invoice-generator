@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+import { logger } from "@/lib/services/logging";
 import type { Receipt } from "@/lib/types";
 import { getAllReceipts } from "@/lib/actions/receipts";
 
@@ -27,15 +28,15 @@ export default function ReceiptsHistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchReceipts = useCallback(async () => {
-    console.info(CLIENT_LOG_PREFIX, "Starting fetchReceipts...");
+    logger.info(CLIENT_LOG_PREFIX, "Starting fetchReceipts...");
     setIsLoading(true);
     try {
-      console.debug(CLIENT_LOG_PREFIX, "Calling getAllReceipts action...");
+      logger.debug(CLIENT_LOG_PREFIX, "Calling getAllReceipts action...");
       const data = await getAllReceipts();
-      console.info(CLIENT_LOG_PREFIX, `Fetched ${data.length} receipts.`);
+      logger.info(CLIENT_LOG_PREFIX, `Fetched ${data.length} receipts.`);
       setReceipts(data);
     } catch (error) {
-      console.error(
+      logger.error(
         CLIENT_LOG_PREFIX,
         "Failed to fetch receipts",
         error instanceof Error ? error : new Error(String(error)),
@@ -48,7 +49,7 @@ export default function ReceiptsHistoryPage() {
       });
     } finally {
       setIsLoading(false);
-      console.info(CLIENT_LOG_PREFIX, "Finished fetchReceipts.");
+      logger.info(CLIENT_LOG_PREFIX, "Finished fetchReceipts.");
     }
   }, [toast]);
 

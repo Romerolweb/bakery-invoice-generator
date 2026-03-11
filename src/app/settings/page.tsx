@@ -27,7 +27,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/lib/services/logging";
 import { Loader2 } from "lucide-react";
+
+const CLIENT_LOG_PREFIX = "SettingsPage";
 
 // Basic ABN/ACN format check (can be more robust)
 const abnRegex = /^\d{2}\s?\d{3}\s?\d{3}\s?\d{3}$/; // Optional spaces
@@ -100,7 +103,11 @@ export default function SettingsPage() {
           });
         }
       } catch (error) {
-        console.error("Failed to fetch seller profile:", error);
+        logger.error(
+          CLIENT_LOG_PREFIX,
+          "Failed to fetch seller profile:",
+          error instanceof Error ? error : new Error(String(error)),
+        );
         toast({
           title: "Error",
           description: "Could not load seller profile.",
@@ -136,7 +143,11 @@ export default function SettingsPage() {
       }
       // Catch any unexpected errors during the process
     } catch (error) {
-      console.error("Failed to update seller profile:", error);
+      logger.error(
+        CLIENT_LOG_PREFIX,
+        "Failed to update seller profile:",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       toast({
         title: "Error",
         description: "An unexpected error occurred.",
