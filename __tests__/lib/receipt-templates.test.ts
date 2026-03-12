@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { generateReceiptHTML } from "../../src/lib/receipt-templates";
-import { Receipt, LineItem } from "../../src/lib/types";
+import { describe, it, expect } from "vitest";
+import { generateReceiptHTML } from "@/lib/receipt-templates";
+import { Receipt, LineItem } from "@/lib/types";
 
 const mockSeller = {
   name: "Test Seller & Sons",
