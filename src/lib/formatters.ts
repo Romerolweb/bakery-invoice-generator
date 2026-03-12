@@ -11,6 +11,7 @@ export function formatDate(dateString: string | undefined | null): string {
   try {
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) {
+      console.error("Error formatting date:", dateString, new Error("Invalid time value"));
       return "Invalid Date";
     }
     const day = String(date.getDate()).padStart(2, "0");
