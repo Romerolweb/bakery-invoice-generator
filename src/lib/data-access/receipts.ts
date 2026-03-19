@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import type { Receipt, LineItem } from "@/lib/types";
 import { logger } from "@/lib/services/logging";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { receipts, receiptItems } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -135,7 +136,31 @@ export async function getReceiptPdfPath(
   receiptId: string,
 ): Promise<string | null> {
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptPdfPath:${receiptId}`;
+
+  // Security: Validate receiptId is a UUID to prevent path traversal
+  const uuidSchema = z.string().uuid();
+  const validation = uuidSchema.safeParse(receiptId);
+  if (!validation.success) {
+    await logger.warn(
+      funcPrefix,
+      `Potential path traversal or invalid ID detected: ${receiptId}`,
+    );
+    return null;
+  }
+
   const filePath = path.join(pdfDirectory, `${receiptId}.pdf`);
+
+  // Security: Final check to ensure the resolved path is still within pdfDirectory
+  const resolvedPath = path.resolve(filePath);
+  const resolvedPdfDir = path.resolve(pdfDirectory);
+  if (!resolvedPath.startsWith(resolvedPdfDir)) {
+    await logger.error(
+      funcPrefix,
+      `Security violation: Resolved path ${resolvedPath} is outside ${resolvedPdfDir}`,
+    );
+    return null;
+  }
+
   await logger.debug(funcPrefix, `Checking for PDF file at path: ${filePath}`);
   try {
     await fs.mkdir(pdfDirectory, { recursive: true });
@@ -168,17 +193,17 @@ export async function getReceiptPdfContent(
   receiptId: string,
 ): Promise<Buffer | null> {
   const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptPdfContent:${receiptId}`;
-  const filePath = path.join(pdfDirectory, `${receiptId}.pdf`);
-  await logger.debug(
-    funcPrefix,
-    `Attempting to read PDF content from: ${filePath}`,
-  );
+  let validatedPath: string | null = null;
   try {
-    const existingPath = await getReceiptPdfPath(receiptId);
-    if (!existingPath) {
+    validatedPath = await getReceiptPdfPath(receiptId);
+    if (!validatedPath) {
       return null;
     }
-    const pdfBuffer = await fs.readFile(filePath);
+    await logger.debug(
+      funcPrefix,
+      `Attempting to read PDF content from: ${validatedPath}`,
+    );
+    const pdfBuffer = await fs.readFile(validatedPath);
     await logger.info(
       funcPrefix,
       `Successfully read PDF content (${pdfBuffer.length} bytes).`,
@@ -187,7 +212,7 @@ export async function getReceiptPdfContent(
   } catch (error: unknown) {
     await logger.error(
       funcPrefix,
-      `Error reading PDF file content at ${filePath}`,
+      `Error reading PDF file content at ${validatedPath || receiptId}`,
       error as Error,
     );
     return null;
