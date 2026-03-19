@@ -216,33 +216,3 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
   }
 }
 
-// --- Deprecated Actions (Keep for compatibility or remove if sure) ---
-
-/** @deprecated Use getProducts instead */
-export async function getAllProducts(): Promise<Product[]> {
-  await logger.warn(
-    `${ACTION_LOG_PREFIX}:getAllProducts`,
-    "Deprecated function called. Use getProducts() instead.",
-  );
-  return getProducts();
-}
-
-/** @deprecated Fetch product within your component or use getProducts */
-export async function getProductById(
-  productId: string,
-): Promise<Product | null> {
-  const funcPrefix = `${ACTION_LOG_PREFIX}:getProductById:${productId}`;
-  await logger.warn(funcPrefix, "Deprecated function called.");
-  try {
-    const product = await ProductDataAccess.getProductById(productId);
-    await logger.info(funcPrefix, `Retrieved product by ID.`);
-    return product;
-  } catch (error) {
-    await logger.error(
-      funcPrefix,
-      "Error fetching product by ID",
-      error instanceof Error ? error : new Error(String(error)),
-    );
-    return null;
-  }
-}
