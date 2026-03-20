@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { generateReceiptHTML } from "../../src/lib/receipt-templates";
 import { Receipt, LineItem } from "../../src/lib/types";
 
