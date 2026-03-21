@@ -12,7 +12,7 @@
     "start": "next start --port ${PORT:-3000}",
     "start:prod": "source .env.prod && npm run start",
     "start:script": "./start.sh",
-    "lint": "next lint",
+    "lint": "next lint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",

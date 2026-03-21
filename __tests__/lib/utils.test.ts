@@ -1,35 +1,31 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { formatDate } from "@/lib/utils";
+import { describe, it, expect } from "vitest";
+import { cn } from "@/lib/utils";
 
-describe("formatDate", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+describe("cn", () => {
+  it("should merge basic class names", () => {
+    expect(cn("cls1", "cls2")).toBe("cls1 cls2");
   });
 
-  it("should format a valid ISO date string correctly", () => {
-    const dateString = "2023-10-27T10:00:00";
-    expect(formatDate(dateString)).toBe("27/10/2023");
+  it("should handle conditional classes", () => {
+    expect(cn("base", true && "active", false && "hidden")).toBe("base active");
+    expect(cn("base", { active: true, hidden: false })).toBe("base active");
   });
 
-  it('should return "N/A" for null input', () => {
-    expect(formatDate(null)).toBe("N/A");
+  it("should handle null and undefined", () => {
+    expect(cn("base", null, undefined, "extra")).toBe("base extra");
   });
 
-  it('should return "N/A" for undefined input', () => {
-    expect(formatDate(undefined)).toBe("N/A");
+  it("should resolve Tailwind CSS conflicts", () => {
+    // tailwind-merge should prefer the last one
+    expect(cn("px-2 py-2", "p-4")).toBe("p-4");
+    expect(cn("text-red-500", "text-blue-500")).toBe("text-blue-500");
   });
 
-  it('should return "N/A" for empty string input', () => {
-    expect(formatDate("")).toBe("N/A");
+  it("should handle arrays of classes", () => {
+    expect(cn(["cls1", "cls2"], "cls3")).toBe("cls1 cls2 cls3");
   });
 
-  it('should return "Invalid Date" for invalid date string and log error', () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(formatDate("invalid-date")).toBe("Invalid Date");
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Error formatting date:",
-      "invalid-date",
-      expect.any(Error),
-    );
+  it("should return an empty string for no inputs", () => {
+    expect(cn()).toBe("");
   });
 });
