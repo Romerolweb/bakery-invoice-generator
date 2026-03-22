@@ -62,6 +62,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/lib/services/logging";
 import {
   Loader2,
   PlusCircle,
@@ -69,6 +70,8 @@ import {
   Trash2,
   CircleDollarSign,
 } from "lucide-react";
+
+const CLIENT_LOG_PREFIX = "ProductsPage";
 
 const productSchema = z.object({
   id: z.string().optional(), // Present when editing
@@ -106,7 +109,8 @@ export default function ProductsPage() {
       const data = await getProducts();
       setProducts(data);
     } catch (error) {
-      console.error(
+      logger.error(
+        CLIENT_LOG_PREFIX,
         "Failed to fetch products:",
         error instanceof Error ? error : new Error(String(error)),
       );
@@ -158,7 +162,8 @@ export default function ProductsPage() {
         });
       }
     } catch (error) {
-      console.error(
+      logger.error(
+        CLIENT_LOG_PREFIX,
         "Failed to delete product:",
         error instanceof Error ? error : new Error(String(error)),
       );
@@ -203,9 +208,10 @@ export default function ProductsPage() {
         });
       }
     } catch (error) {
-      console.error(
+      logger.error(
+        CLIENT_LOG_PREFIX,
         `Failed to ${editingProduct ? "update" : "add"} product:`,
-        error,
+        error instanceof Error ? error : new Error(String(error)),
       );
       toast({
         title: "Error",

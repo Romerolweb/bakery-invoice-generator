@@ -51,6 +51,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, User, Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/services/logging";
+
+const CLIENT_LOG_PREFIX = "CustomersPage";
 
 // --- Validation Schema ---
 const abnRegex = /^\d{2}\s?\d{3}\s?\d{3}\s?\d{3}$/;
@@ -189,7 +192,8 @@ function CustomersPageContent() {
       const data = await customerService.fetchAll();
       setCustomers(data);
     } catch (error) {
-      console.error(
+      logger.error(
+        CLIENT_LOG_PREFIX,
         "Client: Failed to fetch customers:",
         error instanceof Error ? error : new Error(String(error)),
       );
@@ -228,7 +232,10 @@ function CustomersPageContent() {
     async (id: string) => {
       // Basic client-side ID validation
       if (!id) {
-        console.error("Client: handleDeleteCustomer called with invalid ID.");
+        logger.error(
+          CLIENT_LOG_PREFIX,
+          "Client: handleDeleteCustomer called with invalid ID.",
+        );
         toast({
           title: "Error",
           description: "Invalid customer ID.",
@@ -252,7 +259,8 @@ function CustomersPageContent() {
           });
         }
       } catch (error) {
-        console.error(
+        logger.error(
+          CLIENT_LOG_PREFIX,
           `Client: Failed to delete customer ${id}:`,
           error instanceof Error ? error : new Error(String(error)),
         );
@@ -305,7 +313,8 @@ function CustomersPageContent() {
           });
         }
       } catch (error) {
-        console.error(
+        logger.error(
+          CLIENT_LOG_PREFIX,
           `Client: Failed to ${editingCustomer ? "update" : "add"} customer:`,
           error instanceof Error ? error : new Error(String(error)),
         );
