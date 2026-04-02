@@ -10,7 +10,7 @@ import { Customer } from "../types";
 import { customers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import path from "path";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { migrate } from "drizzle-orm/pglite/migrator";
 
 // Mock logger
 vi.mock("@/lib/services/logging", () => ({
@@ -25,10 +25,10 @@ vi.mock("@/lib/services/logging", () => ({
 // Mock the db module
 // We must do this before importing db from "@/lib/db"
 vi.mock("@/lib/db", async () => {
-  const { drizzle } = await import("drizzle-orm/better-sqlite3");
-  const Database = (await import("better-sqlite3")).default;
-  const sqlite = new Database(":memory:");
-  const testDb = drizzle(sqlite);
+  const { drizzle } = await import("drizzle-orm/pglite");
+  const { PGlite } = await import("@electric-sql/pglite");
+  const pg = new PGlite();
+  const testDb = drizzle(pg);
   return {
     db: testDb,
   };
