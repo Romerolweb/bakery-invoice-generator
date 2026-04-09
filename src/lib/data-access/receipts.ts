@@ -1,6 +1,3 @@
-import fs from "fs/promises";
-import path from "path";
-import { z } from "zod";
 import type { Receipt, LineItem } from "@/lib/types";
 import { logger } from "@/lib/services/logging";
 import { db } from "@/lib/db";
@@ -8,8 +5,6 @@ import { receipts, receiptItems } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 const DATA_ACCESS_LOG_PREFIX = "ReceiptDataAccess";
-const dataDirectory = path.join(process.cwd(), "src", "lib", "data");
-const pdfDirectory = path.join(dataDirectory, "receipt-pdfs");
 
 // Helper to map DB result to Receipt interface
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -127,93 +122,6 @@ export async function createReceipt(
       funcPrefix,
       "Error creating new receipt",
       error instanceof Error ? error : new Error(String(error)),
-    );
-    return null;
-  }
-}
-
-export async function getReceiptPdfPath(
-  receiptId: string,
-): Promise<string | null> {
-  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptPdfPath:${receiptId}`;
-
-  // Validate that receiptId is a valid UUID to prevent path traversal
-  const validationResult = z.string().uuid().safeParse(receiptId);
-  if (!validationResult.success) {
-    await logger.warn(
-      funcPrefix,
-      `Invalid receiptId format provided: ${receiptId}`,
-    );
-    return null;
-  }
-
-  const resolvedPdfDir = path.resolve(pdfDirectory);
-  const filePath = path.resolve(resolvedPdfDir, `${receiptId}.pdf`);
-
-  // Ensure the resolved path is still within the pdf directory
-  if (!filePath.startsWith(resolvedPdfDir)) {
-    await logger.error(
-      funcPrefix,
-      `Path traversal attempt detected: ${filePath}`,
-    );
-    return null;
-  }
-
-  await logger.debug(funcPrefix, `Checking for PDF file at path: ${filePath}`);
-  try {
-    await fs.mkdir(resolvedPdfDir, { recursive: true });
-    await fs.access(filePath, fs.constants.F_OK);
-    await logger.info(funcPrefix, `PDF found at path: ${filePath}`);
-    return filePath;
-  } catch (error: unknown) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (
-      error instanceof Error &&
-      "code" in error &&
-      (error as any).code === "ENOENT"
-    ) {
-      await logger.info(
-        funcPrefix,
-        `PDF file not found at ${filePath}. It might be generating or failed.`,
-      );
-    } else {
-      await logger.error(
-        funcPrefix,
-        `Error accessing PDF file at ${filePath}`,
-        error as Error,
-      );
-    }
-    return null;
-  }
-}
-
-export async function getReceiptPdfContent(
-  receiptId: string,
-): Promise<Buffer | null> {
-  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptPdfContent:${receiptId}`;
-
-  try {
-    const existingPath = await getReceiptPdfPath(receiptId);
-    if (!existingPath) {
-      return null;
-    }
-
-    await logger.debug(
-      funcPrefix,
-      `Attempting to read PDF content from: ${existingPath}`,
-    );
-
-    const pdfBuffer = await fs.readFile(existingPath);
-    await logger.info(
-      funcPrefix,
-      `Successfully read PDF content (${pdfBuffer.length} bytes).`,
-    );
-    return pdfBuffer;
-  } catch (error: unknown) {
-    await logger.error(
-      funcPrefix,
-      `Error reading PDF file content for receipt: ${receiptId}`,
-      error as Error,
     );
     return null;
   }
