@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/services/logging";
 import type { Receipt } from "@/lib/types";
 import { ReceiptContent } from "./components/ReceiptContent";
 import { PrintToolbar } from "./components/PrintToolbar";
@@ -16,6 +17,8 @@ interface ApiResponse {
   data?: Receipt;
   error?: string;
 }
+
+const CLIENT_LOG_PREFIX = "ReceiptWebView";
 
 export function ReceiptWebView({ receiptId }: Readonly<ReceiptWebViewProps>) {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -47,7 +50,11 @@ export function ReceiptWebView({ receiptId }: Readonly<ReceiptWebViewProps>) {
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error occurred";
         setError(errorMessage);
-        console.error("Error fetching receipt:", err);
+        logger.error(
+          CLIENT_LOG_PREFIX,
+          "Error fetching receipt",
+          err instanceof Error ? err : new Error(String(err)),
+        );
       } finally {
         setLoading(false);
       }
