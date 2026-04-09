@@ -53,7 +53,7 @@ describe('Receipts Data Access - Security Fix', () => {
 
       expect(result).not.toBeNull();
       expect(result).toContain(validId);
-      expect(result).endsWith('.pdf');
+      expect(result).toMatch(/\.pdf$/);
       expect(fs.access).toHaveBeenCalled();
     });
   });
