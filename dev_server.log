@@ -1,0 +1,5 @@
+
+> nextn@0.1.0 dev
+> next dev --turbopack --port ${PORT:-9002}
+
+sh: 1: next: not found
