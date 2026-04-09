@@ -118,6 +118,47 @@ describe("generateReceiptHTML", () => {
     expect(html).not.toContain("<b>");
   });
 
+  it("should escape HTML in numeric fields if they contain malicious strings", () => {
+    // Note: toFixed() will fail on strings, so we need to be careful how we test this
+    // The current implementation calls .toFixed(2) on unit_price and line_total
+    // and .toString() on quantity.
+    // If they are actually numbers, escapeHTML is still good practice.
+    // If they are somehow strings (e.g. from database corruption or bypass), they must be escaped.
+
+    // Let's mock a case where they are strings but don't have toFixed called on them if they are not numbers?
+    // Actually the code does:
+    // <td>${escapeHTML(item.quantity.toString())}</td>
+    // <td>$${escapeHTML(item.unit_price.toFixed(2))}</td>
+
+    // To test this without causing runtime errors in the test itself (like unit_price.toFixed is not a function)
+    // we can use objects that have toFixed/toString methods.
+
+    const xss = "<script>alert('xss')</script>";
+    const maliciousValue = {
+      toFixed: () => xss,
+      toString: () => xss,
+    };
+
+    const receiptWithXss = {
+      ...mockReceipt,
+      line_items: [
+        {
+          ...mockLineItems[0],
+          quantity: maliciousValue as any,
+          unit_price: maliciousValue as any,
+          line_total: maliciousValue as any,
+        },
+      ],
+      subtotal_excl_GST: maliciousValue as any,
+      GST_amount: maliciousValue as any,
+      total_inc_GST: maliciousValue as any,
+    };
+
+    const html = generateReceiptHTML(receiptWithXss as Receipt);
+    expect(html).toContain("&lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;");
+    expect(html).not.toContain(xss);
+  });
+
   it("should handle missing optional fields gracefully", () => {
     const minimalSeller = { ...mockSeller, phone: undefined };
     const minimalCustomer = {
