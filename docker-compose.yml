@@ -8,7 +8,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: ${PORT:-9002}
-      # For example: DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgres://bakery:bakery@postgres:5432/bakery
     env_file:
       - .env.dev
     volumes:
@@ -20,6 +20,9 @@ services:
     working_dir: /app
     # Create PDF directory and start dev server
     command: sh -c "mkdir -p src/lib/data/receipt-pdfs && npm run dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
     develop:
       watch:
         - action: sync
@@ -41,18 +44,23 @@ services:
         - action: rebuild
           path: tsconfig.json
 
-  mongo:
-    image: mongo:4.2
+  postgres:
+    image: postgres:16-alpine
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: NotSecret1234!
-      MONGO_INITDB_DATABASE: bliss
+      POSTGRES_USER: bakery
+      POSTGRES_PASSWORD: bakery
+      POSTGRES_DB: bakery
     volumes:
-      - ./scripts/mongo/init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-      - ./_mongo:/data/db
+      - pgdata:/var/lib/postgresql/data
     ports:
-      - '27017:27017'
+      - '5432:5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bakery"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pdf_data: # Defines the named volume for storing generated PDFs
+  pgdata: # Defines the named volume for PostgreSQL data
 

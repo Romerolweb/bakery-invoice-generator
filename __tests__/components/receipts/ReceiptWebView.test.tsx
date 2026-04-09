@@ -1,7 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import { ReceiptWebView } from "@/components/receipts/ReceiptWebView";
+import { logger } from "@/lib/services/logging";
 import type { Receipt } from "@/lib/types";
+
+// Mock the logger service
+vi.mock("@/lib/services/logging", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -156,10 +167,10 @@ describe("ReceiptWebView", () => {
     });
   });
 
-  it("should display error message when API fails", async () => {
+  it("should display error message and log error when API fails", async () => {
+    const errorMsg = "Receipt not found";
     mockFetch.mockResolvedValueOnce({
-      json: () =>
-        Promise.resolve({ success: false, error: "Receipt not found" }),
+      json: () => Promise.resolve({ success: false, error: errorMsg }),
     });
 
     await act(async () => {
@@ -170,11 +181,17 @@ describe("ReceiptWebView", () => {
       expect(screen.getByTestId("error-message")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Receipt not found")).toBeInTheDocument();
+    expect(screen.getByText(errorMsg)).toBeInTheDocument();
+    expect(logger.error).toHaveBeenCalledWith(
+      "ReceiptWebView",
+      "Error fetching receipt",
+      expect.any(Error),
+    );
   });
 
-  it("should display error message when fetch throws", async () => {
-    mockFetch.mockRejectedValueOnce(new Error("Network error"));
+  it("should display error message and log error when fetch throws", async () => {
+    const error = new Error("Network error");
+    mockFetch.mockRejectedValueOnce(error);
 
     await act(async () => {
       render(<ReceiptWebView receiptId="TEST-001" />);
@@ -185,9 +202,14 @@ describe("ReceiptWebView", () => {
     });
 
     expect(screen.getByText("Network error")).toBeInTheDocument();
+    expect(logger.error).toHaveBeenCalledWith(
+      "ReceiptWebView",
+      "Error fetching receipt",
+      error,
+    );
   });
 
-  it("should display error when no data received", async () => {
+  it("should display error and log error when no data received", async () => {
     mockFetch.mockResolvedValueOnce({
       json: () => Promise.resolve({ success: true, data: null }),
     });
@@ -201,5 +223,10 @@ describe("ReceiptWebView", () => {
     });
 
     expect(screen.getByText("No receipt data received")).toBeInTheDocument();
+    expect(logger.error).toHaveBeenCalledWith(
+      "ReceiptWebView",
+      "Error fetching receipt",
+      expect.any(Error),
+    );
   });
 });

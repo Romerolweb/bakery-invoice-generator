@@ -54,11 +54,10 @@ export async function saveAllProducts(
   );
   try {
     // Transactional save: delete all then insert all to mimic file overwrite behavior
-    // Sync for better-sqlite3
-    db.transaction((tx) => {
-      tx.delete(products).run();
+    await db.transaction(async (tx) => {
+      await tx.delete(products);
       if (productsData.length > 0) {
-        tx.insert(products).values(productsData).run();
+        await tx.insert(products).values(productsData);
       }
     });
 

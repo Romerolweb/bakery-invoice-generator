@@ -1,0 +1,60 @@
+name: Deploy to Railway
+
+# This workflow is DEACTIVATED by default
+# To activate: change workflow_dispatch to push/pull_request triggers
+# and add RAILWAY_TOKEN to repository secrets
+
+on:
+  workflow_dispatch:  # Manual trigger only - change this to activate automatically
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '22'
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli@latest
+
+      - name: Deploy to Railway
+        run: railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+# Configuration Instructions:
+# 
+# 1. Create a Railway account at https://railway.app and link your repository
+# 2. Create a new project with a PostgreSQL database and a service from your GitHub repo
+# 3. Set environment variables in Railway dashboard:
+#    - DATABASE_URL (auto-configured when you add Postgres plugin)
+#    - GEMINI_API_KEY
+#    - PORT=3000
+# 4. Get your Railway deploy token:
+#    - Railway Dashboard > Project > Settings > Tokens > Create Token
+# 5. Add RAILWAY_TOKEN as a secret in GitHub:
+#    - Repository Settings > Secrets and variables > Actions > New repository secret
+# 6. To activate automatic deployment, replace workflow_dispatch with:
+#    on:
+#      push:
+#        branches: [main, master]
+# 7. Alternatively, skip this workflow entirely and use Railway's built-in
+#    GitHub integration which auto-deploys on push (recommended).

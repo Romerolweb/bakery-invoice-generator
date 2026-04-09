@@ -94,13 +94,13 @@ export async function createReceipt(
       return null;
     }
 
-    // Transaction to insert receipt and line items (Sync for better-sqlite3)
-    db.transaction((tx) => {
+    // Transaction to insert receipt and line items
+    await db.transaction(async (tx) => {
       // Insert receipt
       // Extract line_items to separate variable
       const { line_items, ...receiptData } = newReceipt;
 
-      tx.insert(receipts).values(receiptData).run();
+      await tx.insert(receipts).values(receiptData);
 
       // Insert line items
       if (line_items && line_items.length > 0) {
@@ -108,7 +108,7 @@ export async function createReceipt(
           ...item,
           receipt_id: newReceipt.receipt_id,
         }));
-        tx.insert(receiptItems).values(itemsToInsert).run();
+        await tx.insert(receiptItems).values(itemsToInsert);
       }
     });
 

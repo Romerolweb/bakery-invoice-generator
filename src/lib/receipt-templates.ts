@@ -11,9 +11,9 @@ export function generateReceiptHTML(receipt: Receipt): string {
     lineItemsHTML += `
       <tr>
         <td>${escapeHTML(item.product_name)}</td>
-        <td>${item.quantity}</td>
-        <td>$${item.unit_price.toFixed(2)}</td>
-        <td>$${item.line_total.toFixed(2)}</td>
+        <td>${escapeHTML(item.quantity.toString())}</td>
+        <td>$${escapeHTML(item.unit_price.toFixed(2))}</td>
+        <td>$${escapeHTML(item.line_total.toFixed(2))}</td>
       </tr>
     `;
   });
@@ -190,9 +190,9 @@ export function generateReceiptHTML(receipt: Receipt): string {
         </table>
 
         <div class="totals-section">
-          <p><strong>Subtotal (excl. GST):</strong> $${receipt.subtotal_excl_GST.toFixed(2)}</p>
-          <p><strong>GST:</strong> $${receipt.GST_amount.toFixed(2)}</p>
-          <p><strong>Total (inc. GST):</strong> $${receipt.total_inc_GST.toFixed(2)}</p>
+          <p><strong>Subtotal (excl. GST):</strong> $${escapeHTML(receipt.subtotal_excl_GST.toFixed(2))}</p>
+          <p><strong>GST:</strong> $${escapeHTML(receipt.GST_amount.toFixed(2))}</p>
+          <p><strong>Total (inc. GST):</strong> $${escapeHTML(receipt.total_inc_GST.toFixed(2))}</p>
         </div>
 
         <div class="footer">
