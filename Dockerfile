@@ -42,12 +42,13 @@ COPY --from=base /app/.next ./.next
 COPY --from=base /app/public ./public
 COPY --from=base /app/package.json ./package.json
 COPY --from=base /app/node_modules ./node_modules
-# Copy other necessary files, e.g., next.config.js if it's not bundled or data files if they are static
+# Copy other necessary files, e.g., next.config.js if it's not bundled
 COPY --from=base /app/next.config.ts ./next.config.ts
-# If src/lib/data is accessed at runtime and not part of the build, copy it
-COPY --from=base /app/src/lib/data ./src/lib/data
 # Copy fonts if they are accessed directly by path from pdfkit or puppeteer (if not system fonts)
 COPY --from=base /app/src/lib/fonts ./src/lib/fonts
+# Copy migrations for running db:migrate at startup if needed
+COPY --from=base /app/src/lib/db/migrations ./src/lib/db/migrations
+COPY --from=base /app/drizzle.config.ts ./drizzle.config.ts
 
 
 # Expose port

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import {
   getAllCustomers,
@@ -8,9 +9,7 @@ import {
 } from "./customers";
 import { Customer } from "../types";
 import { customers } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import path from "path";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { eq, sql } from "drizzle-orm";
 
 // Mock logger
 vi.mock("@/lib/services/logging", () => ({
@@ -25,10 +24,10 @@ vi.mock("@/lib/services/logging", () => ({
 // Mock the db module
 // We must do this before importing db from "@/lib/db"
 vi.mock("@/lib/db", async () => {
-  const { drizzle } = await import("drizzle-orm/better-sqlite3");
-  const Database = (await import("better-sqlite3")).default;
-  const sqlite = new Database(":memory:");
-  const testDb = drizzle(sqlite);
+  const { drizzle } = await import("drizzle-orm/pglite");
+  const { PGlite } = await import("@electric-sql/pglite");
+  const pg = new PGlite();
+  const testDb = drizzle(pg);
   return {
     db: testDb,
   };
@@ -39,11 +38,20 @@ import { db } from "@/lib/db";
 
 describe("Customer Data Access", () => {
   beforeAll(async () => {
-    // Run migrations on the mocked (in-memory) database
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await migrate(db as any, {
-      migrationsFolder: path.join(process.cwd(), "src/lib/db/migrations"),
-    });
+    // Create tables directly using raw SQL for test environment
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "customers" (
+        "id" text PRIMARY KEY NOT NULL,
+        "customer_type" text NOT NULL,
+        "first_name" text,
+        "last_name" text,
+        "business_name" text,
+        "abn" text,
+        "email" text,
+        "phone" text,
+        "address" text
+      )
+    `);
   });
 
   beforeEach(async () => {

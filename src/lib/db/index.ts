@@ -1,23 +1,21 @@
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
-import path from "path";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
 
-const dbPath =
-  process.env.DATABASE_URL || path.join(process.cwd(), "src/lib/data/local.db");
+const connectionString =
+  process.env.DATABASE_URL || "postgres://localhost:5432/bakery";
 
 // Singleton pattern for DB connection to avoid multiple connections in dev hot-reloads
 // eslint-disable-next-line no-var
 declare global {
   // eslint-disable-next-line no-var
-  var _sqlite: Database.Database | undefined;
+  var _pgClient: ReturnType<typeof postgres> | undefined;
 }
 
-if (!global._sqlite) {
-  global._sqlite = new Database(dbPath);
-  global._sqlite.pragma("journal_mode = WAL"); // Better concurrency
+if (!global._pgClient) {
+  global._pgClient = postgres(connectionString);
 }
 
-const sqlite = global._sqlite;
+const client = global._pgClient;
 
-export const db = drizzle(sqlite, { schema });
+export const db = drizzle(client, { schema });
