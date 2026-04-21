@@ -1,15 +1,15 @@
-import { clsx, type ClassValue } from "clsx";
+import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { formatDate as formatDateInternal, escapeHTML as escapeHTMLInternal } from "./formatters";
 
 /**
  * Combines and merges Tailwind CSS classes and other class values.
  * Uses `clsx` to handle conditional classes and `tailwind-merge` to resolve conflicts.
- * @param inputs - An array of ClassValue (string, array of strings, object, etc.)
+ * @param inputs - An array of class values (string, array of strings, object, etc.) compatible with clsx.
  * @returns A single, merged string of CSS classes.
  */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+export function cn(...inputs: Parameters<typeof clsx>) {
+  return twMerge(clsx(...inputs));
 }
 
 /**
