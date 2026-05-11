@@ -46,11 +46,11 @@ export async function getReceiptPdfPath(receiptId: string): Promise<string | nul
     return null;
   }
 
-  await fs.mkdir(receiptsDir, { recursive: true });
   try {
     await fs.access(filePath);
   } catch {
-    // File may not exist yet; path is still valid and safe.
+    await logger.warn(funcPrefix, "Receipt PDF file not found.");
+    return null;
   }
 
   return filePath;
