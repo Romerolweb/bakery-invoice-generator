@@ -41,7 +41,8 @@ export async function getReceiptPdfPath(receiptId: string): Promise<string | nul
   const receiptsDir = path.resolve(process.cwd(), "src", "lib", "data", "receipts");
   const filePath = path.resolve(receiptsDir, `${receiptId}.pdf`);
 
-  if (!filePath.startsWith(`${receiptsDir}${path.sep}`)) {
+  const relativePath = path.relative(receiptsDir, filePath);
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
     await logger.warn(funcPrefix, "Blocked invalid receipt PDF path.");
     return null;
   }
