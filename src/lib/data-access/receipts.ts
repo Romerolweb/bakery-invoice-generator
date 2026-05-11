@@ -3,8 +3,16 @@ import { logger } from "@/lib/services/logging";
 import { db } from "@/lib/db";
 import { receipts, receiptItems } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import fs from "fs/promises";
+import path from "path";
 
 const DATA_ACCESS_LOG_PREFIX = "ReceiptDataAccess";
+const RECEIPT_ID_UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidReceiptId(receiptId: string): boolean {
+  return RECEIPT_ID_UUID_REGEX.test(receiptId);
+}
 
 // Helper to map DB result to Receipt interface
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,6 +29,52 @@ function mapDbReceiptToInterface(dbReceipt: any): Receipt {
       return itemRest as LineItem;
     }),
   };
+}
+
+export async function getReceiptPdfPath(receiptId: string): Promise<string | null> {
+  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptPdfPath:${receiptId}`;
+  if (!isValidReceiptId(receiptId)) {
+    await logger.warn(funcPrefix, "Invalid receipt ID format.");
+    return null;
+  }
+
+  const receiptsDir = path.resolve(process.cwd(), "src", "lib", "data", "receipts");
+  const filePath = path.resolve(receiptsDir, `${receiptId}.pdf`);
+
+  if (!filePath.startsWith(`${receiptsDir}${path.sep}`)) {
+    await logger.warn(funcPrefix, "Blocked invalid receipt PDF path.");
+    return null;
+  }
+
+  await fs.mkdir(receiptsDir, { recursive: true });
+  try {
+    await fs.access(filePath);
+  } catch {
+    // File may not exist yet; path is still valid and safe.
+  }
+
+  return filePath;
+}
+
+export async function getReceiptPdfContent(
+  receiptId: string,
+): Promise<Buffer | null> {
+  const funcPrefix = `${DATA_ACCESS_LOG_PREFIX}:getReceiptPdfContent:${receiptId}`;
+  const receiptPdfPath = await getReceiptPdfPath(receiptId);
+  if (!receiptPdfPath) {
+    return null;
+  }
+
+  try {
+    return await fs.readFile(receiptPdfPath);
+  } catch (error) {
+    await logger.error(
+      funcPrefix,
+      "Error reading receipt PDF content",
+      error instanceof Error ? error : new Error(String(error)),
+    );
+    return null;
+  }
 }
 
 export async function getAllReceipts(): Promise<Receipt[]> {
