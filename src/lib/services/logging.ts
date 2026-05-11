@@ -30,24 +30,41 @@ const config = {
 
 const logDirectory = path.dirname(config.logFilePath);
 
-// Ensure log directory exists synchronously on first log attempt if needed (server-side only)
+// Ensure log directory exists asynchronously on first log attempt if needed (server-side only)
 let logDirectoryEnsured = false;
-async function ensureLogDirectoryExists() {
+let ensuringPromise: Promise<void> | null = null;
+
+async function ensureLogDirectoryExists(): Promise<void> {
   if (logDirectoryEnsured || typeof window !== "undefined") return; // Only run on server
 
-  try {
-    // Dynamically import 'fs' only when needed on the server
-    const fs = await import("fs");
-    if (!fs.existsSync(logDirectory)) {
-      fs.mkdirSync(logDirectory, { recursive: true });
-      console.log(`[Logger] Created log directory: ${logDirectory}`);
+  if (ensuringPromise) return ensuringPromise;
+
+  ensuringPromise = (async () => {
+    try {
+      // Dynamically import 'fs' only when needed on the server
+      const fs = await import("fs");
+      const fsPromises = fs.promises;
+
+      // Use asynchronous check and creation
+      try {
+        await fsPromises.access(logDirectory);
+      } catch (accessError) {
+        // Directory doesn't exist, try to create it
+        await fsPromises.mkdir(logDirectory, { recursive: true });
+        console.log(`[Logger] Created log directory: ${logDirectory}`);
+      }
+
+      logDirectoryEnsured = true;
+    } catch (error) {
+      console.error("[Logger] FATAL: Error creating log directory", error);
+      config.logToFile = false; // Disable file logging if directory creation fails
+      logDirectoryEnsured = true; // Prevent further attempts
+    } finally {
+      ensuringPromise = null;
     }
-    logDirectoryEnsured = true;
-  } catch (error) {
-    console.error("[Logger] FATAL: Error creating log directory", error);
-    config.logToFile = false; // Disable file logging if directory creation fails
-    logDirectoryEnsured = true; // Prevent further attempts
-  }
+  })();
+
+  return ensuringPromise;
 }
 
 // Check if a level is enabled based on config
@@ -135,11 +152,7 @@ Data: [Could not stringify data]`;
         try {
           // Dynamically import 'fs' for server-side use
           const fs = await import("fs");
-          fs.appendFile(config.logFilePath, fileLogMessage, (err) => {
-            if (err) {
-              console.error("[Logger] Error writing to log file:", err);
-            }
-          });
+          await fs.promises.appendFile(config.logFilePath, fileLogMessage);
         } catch (fsError) {
           console.error(
             "[Logger] Error importing or using fs for file logging:",
