@@ -59,7 +59,7 @@
     "firebase": "^11.3.0",
     "genkit": "^1.6.2",
     "lucide-react": "^0.475.0",
-    "next": "^16.2.3",
+    "next": "^16.2.11",
     "patch-package": "^8.0.1",
     "postgres": "^3.4.8",
     "react": "^19.3.0-canary-c0060cf2-20260224",
@@ -69,7 +69,7 @@
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^10.0.0",
+    "uuid": "^14.0.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -82,7 +82,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.1.4",
-    "@vitest/ui": "^3.1.4",
+    "@vitest/ui": "^4.1.10",
     "drizzle-kit": "^0.31.9",
     "eslint": "9.27.0",
     "eslint-config-next": "^16.2.0-canary.60",
@@ -92,6 +92,6 @@
     "prettier": "^3.5.3",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.8.3",
-    "vitest": "^3.1.4"
+    "vitest": "^4.1.10"
   }
 }
