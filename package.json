@@ -12,7 +12,7 @@
     "start": "next start --port ${PORT:-3000}",
     "start:prod": "source .env.prod && npm run start",
     "start:script": "./start.sh",
-    "lint": "eslint .",
+    "lint": "node --require ./scripts/use-typescript6-for-eslint.cjs ./node_modules/eslint/bin/eslint.js .",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -92,6 +92,7 @@
     "prettier": "^3.5.3",
     "tailwindcss": "^3.4.1",
     "typescript": "^7.0.2",
+    "typescript6": "npm:@typescript/typescript6@6.0.2",
     "vitest": "^3.1.4"
   }
 }
